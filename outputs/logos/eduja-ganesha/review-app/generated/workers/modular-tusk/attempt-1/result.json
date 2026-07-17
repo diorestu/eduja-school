@@ -1,0 +1,7 @@
+{
+  "id": "modular-tusk",
+  "status": "failed",
+  "image_path": null,
+  "error": "Native image generation completed but did not expose a local PNG artifact to save at the requested path.",
+  "caveats": ""
+}

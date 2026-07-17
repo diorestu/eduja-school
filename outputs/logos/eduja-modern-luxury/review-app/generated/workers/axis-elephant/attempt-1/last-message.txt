@@ -1,0 +1,3 @@
+Generated with `image_gen.imagegen`, but the tool did not expose a saveable PNG file handle in this environment, so I wrote the required failed worker JSON at:
+
+`outputs/logos/eduja-modern-luxury/review-app/generated/workers/axis-elephant/attempt-1/result.json`

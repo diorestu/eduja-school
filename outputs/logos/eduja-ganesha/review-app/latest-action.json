@@ -1,0 +1,14 @@
+{
+  "id": "review-renderer-materialized",
+  "action": "write_moodboard_widget_payload",
+  "label": "Materialized Creative Production image review",
+  "createdAt": "2026-07-14T02:16:13.208455Z",
+  "timestamp": "2026-07-14T02:16:13.208455Z",
+  "title": "Creative Production Review",
+  "summary": "Review, select, and hand off generated Creative Production images.",
+  "itemCount": 8,
+  "runDirectory": "/Users/user/Documents/PROJECTS/eduja/outputs/logos/eduja-ganesha/review-app",
+  "streamPath": "/Users/user/Documents/PROJECTS/eduja/outputs/logos/eduja-ganesha/review-app/data/stream.json",
+  "runStatePath": "/Users/user/Documents/PROJECTS/eduja/outputs/logos/eduja-ganesha/review-app/run-state.json",
+  "latestActionPath": "/Users/user/Documents/PROJECTS/eduja/outputs/logos/eduja-ganesha/review-app/latest-action.json"
+}

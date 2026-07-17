@@ -1,0 +1,8 @@
+{
+  "id": "quiet-seal",
+  "status": "failed",
+  "attempt": 1,
+  "pid": 96433,
+  "startedAt": "2026-07-14T02:10:01.110830+00:00",
+  "lastHeartbeatAt": "2026-07-14T02:11:09.415756+00:00"
+}

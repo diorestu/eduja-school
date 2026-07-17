@@ -1,0 +1,4 @@
+Failed to save the generated PNG because the native image tool returned no local file path or bytes to copy.
+
+Wrote the required failure JSON at:
+`/Users/user/Documents/PROJECTS/eduja/outputs/logos/eduja-ganesha/review-app/generated/workers/quiet-seal/attempt-1/result.json`

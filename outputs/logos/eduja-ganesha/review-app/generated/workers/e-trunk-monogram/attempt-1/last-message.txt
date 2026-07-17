@@ -1,0 +1,1 @@
+Done. Native image generation ran, but no local PNG artifact/path was exposed for me to save, so I wrote the required failed `result.json` at the requested location with a concise error.

@@ -1,0 +1,5 @@
+Failed to save the PNG because `image_gen.imagegen` did not expose a local PNG path or binary handle in this run.
+
+Wrote the required failed worker result JSON to:
+
+`/Users/user/Documents/PROJECTS/eduja/outputs/logos/eduja-ganesha/review-app/generated/workers/adaptive-herd/attempt-1/result.json`

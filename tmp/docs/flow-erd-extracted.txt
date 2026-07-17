@@ -1,0 +1,1676 @@
+0000: 1. FLOW GLOBAL LOGIN & MULTI SCHOOL
+0001: Ini flow paling dasar yang digunakan semua user (kecuali Dinas/Yayasan) .
+0002: START
+0003: ↓
+0004: Input Email / Nomor HP + Password
+0005: ↓
+0006: System Authenticate
+0007: ↓
+0008: [Apakah login valid?]
+0009: ↓
+0010: NO → Tampilkan Error → END
+0012: YES
+0013: ↓
+0014: Ambil daftar afiliasi user
+0015: (user_id, school_id, role)
+0016: ↓
+0017: [Apakah user memiliki lebih dari 1 sekolah?]
+0018: YES
+0019: ↓
+0020: Tampilkan halaman pilih sekolah
+0021: User pilih school_id aktif
+0023: NO
+0024: ↓
+0025: Auto set school_id
+0026: ↓
+0027: Load Role Permissions
+0028: ↓
+0029: Redirect ke Dashboard sesuai role
+0030: ↓
+0031: END
+0032: 2. FLOW DINAS PENDIDIKAN (PALING SEDERHANA)
+0033: Fitur utama:
+0034: Monitoring semua sekolah
+0035: UD akun dinas
+0036: Statistik agregat
+0037: Lihat keuangan sekolah (jika diijinkan)
+0038: START
+0039: ↓
+0040: Login
+0041: ↓
+0042: System Authenticate
+0043: ↓
+0044: Load Dashboard Agregat
+0045: ↓
+0046: Tampilkan:
+0047: - jumlah sekolah sd/mi, smp/mts, sma/ma, smk/mak, negeri, swasta
+0048: - jumlah siswa, guru, tendik
+0049: - grafik absensi siswa, guru, tendik
+0050: - grafik keuangan BOS
+0051: ↓
+0052: [User pilih sekolah tertentu?]
+0053: YES
+0054: ↓
+0055: Filter school_id
+0056: ↓
+0057: Tampilkan dashboard sekolah
+0059: NO
+0060: ↓
+0061: Tetap di agregat
+0062: ↓
+0063: END
+0064: 3. FLOW YAYASAN
+0065: Mirip Dinas tetapi terbatas pada sekolah yayasan.
+0066: START
+0067: ↓
+0068: Login
+0069: ↓
+0070: System Authenticate
+0071: ↓
+0072: Load daftar sekolah milik yayasan
+0073: ↓
+0074: Tampilkan dashboard agregat yayasan
+0075: ↓
+0076: [User pilih sekolah?]
+0077: YES
+0078: ↓
+0079: Load dashboard sekolah
+0081: NO
+0082: ↓
+0083: Tetap agregat
+0084: ↓
+0085: END
+0087: 4. FLOW KEPALA SEKOLAH
+0088: Fitur:
+0089: dashboard sekolah
+0090: UD akun diri
+0091: lihat absensi diri, siswa, guru, tendik
+0092: lihat keuangan sekolah
+0093: verifikasi pengeluaran
+0094: lihat pengumuman
+0095: Tanya AI
+0097: Flow Kepsek
+0098: START
+0099: ↓
+0100: Login
+0101: ↓
+0102: System Authenticate
+0103: ↓
+0104: Select School
+0105: ↓
+0106: Load Dashboard Sekolah
+0107: ↓
+0108: System Query:
+0109: - jumlah siswa, guru, tendik
+0110: - jumlah jurusan (khusus smk), kelas
+0111: - absensi siswa, guru, tendik
+0112: - saldo kas
+0113: - pengumuman terbaru
+0114: ↓
+0115: Render Grafik:
+0116: - kehadiran guru, tendik, siswa
+0117: - Total Pemasukan
+0118: - Total Pengeluaran
+0119: - Saldo Kas
+0120: - Saldo Rekening Sekolah
+0121: - Saldo BOS
+0122: - Total Tunggakan
+0123: ↓
+0124: User Action:
+0125: 1 lihat laporan
+0126: 2 lihat pengumuman
+0127: 3 lihat absensi
+0128: ↓
+0129: END
+0131: Flow approval pengeluaran
+0132: Pengeluaran dibuat bendahara ↓ Status = Pending ↓ Kepala Sekolah menerima notifikasi ↓ Kepala Sekolah Review ↓ Approve / Reject ↓ Jika Approve Status = Approved ↓ Transaksi Masuk Laporan
+0134: Flow lihat data keuangan sekolah
+0135: START
+0136: ↓
+0137: User Login
+0138: ↓
+0139: System Authenticate (kepsek/bendahara)
+0140: ↓
+0141: User Klik Menu "Keuangan Sekolah"
+0142: ↓
+0143: System Menampilkan Dashboard Keuangan
+0144: Ringkasan:
+0145: - Total Pemasukan Bulan Ini
+0146: - Total dana BOS yang diterima tahun ini
+0147: - Total Pengeluaran Bulan Ini
+0148: - Saldo Kas
+0149: - Saldo Rekening Sekolah
+0150: - Saldo BOS
+0151: - Dompet Virtual
+0152: - Anggaran Komite
+0153: - Anggaran BOS
+0154: - Kesehatan keuangan sekolah
+0155: 1. Collection Rate
+0156: 2. Rasio Tunggakan
+0157: 3. Cashflow
+0158: 4. Realisasi Anggaran Komite
+0159: 5. Serapan BOS
+0160: ↓
+0161: User Pilih Klik Detil
+0162: 1. Collection Rate per Kelas
+0163: 2. Collection Rate per Tagihan
+0164: 3. Collection Trend
+0165: 4. Siswa yang menunggak
+0166: 4. Laporan
+0167: ↓
+0168: System Query Database
+0169: ↓
+0170: System Menampilkan Table
+0171: ↓
+0172: User Filter
+0173: - Bulan
+0174: - Tahun
+0175: ↓
+0176: System Generate Laporan
+0177: ↓
+0178: User Export
+0179: PDF / Excel
+0180: ↓
+0181: END
+0183: 5. FLOW WAKIL KEPALA SEKOLAH
+0184: Fitur:
+0185: dashboard wakasek
+0186: UD akun diri dan siswa
+0187: lihat absensi diri, guru, tendik dan siswa
+0188: UD data jurusan (khusus smk/mak), tahun ajar, kelas
+0189: Update kenaikan kelas dan kelulusan
+0190: CRUD pengumuman
+0191: Tanya AI
+0193: Flow Wakasek
+0194: START
+0195: ↓
+0196: Login
+0197: ↓
+0198: System Authenticate
+0199: ↓
+0200: Select School
+0201: ↓
+0202: Dashboard Wakasek
+0203: ↓
+0204: Load:
+0205: - grafik kehadiran guru, siswa
+0206: - daftar kelas
+0207: ↓
+0208: User pilih kelas
+0209: ↓
+0210: Query absensi siswa kelas
+0211: ↓
+0212: Tampilkan:
+0213: - hadir
+0214: -dispensasi
+0215: - izin
+0216: - sakit
+0217: - tanpa keterangan
+0218: ↓
+0219: END
+0221: Flow manajemen data jurusan (smk/mak)
+0222: START
+0223: ↓
+0224: Login
+0225: ↓
+0226: Menu Manajemen jurusan
+0227: ↓
+0228: Tambah jurusan
+0229: ↓
+0230: Input data jurusan
+0231: ↓
+0232: Save
+0233: ↓
+0234: END
+0237: Flow manajemen data kelas
+0238: START
+0239: ↓
+0240: Login
+0241: ↓
+0242: Menu Manajemen kelas
+0243: ↓
+0244: Tambah kelas
+0245: ↓
+0246: Input data kelas
+0247: - Jurusan (khusus smk/mak berupa dropdown)
+0248: - Tingkat (dropdown)
+0249: - Banyaknya Rombel
+0250: ↓
+0251: System otomatis membuat rombel sesuai jumlah tiap Tingkat dan jurusan (khusus smk/mak)
+0252: Contoh :
+0253: sd, smp, sma : I 1, I 2, dst
+0254: smk : X TKJ 1, X TKJ 2, dst
+0255: ↓
+0256: Tampilkan rombel yang sudah dibuat otomatis
+0257: ↓
+0258: Input nama wali kelas
+0259: Ubah nama rombel
+0260: ↓
+0261: Save
+0262: ↓
+0263: END
+0265: Flow manajemen data tahun ajaran
+0266: START
+0267: ↓
+0268: Login
+0269: ↓
+0270: Menu Manajemen Akademik
+0271: ↓
+0272: Tambah Tahun Ajaran
+0273: ↓
+0274: Input data tahun ajaran
+0275: - Tahun ajaran (text)
+0276: - tanggal mulai (Kalender)
+0277: - tanggal berakhir (Kalender)
+0278: ↓
+0279: Save
+0280: ↓
+0281: END
+0283: Flow siswa naik kelas
+0284: Wakasek/Wali Kelas Login
+0285: ↓
+0286: Menu Akademik
+0287: ↓
+0288: Kenaikan Kelas
+0289: ↓
+0290: Pilih Tahun Ajaran
+0291: ↓
+0292: Generate Daftar Siswa filter per kelas
+0293: ↓
+0294: Select All/per nama siswa
+0295: ↓
+0296: Proses Kenaikan
+0297: ↓
+0298: Pilih Kelas (XI IPA 1, XII IPS 3)
+0299: ↓
+0300: Update Kelas dan Wali Kelas (wali kelas bisa kosong jika belum ditentukan)
+0303: Flow kelulusan masal
+0304: Wakasek/Walikelas Login
+0305: ↓
+0306: Menu Akademik
+0307: ↓
+0308: Kelulusan
+0309: ↓
+0310: Pilih Tahun Ajaran
+0311: ↓
+0312: Pilih Tanggal Lulus (Kalender)
+0313: ↓
+0314: Pilih Kelas Akhir (VI, IX, XII)
+0315: ↓
+0316: Generate Daftar Siswa
+0317: ↓
+0318: Select All/per nama siswa
+0319: ↓
+0320: Validasi system ↓
+0321: Proses Kelulusan
+0323: Validasi kelulusan system:
+0324: Cek Status tunggakan (jika masih ada tunggakan system notifikasi bendahara dan ke orang tua)
+0325: Update status siswa=graduated
+0326: Data siswa otomatis dipindahkan ke data alumni
+0327: Nonaktifkan absensi
+0328: Batasi akses akun
+0330: Flow data alumni
+0331: Wakasek/TU
+0332: ↓
+0333: Menu Alumni
+0334: ↓
+0335: Daftar Alumni
+0336: ↓
+0337: Lihat Profil Alumni
+0338: - Nama
+0339: - Tahun lulus
+0340: - Jurusan (smk/mak)
+0341: - Kontak
+0342: - Riwayat Pendidikan
+0343: - Pekerjaan saat ini
+0347: 6. FLOW BENDAHARA
+0348: Fitur:
+0349: dashboard bendahara
+0350: UD akun diri
+0351: CRUD rekening sekolah (Bank/Cash), master jenis pemasukan, pemasukan, master jenis pengeluaran, pengeluaran, BOS, alokasi dana, dll
+0352: lihat absensi diri, guru, dan tendik
+0353: input pembayaran, pemasukan, pengeluaran BOS
+0354: tutup buku bulanan
+0355: CRUD pengumuman
+0356: Tanya AI
+0358: Flow Bendahara
+0359: START
+0360: ↓
+0361: Login
+0362: ↓
+0363: System Authenticate
+0364: ↓
+0365: System Menampilkan Dashboard Keuangan
+0366: Ringkasan:
+0367: - Total Pemasukan Bulan Ini
+0368: - Total dana BOS yang diterima tahun ini
+0369: - Total Pengeluaran Bulan Ini
+0370: - Saldo Kas
+0371: - Saldo Rekening Sekolah
+0372: - Saldo BOS
+0373: - Dompet Virtual
+0374: - Anggaran Komite
+0375: - Anggaran BOS
+0376: - Collection Rate per Kelas
+0377: - Collection Rate per Tagihan
+0378: - Collection Trend
+0379: - Kesehatan keuangan sekolah
+0380: 1. Collection Rate
+0381: 2. Rasio Tunggakan
+0382: 3. Siswa Menunggak
+0383: 4. Cashflow
+0384: 5. Realisasi Anggaran Komite
+0385: 6. Serapan BOS
+0386: ↓
+0387: User Pilih Modul:
+0388: 1. Master Data Keuangan
+0389: - Rekening Sekolah
+0390: - Jenis Pemasukan
+0391: - Alokasi Dana
+0392: - BOS
+0393: - Jenis Pengeluaran
+0394: 2. Perencanaan Anggaran
+0395: - Tahun Anggaran
+0396: - Susun Anggaran
+0397: - Revisi Anggaran
+0398: 3. Tagihan
+0399: - Tagihan Baru
+0400: - Lihat Tagihan
+0401: 4. Pemasukan
+0402: 5. Pengeluaran
+0403: 6. Aprroval
+0404: 7. Dompet Virtual
+0405: 8. Laporan
+0406: 9. Tutup Buku
+0407: ↓
+0408: END
+0410: Rumus:
+0411: Collection Rate = Total Pembayaran ÷ Total Tagihan × 100%
+0412: Rasio Tunggakan = Total Tunggakan ÷ Total Tagihan × 100%
+0413: Siswa Menunggak = Junmlah siswa yang menunggak ÷ jumlah siswa × 100%
+0416: Flow Rekening Sekolah
+0417: START ↓ Bendahara Login ↓ System Authenticate ↓ User Klik Menu "Master Data Keuangan" ↓ User Pilih "Rekening Sekolah" ↓
+0418: System Menampilkan Card:
+0419: Rekening Sekolah
+0420: + Rekening Sekolah
+0421: ↓
+0422: User Pilih “+Rekening Sekolah”
+0423: ↓
+0424: Sistem menampilkan input:
+0425: Nama
+0426: Jenis (dropdown Tunai, Bank)
+0427: Nama Bank (muncul jika pilih Bank)
+0428: Nomor Rekening (muncul jika pilih Bank)
+0429: Nominal saat ini
+0430: ↓
+0431: User Klik "Simpan" ↓ System Simpan ke Database ↓ System Tampilkan Notifikasi "Rekening Sekolah disimpan" ↓ END
+0434: Flow master jenis pemasukan
+0435: START ↓ Bendahara Login ↓ System Authenticate ↓ User Klik Menu "Master Data Keuangan" ↓ User Pilih " Jenis Pemasukan" ↓
+0436: System Menampilkan Form Input:
+0437: 1. Nama
+0438: 2. Kode (sistem otomatis)
+0439: 3. Kategori (dropdown : komite, BOS, hibah, lainnya)
+0440: 4. Menggunakan Alokasi Dana (Y/N)
+0441: 5. Perlu Approval Kepala Sekolah (Y/N)
+0442: ↓
+0443: User Klik "Simpan" ↓ System Validasi Data
+0444: ↓
+0445: NO
+0446: Tampilkan Peringatan isi kolom yang kosong
+0448: System Simpan ke Database ↓ System Tampilkan Notifikasi "Revisi Anggaran disimpan" ↓ END
+0450: Flow Master Alokasi Dana
+0451: START ↓ Bendahara Login ↓ System Authenticate ↓ User Klik Menu "Master Data Keuangan" ↓ User Pilih " Alokasi Dana" ↓
+0452: System Menampilkan Form Input:
+0453: 1. Sumber Dana (dropdown dari jenis pemasukan yang ada alokasi dana)
+0454: 2. Nama, Metode (% / Nominal), Nominal, Dompet Penyimpanan (Otomatis mengikuti nama)
+0455: 3. + Tambah Pos
+0456: ↓
+0457: User Klik "Simpan" ↓ System Validasi Data
+0458: ↓
+0459: NO
+0460: Tampilkan Peringatan isi kolom yang kosong
+0462: YES (Valid) ↓ System Simpan ke Database ↓ System Tampilkan Notifikasi "Alokasi dana disimpan" ↓ END
+0464: Flow master BOS
+0465: START ↓ Bendahara Login ↓ System Authenticate ↓ User Klik Menu "Master Data Keuangan" ↓ User Pilih "BOS" ↓
+0466: System Menampilkan sumber dana (sistem otomatis menampilkan dan bisa di edit)
+0467: (pilihan yang sudah ada : BOS Reguler, BOS Kinerja, BOP, DAK, Lainnya bisa ditambah)
+0468: System Menampilkan komponen BOS (sistem otomatis menampilkan dan bisa di edit)
+0469: (pilihan yang sudah ada : Belanja pegawai, Belanja barang, Belanja modal, Pembelajaran, Pemeliharaan, Lainnya bisa ditambah)
+0470: ↓
+0471: User Klik "Simpan" ↓ System Validasi Data
+0472: ↓
+0473: NO
+0474: Tampilkan Peringatan isi kolom yang kosong
+0476: YES (Valid) ↓ System Simpan ke Database ↓ System Tampilkan Notifikasi "Jenis pemasukan disimpan" ↓ END
+0478: Flow master jenis pengeluaran
+0479: START ↓ Bendahara Login ↓ System Authenticate ↓ User Klik Menu "Master Data Keuangan" ↓ User Pilih " Jenis Pengeluaran" ↓
+0480: System Menampilkan Form Input:
+0481: 1. Nama
+0482: 2. Kode (sistem otomatis)
+0483: 3. Sumber Dana (dropdown : komite, BOS)
+0484: 4. Komponen BOS (muncul jika pilih BOS)
+0485: 5. Perlu Approval Kepala Sekolah (Y/N)
+0486: 6. Dokumen pendukung (upload pdf)
+0487: ↓
+0488: User Klik "Simpan" ↓ System Validasi Data
+0489: ↓
+0490: NO
+0491: Tampilkan Peringatan isi kolom yang kosong
+0493: YES (Valid) ↓ System Simpan ke Database ↓ System Tampilkan Notifikasi "Jenis pengeluaran disimpan" ↓ END
+0496: Flow Tahun Anggaran
+0497: START ↓ Bendahara Login ↓ System Authenticate ↓ User Klik Menu "Perencanaan Anggaran" ↓ User Pilih "Tahun Anggaran" ↓
+0498: System Menampilkan Form Input:
+0499: Nama, Mulai (tanggal), Selesai (tanggal)
+0500: + Tahun Anggaran
+0501: ↓
+0502: User Klik "Simpan" ↓ System Simpan ke Database ↓ System Tampilkan Notifikasi "Tahun anggaran disimpan" ↓ END
+0504: Di samping tahun aggaran yang sudah tersimpan, ada terlihat status. Ada icon Edit dan Delete.
+0505: Saat pertama disimpan, status Tahun Anggran langsung aktif. Status bisa non aktif jika sudah melakukan tutup buku. Tidak bisa di delete jika sudah ada transaksi dan sudah tutup buku.
+0507: Flow Susun Anggaran
+0508: START ↓ Bendahara Login ↓ System Authenticate ↓ User Klik Menu "Perencanaan Anggaran" ↓ User Pilih "Susun Anggaran" ↓
+0509: System Menampilkan Form Input:
+0510: Sumber Dana (komite, BOS)
+0511: Pilih Tahun Anggaran (dropdown tahun anggaran aktif)
+0512: Sumber Dana BOS (dropdown, jika pilih BOS)
+0513: Komponen BOS (dropdown, jika pilih BOS)
+0514: Nama Program
+0515: Nama Kegiatan, Nominal
+0516: + Kegiatan
+0517: + Program
+0518: ↓
+0519: User Klik "Simpan" ↓ System Simpan ke Database ↓ System Tampilkan Notifikasi "Susunan anggaran disimpan"
+0520: ↓ System Kirim Approval Kepala Sekolah ↓ END
+0522: Anggaran aktif dan bisa digunakan jika sudah disapprove oelh kepala sekolah.
+0523: Di samping susuan aggaran yang sudah tersimpan, ada icon Edit dan Delete.
+0524: Tidak bisa di delete jika sudah ada transaksi.
+0526: Flow Revisi Anggaran
+0527: START ↓ Bendahara Login ↓ System Authenticate ↓ User Klik Menu "Perencanaan Anggaran" ↓ User Pilih "Revisi Anggaran" ↓
+0528: User pilih Tahun Anggran (dropdown tahun anggaran aktif)
+0529: ↓
+0530: Sistem munculkan program dan kegiatan tahun anggran yang dipilih
+0531: ↓
+0532: User klik “Revisi”
+0533: ↓
+0534: Sistem menampilkan
+0535: Nominal Lama (tidak bisa diedit), Nominal Baru
+0536: Alasan
+0537: ↓
+0538: User Klik "Simpan" ↓ System Simpan ke Database ↓ System Tampilkan Notifikasi "Susunan anggaran disimpan"
+0539: ↓ System Kirim Approval Kepala Sekolah ↓ END
+0543: Flow buat tagihan baru
+0544: START ↓ Bendahara Login ↓ System Authenticate ↓ User Klik Menu "Tagihan" ↓ User Pilih " Tagihan Komite" ↓ System Menampilkan Form Input:
+0545: 1. Jenis Tagihan (dropdown dari jenis pemasukan dengan kategori komite)
+0546: 2. Tanggal buat
+0547: 3. Nominal
+0548: 4. Bisa Cicil? (Y/N)
+0549: 5. Minimal Cicilan (muncul jika pilih bisa cicil
+0550: 6. Ada denda keterlambatan bayar (Y/N)
+0551: 7. Nominal Denda per hari (muncul jika pilih ada denda)
+0552: 8. Nominal Denda maksimal (muncul jika pilih ada denda)
+0553: 9. Jenis Penagihan (Sekali/Bulanan/Semester/Tahun)
+0554: 10 Deadline pembayaran (pilih tanggal)
+0555: ↓
+0556: 11. Pilih target tagihan
+0557: (Satu sekolah, per Tingkat, per kelas, per jurusan (jika smk), per siswa)
+0558: ↓
+0559: System generate tagihan
+0560: ↓
+0561: Masuk database
+0562: ↓
+0563: END
+0565: Sistem generate tagihan otomatis sesuai pilihan generate otomatis
+0566: Sistem kirim notifikasi whatsapp ke orang tua H-7 sebelum deadline tagihan dan saat deadline tagihan
+0568: Flow Lihat tunggakan siswa
+0569: START
+0570: ↓
+0571: Bendahara/Teller Login
+0572: ↓
+0573: System Authenticate
+0574: ↓
+0575: Menu: Tunggakan Siswa
+0576: ↓
+0577: System Query Database
+0578: ↓
+0579: System Menampilkan
+0580: - Foto (kecil saja)
+0581: - Nama Siswa
+0582: - Kelas
+0583: - Nominal Tunggakan
+0584: ↓
+0585: User Filter
+0586: - Search (Nama, NIS, NISN)
+0587: - Besar Tunggakan (Besar-Kecil/Kecil-Besar)
+0588: - Kelas
+0589: - Bulan
+0590: - Tahun
+0591: ↓
+0592: User klik siswa
+0593: ↓
+0594: Load tagihan siswa
+0595: ↓
+0596: [Tagihan ada?]
+0597: NO → tampilkan kosong
+0599: YES
+0600: ↓
+0601: User pilih tagihan
+0602: ↓
+0603: Input metode pembayaran (Tunai / Transfer)
+0604: Pilih Rekening Transfer (dropdown rekening komite sekolah jika pilih transfer)
+0605: Tanggal transaksi (pilih tanggal)
+0606: ↓
+0607: Klik SIMPAN
+0608: ↓
+0609: System:
+0610: INSERT transaksi
+0611: System Generate Nomor Transaksi
+0612: ↓ System Tampilkan Notifikasi "Transaksi berhasil disimpan"
+0613: ↓
+0614: System Update Saldo Kas Sekolah (jika tunai)
+0615: Atau Update Saldo Rekening Bank Sekolah (jika transfer)
+0616: dan saldo dompet virtual jika ada alokasi dana
+0617: ↓
+0618: Notifikasi pembayaran ke orang tua
+0619: ↓ END
+0621: Status pembayaran siswa : belum bayar, cicil, lunas, menunggak
+0622: Sistem mengirimkan notifikasi ke orang tua setiap ada transaksi uang masuk
+0623: Sistem otomatis bagi besaran transaksi masukkan ke Virtual wallet
+0625: Flow Input Pemasukan Komite
+0626: START ↓ Bendahara Login ↓ System Authenticate ↓ User Klik Menu "Pemasukan" ↓ Pilih Kategori (dropdown : komite, BOS, hibah, lainnya) ↓
+0627: User pilih “Komite”
+0628: ↓
+0629: System Query Database
+0630: ↓
+0631: System Menampilkan
+0632: - Foto (kecil saja)
+0633: - Nama Siswa
+0634: - Kelas
+0635: - Nominal Tunggakan
+0636: ↓
+0637: User Filter
+0638: - Search (Nama, NIS, NISN)
+0639: - Besar Tunggakan (Besar-Kecil/Kecil-Besar)
+0640: - Kelas
+0641: - Bulan
+0642: - Tahun
+0643: ↓
+0644: User klik siswa
+0645: ↓
+0646: Load tagihan siswa
+0647: ↓
+0648: [Tagihan ada?]
+0649: NO → tampilkan kosong
+0651: YES
+0652: ↓
+0653: User pilih tagihan
+0654: ↓
+0655: Input metode pembayaran (Tunai / Transfer)
+0656: Pilih Rekening Transfer (dropdown rekening komite sekolah jika pilih transfer)
+0657: Tanggal transaksi (pilih tanggal)
+0658: ↓
+0659: Klik SIMPAN
+0660: ↓
+0661: System:
+0662: INSERT transaksi
+0663: System Generate Nomor Transaksi
+0664: ↓ System Tampilkan Notifikasi "Transaksi berhasil disimpan"
+0665: ↓
+0666: System Update Saldo Kas Sekolah (jika tunai)
+0667: Atau Update Saldo Rekening Bank Sekolah (jika transfer)
+0668: dan saldo dompet virtual jika ada alokasi dana
+0669: ↓
+0670: Notifikasi pembayaran ke orang tua
+0671: ↓ END
+0673: Flow Input Pemasukan BOS
+0674: START ↓ Bendahara Login ↓ System Authenticate ↓ User Klik Menu "Pemasukan" ↓ Pilih Kategori (dropdown : komite, BOS, hibah, lainnya) ↓
+0675: User pilih “BOS”
+0676: ↓ System Menampilkan Form Input:
+0677: 1. Pilih jenis BOS (dropdown sumber dana BOS)
+0678: 2. Tahun BOS (dropdown tahun)
+0679: 3. Nominal
+0680: 4. Tanggal terima (pilih tanggal)
+0681: 5. Upload SP2D
+0682: ↓
+0683: User Klik "Simpan" ↓ System Validasi Data
+0684: ↓
+0685: NO
+0686: Tampilkan Peringatan isi kolom yang kosong
+0688: YES (Valid) ↓ System Simpan ke Database ↓ System Update Dompet Rekening BOS ↓ System Tampilkan Notifikasi "Transaksi berhasil disimpan" ↓ END
+0690: Validasi :
+0691: Nominal tidak boleh kosong
+0692: Sumber dana harus dipilih
+0693: Tanggal harus isi
+0695: Flow Input Pemasukan Hibah
+0696: START ↓ Bendahara Login ↓ System Authenticate ↓ User Klik Menu "Pemasukan" ↓ Pilih Kategori (dropdown : komite, BOS, hibah, lainnya) ↓
+0697: User pilih “Hibah”
+0698: ↓ System Menampilkan Form Input:
+0699: 1. Nama Donatur
+0700: 2. Nominal
+0701: 3. Tanggal terima (pilih tanggal)
+0702: 4. Input metode hibah (Tunai / Transfer)
+0703: 5. Upload bukti (pdf/jpg/png/heic)
+0704: ↓
+0705: User Klik "Simpan" ↓ System Validasi Data
+0706: ↓
+0707: NO
+0708: Tampilkan Peringatan isi kolom yang kosong
+0710: YES (Valid) ↓ System Simpan ke Database ↓ System Update Saldo Kas Sekolah (jika tunai)
+0711: Atau Saldo Rekening Bank sekolah (jika transfer)
+0712: dan saldo dompet virtual jika ada alokasi dana ↓ System Tampilkan Notifikasi "Transaksi berhasil disimpan" ↓ END
+0714: Validasi :
+0715: Nominal tidak boleh kosong
+0716: Tanggal harus isi
+0718: Flow Input Pendapatan Lainnya
+0719: START ↓ Bendahara Login ↓ System Authenticate ↓ User Klik Menu "Pemasukan" ↓ Pilih Kategori (dropdown : komite, BOS, hibah, lainnya) ↓
+0720: User Pilih "Lainnya" ↓ System Menampilkan Form Input:
+0721: 1. Sumber pendapatan
+0722: 2. Nominal
+0723: 3. Tanggal terima (pilih tanggal)
+0724: 4. Input metode hibah (Tunai / Transfer)
+0725: 5. Pilih Rekening Transfer (dropdown rekening komite sekolah jika pilih transfer)
+0726: 6. Upload bukti (pdf/jpg/png/heic)
+0727: ↓
+0728: User Klik "Simpan" ↓ System Validasi Data
+0729: ↓
+0730: NO
+0731: Tampilkan Peringatan isi kolom yang kosong
+0733: YES (Valid) ↓ System Simpan ke Database ↓ System Update Saldo Kas Sekolah (jika tunai)
+0734: Atau Saldo Rekening Bank sekolah (jika transfer)
+0735: dan saldo dompet virtual jika ada alokasi dana ↓ System Tampilkan Notifikasi "Transaksi berhasil disimpan" ↓ END
+0737: Validasi :
+0738: Nominal tidak boleh kosong
+0739: Tanggal harus isi
+0741: Flow Input Pengeluaran Komite
+0742: START
+0743: ↓
+0744: Bendahara Login
+0745: ↓
+0746: System Authenticate
+0747: ↓
+0748: User Klik Menu "Pengeluaran"
+0749: ↓
+0750: Pilih Kategori (dropdown : Operasional, BOS, Transfer Alokasi) ↓
+0751: User Pilih "Operasional"
+0752: ↓
+0753: System Menampilkan Form
+0754: 1. Tanggal
+0755: 2. Jenis Pengeluaran
+0756: 3. Deskripsi
+0757: 4. Nominal
+0758: 5. Penerima Dana
+0759: 6. Metode Pembayaran (tunai/transfer)
+0760: 8. Dompet Sumber Dana (dropdown pilihan dompet)
+0761: 9. Upload Bukti Transaksi
+0762: ↓
+0763: User Klik "Simpan" ↓ NO
+0764: Tampilkan Peringatan isi kolom yang kosong
+0766: YES (Valid) ↓ System Simpan Data
+0767: ↓
+0768: System Generate Nomor Transaksi ↓ System Kirim Approval Kepala Sekolah ↓
+0769: Approved
+0770: ↓ System Update Saldo Kas Sekolah (jika tunai)
+0771: Atau Saldo Rekening Bank sekolah (jika transfer)
+0772: dan saldo dompet virtual jika ada alokasi dana ↓ END
+0775: Flow Input Pengeluaran BOS
+0776: START
+0777: ↓
+0778: Jika Pilih Sumber Dana BOS di Pengeluaran
+0779: ↓
+0780: Pilih tahun BOS
+0781: ↓
+0782: Load daftar Sumber Dana BOS
+0783: ↓
+0784: Load daftar komponen BOS
+0785: ↓
+0786: User pilih Jenis Pengeluaran
+0787: ↓
+0788: System cek sisa anggaran
+0789: ↓
+0790: [Anggaran cukup?]
+0792: NO
+0793: ↓
+0794: Tampilkan warning
+0795: YES
+0796: ↓
+0797: Input detail transaksi
+0798: System Menampilkan Form
+0799: 1. Tanggal
+0800: 4. Deskripsi
+0801: 5. Nominal
+0802: 6. Penerima Dana
+0803: 7. Bukti Transaksi Dokumen Belanja :
+0804: - Kuitansi
+0805: - Faktur/Nota Pembeian
+0806: - e-Biling
+0807: - BAST
+0808: 8. Bukti Perpajakan
+0809: - Surat Setoran Pajak
+0810: - Faktur/Nota Pajak
+0811: 9. Dokumen Pendukung Kegiatan (Non-Barang)
+0812: - Daftar Hadir
+0813: - Daftar Penerima Honor/Transport
+0814: - Surat Keputusan/Tugas
+0815: - Dokumentasi
+0816: ↓
+0817: Save transaksi
+0818: ↓
+0819: System Generate Nomor Transaksi ↓ System Kirim Approval Kepala Sekolah ↓
+0820: Approved
+0821: ↓ Update saldo Rekening BOS sekolah
+0822: ↓
+0823: Update progress anggaran
+0824: ↓
+0825: END
+0827: Flow Tutup Buku Bulanan
+0828: START
+0829: ↓
+0830: Bendahara pilih menu Tutup Buku (dropdown : bulanan, tahunan)
+0831: ↓
+0832: Pilih bulan (jika bulan)
+0833: Pilih tahun Anggaran (jika tahun)
+0834: ↓
+0835: System cek transaksi
+0836: ↓
+0837: [Semua valid?]
+0838: NO → tampilkan error
+0840: YES
+0841: ↓
+0842: Lock transaksi bulan/tahun anggran tersebut
+0843: ↓
+0844: Generate saldo awal bulan/tahun anggaran berikutnya
+0845: ↓
+0846: Save
+0847: ↓
+0848: END
+0850: Flow Tutup Buku BOS
+0851: START
+0852: ↓
+0853: Bendahara pilih menu Tutup Buku BOS
+0854: ↓
+0855: Pilih tahun BOS
+0856: ↓
+0857: System cek transaksi
+0858: ↓
+0859: [Semua valid?]
+0860: NO → tampilkan error
+0862: YES
+0863: ↓
+0864: Lock transaksi tahun BOS tersebut
+0865: ↓
+0866: Save
+0867: ↓
+0868: END
+0870: Tutup Buku bisa dilakukan jika :
+0871: Semua transaksi sudah approval
+0872: Tidak ada saldo negative
+0873: Tidak ada jurnal gagal
+0874: Semua transfer selesai
+0875: BOS seimbang
+0876: Pajak selesai
+0877: Tidak ada transaksi pending
+0878: Rekening sesuai
+0879: Misal gagal, sistem memberikan notifikasi ke bendahara. Contoh : 2 transaksi belum approval Kepsek, 1 Nota belum upload, dll)
+0881: Sistem otomatis:
+0882: Mengunci transaksi pada periode tersebut (kecuali dibuka kembali oleh pengguna berwenang).
+0883: Menghitung saldo akhir setiap Dompet.
+0884: Membawa saldo menjadi saldo awal periode berikutnya.
+0885: Mem-posting seluruh jurnal yang masih tertunda.
+0886: Menghasilkan snapshot laporan keuangan periode tersebut.
+0887: Membuat log audit lengkap siapa yang menutup buku dan kapan dilakukan.
+0890: Flow approval pembayaran siswa oleh bendahara/teller
+0891: Pengajuan Masuk Sistem
+0892: ↓
+0893: System kirim notifikasi ke bendahara/teller
+0894: ↓
+0895: Masuk Dashboard bendahara/teller
+0896: ↓
+0897: Menu Approval Tunggakan
+0898: ↓
+0899: Daftar Pembayaran
+0900: ↓
+0901: Bendahara/teller Membuka Detail
+0902: ↓
+0903: Review Pembayaran
+0904: ↓
+0905: Approve / Reject
+0908: Jika Approve status pembayaran = approved dan system kirim notifikasi pembayaran sudah diterima ke siswa dan orang tua
+0909: Jika ditolak status = rejected dan system kirim notifikasi pembayaran belum diterima ke siswa dan orang tua
+0912: 7. FLOW TU
+0913: Fitur:
+0914: dashboard TU
+0915: UD akun diri
+0916: CRUD data guru, tendik, dan siswa
+0917: UD role
+0918: lihat absensi diri, guru, dan tendik
+0919: CRUD pengumuman
+0920: Tanya AI
+0922: Flow manajemen data guru, tendik, siswa
+0923: START
+0924: ↓
+0925: Login
+0926: ↓
+0927: Menu Manajemen guru, tendik, siswa
+0928: ↓
+0929: Tambah guru, tendik, siswa
+0930: ↓
+0931: Search guru, tendik, siswa berdasarkan nik (guru, tendik) dan nisn (siswa)
+0932: ↓
+0933: Data ditemukan?
+0934: ↓
+0935: YES
+0936: System menampilkan data
+0937: - Foto
+0938: - Nama
+0939: - Jenis Kelamin
+0940: - NIK
+0941: - NISN (jika siswa)
+0943: NO
+0944: ↓
+0945: Input data guru, tendik, siswa
+0946: ↓
+0947: System Menampilkan Form
+0948: ↓
+0949: Apakah benar ingin menambahkan?
+0950: ↓
+0951: System bertanya : Apakah guru berada di sekolah induk? (khusus guru)
+0952: Siswa baru/pindahan (khusus siswa dan berupa radio button)
+0953: ↓
+0954: YES/ NO
+0955: Save
+0956: ↓
+0957: System membuat afiliasi
+0958: ↓
+0959: END
+0961: Flow manajemen Role
+0962: START
+0963: ↓
+0964: Login
+0965: ↓
+0966: Menu Manajemen Role
+0967: ↓
+0968: System menampilkan data guru dan tendik
+0969: - Foto
+0970: - Nama
+0971: - Role Saat ini
+0972: ↓
+0973: User klik guru/tendik
+0974: ↓
+0975: Pilih New Role (dropdown)
+0976: ↓
+0977: Input Form
+0978: - No. SK Pengangkatan
+0979: - TMT Pengangkatan (Kalender)
+0980: - Lembaga Pengangkat
+0981: - Scan SK (PDF)
+0982: ↓
+0983: Save
+0984: ↓
+0985: END
+0987: Jika guru/tendik belum pernah menjabat, system langsung arahkan user pilih role
+0988: Jika sedang menjabat, system langsung untuk END role guru/tendik yang dipilih terlebih dahulu baru bisa ubah
+0990: Flow END role
+0991: START
+0992: ↓
+0993: Login
+0994: ↓
+0995: Menu Manajemen Role
+0996: ↓
+0997: System menampilkan data guru dan tendik
+0998: - Foto
+0999: - Nama
+1000: - Role Saat ini
+1001: ↓
+1002: User klik guru/tendik
+1003: ↓
+1004: Pilih End Role
+1005: ↓
+1006: Input Form
+1007: - TMT Akhir Jabatan (Kalender)
+1008: ↓
+1009: Pilih New role?
+1010: ↓
+1011: NO → END
+1013: YES
+1014: Input Form
+1015: - No. SK Pengangkatan
+1016: - TMT Pengangkatan (Kalender)
+1017: - Lembaga Pengangkat
+1018: - Scan SK (PDF)
+1019: ↓
+1020: Save
+1021: ↓
+1022: END
+1024: Flow nonaktif guru/tendik
+1025: START
+1026: ↓
+1027: Login
+1028: ↓
+1029: Menu Manajemen guru/tendik/siswa
+1030: ↓
+1031: System menampilkan data
+1032: - Foto
+1033: - Nama
+1034: - Jenis Kelamin
+1035: - NIK
+1036: - NISN (jika siswa)
+1037: ↓ Pilih Guru/tendik/siswa ↓ Profil Guru/tendik/siswa ↓ Klik "Ubah Status" ↓ Pilih Status
+1038: ↓ Submit ↓ Validasi Sistem ↓ Update Status Guru/tendik/siswa
+1040: Status untuk guru/tendik :
+1041: Aktif
+1042: Resign
+1043: Pensiun
+1044: Kontrak Selesai
+1045: Meninggal
+1046: Status untuk siswa:
+1047: Aktif
+1048: Lulus
+1049: Pindah Sekolah
+1050: Berhenti Sekolah
+1051: Meninggal
+1053: Flow jika siswa statusnya pindah sekolah
+1054: Ubah Status → PINDAH SEKOLAH
+1055: ↓
+1056: Input Sekolah Tujuan
+1057: ↓
+1058: Upload Surat Pindah
+1059: ↓
+1060: Input tanggal berhenti
+1061: ↓
+1062: Submit
+1063: ↓
+1064: Validasi system
+1065: ↓
+1066: Status siswa = transferred
+1068: Flow jika siswa statusnya berhenti sekolah
+1069: Ubah Status → BERHENTI
+1070: ↓
+1071: Input alasan berhenti
+1072: ↓
+1073: Input tanggal berhenti
+1074: ↓
+1075: Submit
+1076: ↓
+1077: Validasi system
+1078: ↓
+1079: Status siswa = dropped_out
+1081: Flow jika siswa statusnya meninggal
+1082: Ubah Status → MENINGGAL
+1083: ↓
+1084: Input tanggal kejadian
+1085: ↓
+1086: Upload dokumen (optional)
+1087: ↓
+1088: Konfirmasi
+1089: ↓
+1090: Status siswa = deceased
+1092: Validasi system jika siswa yang diupdate
+1093: Apakah siswa masih aktif
+1094: Apakah siswa memiliki tagihan (jika masih system mengirim notifikasi ke bendahara, wakasek, dan orang tua)
+1096: Flow setelah siswa nonaktif
+1097: Remove dari daftar kelas aktif
+1098: ↓
+1099: Hentikan absensi
+1100: ↓
+1101: Suspend login siswa di sekolah
+1102: ↓
+1103: Masuk arsip data siswa nonaktif
+1106: Flow jika guru/tendik resign
+1107: Pilih Guru
+1108: ↓
+1109: Ubah Status → RESIGN
+1110: ↓
+1111: Input tanggal resign
+1112: ↓
+1113: Submit
+1114: ↓
+1115: Status guru/tendik = resigned
+1117: Flow jika guru/tendik pensiun
+1118: Admin Sekolah
+1119: ↓
+1120: Pilih Guru
+1121: ↓
+1122: Ubah Status → PENSIUN
+1123: ↓
+1124: Input tanggal pensiun
+1125: ↓
+1126: Submit
+1127: ↓
+1128: Status guru/tendik = retired
+1130: Flow jika guru/tendik statusnya meninggal
+1131: Ubah Status → MENINGGAL
+1132: ↓
+1133: Input tanggal kejadian
+1134: ↓
+1135: Upload dokumen (optional)
+1136: ↓
+1137: Konfirmasi
+1138: ↓
+1139: Status guru/tendik = deceased
+1141: Flow jika guru/tendik berakhir kontrak
+1142: Ubah Status → KONTRAK SELESAI
+1143: ↓
+1144: Sistem bertanya “Apakah kontrak diperbaharui?”
+1145: ↓
+1147: NO → Status guru/tendik = contract_ended
+1149: YES
+1150: Input tanggal mulai dan berakhir kontrak (Kalender)
+1151: ↓
+1152: Konfirmasi
+1153: ↓
+1154: Status guru/tendik = active
+1156: Flow jika guru/tendik nonaktif
+1157: Nonaktifkan absensi
+1158: ↓
+1159: Suspend login akun di sekolah
+1160: ↓
+1161: Masuk arsip data guru/tendik nonaktif
+1163: Data guru/tendik/siswa yang sudah nonaktif di soft delete (status=inactive) sehingga history tetap ada untuk tracking yang digunakan untuk laporan, audit, atau alumni
+1165: Flow approval sakit/cuti guru/tendik
+1166: Pengajuan Masuk Sistem
+1167: ↓
+1168: System kirim notifikasi ke Kepala Sekolah/Wakasek/TU
+1169: ↓
+1170: Masuk Dashboard Kepala Sekolah/Wakasek/TU
+1171: ↓
+1172: Menu Approval Izin/Cuti Guru/Tendik
+1173: ↓
+1174: Daftar Pengajuan
+1175: ↓
+1176: User Membuka Detail
+1177: ↓
+1178: Review Dokumen
+1179: ↓
+1180: Approve / Reject
+1183: Jika Approve status absen = sakit/cuti dan system kirim notifikasi pengajuan izin disetujui ke guru/tendik. Jika ditolak status = rejected dan system kirim notifikasi pengajuan izin ditolak ke guru/tendik dan guru/tendik dapat mengajukan ulang.
+1184: 9. FLOW GURU & WALI KELAS
+1185: Fitur:
+1186: Absensi
+1187: UD akun diri
+1188: lihat data siswa
+1189: lihat absensi diri
+1190: lihat dan update absensi siswa
+1191: lihat tunggakan (khusus wali kelas)
+1192: simpan materi
+1193: CRUD pengumuman
+1194: Tanya AI
+1195: Flow guru lihat absen dan data siswa
+1196: START
+1197: ↓
+1198: Login
+1199: ↓
+1200: Dashboard kelas
+1201: ↓
+1202: Load:
+1203: - daftar siswa
+1204: - absensi (bisa update absensi siswa)
+1205: - pembayaran (muncul jika sebagai wali kelas)
+1206: ↓
+1207: System cek tunggakan (khusus wali kelas)
+1208: ↓
+1209: [ada tunggakan?]
+1210: YES
+1211: ↓
+1212: tampilkan :
+1213: - Foto
+1214: - Nama Siswa
+1215: - Nominal Tunggakan
+1216: ↓
+1217: END
+1219: Flow approval izin siswa
+1220: Pengajuan Masuk Sistem
+1221: ↓
+1222: System kirim notifikasi ke wali kelas
+1223: ↓
+1224: Masuk Dashboard Wali kelas
+1225: ↓
+1226: Menu Approval Absensi
+1227: ↓
+1228: Daftar Pengajuan
+1229: ↓
+1230: Wali kelas Membuka Detail
+1231: ↓
+1232: Review Dokumen
+1233: ↓
+1234: Approve / Reject
+1237: Jika Approve status absen = sakit/izin/dispensasi dan system kirim notifikasi pengajuan izin disetujui ke siswa dan orang tua
+1238: Jika ditolak status = rejected dan system kirim notifikasi pengajuan izin ditolak ke siswa dan orang tua dan dapat mengajukan ulang
+1240: Flow guru/tendik izin/cuti
+1241: Guru Login
+1242: ↓
+1243: Dashboard Guru
+1244: ↓
+1245: Menu Kepegawaian / Absensi
+1246: ↓
+1247: Pilih "Pengajuan Sakit / Cuti"
+1248: ↓
+1249: Form Pengajuan :
+1250: - Jenis Pengajuan (radio button Sakit/Cuti Tahunan/Cuti Khusus)
+1251: - Tanggal (Kalender, jika pilih sakit)
+1252: Tanggal mulai dan selesai (Kalender, jika pilih cuti)
+1253: - Alasan
+1254: - Upload Dokumen (optional) (Surat dokter/Surat izin)
+1255: - Kontak selama sakit/cuti
+1256: ↓
+1257: Submit
+1258: ↓
+1259: Validasi Sistem
+1260: ↓
+1261: Status = Pending
+1262: ↓
+1263: Masuk Dashboard Approval
+1264: ↓
+1265: Disetujui / Ditolak
+1266: ↓
+1267: Update Data Absensi
+1268: ↓
+1269: Notifikasi ke Kepsek/Wakasek/TU
+1271: Validasi system : Cek tanggal valid, Cek apakah tanggal overlap dengan cuti lain, Cek sisa cuti tahunan. Jika Valid status = pending
+1272: 10. FLOW SISWA
+1273: Fitur:
+1274: Lihat dan lakukan absensi
+1275: Ajukan ketidakhadiran
+1276: UD akun diri
+1277: Bayar tagihan
+1278: lihat materi
+1279: Tanya AI
+1280: Flow Download Materi
+1281: START
+1282: ↓
+1283: Login siswa
+1284: ↓
+1285: Menu materi
+1286: ↓
+1287: Filter guru
+1288: ↓
+1289: Load materi
+1290: ↓
+1291: User klik file
+1292: ↓
+1293: [Hak akses valid?]
+1294: NO → block
+1296: YES
+1297: ↓
+1298: Generate signed URL
+1299: ↓
+1300: Download file
+1301: ↓
+1302: END
+1303: Flow siswa mengajukan izin
+1304: Siswa Login Eduja
+1305: ↓
+1306: Dashboard Siswa
+1307: ↓
+1308: Menu Absensi
+1309: ↓
+1310: Pilih "Laporkan Sakit / Izin"
+1311: ↓
+1312: Form Pengajuan
+1313: ↓
+1314: Input Form :
+1315: Nama anak (auto)
+1316: Kelas (auto)
+1317: Jenis izin (radio button : sakit,izin, kegiatan di luar sekolah)
+1318: Tanggal (Kalender, jika pilih sakit)
+1319: Tanggal mulai dan selesai (Kalender, jika pilih izin dan kegiatan di luar sekolah)
+1320: Keterangan
+1321: Upload surat (optional)
+1322: ↓
+1323: Submit
+1324: ↓
+1325: Validasi Sistem
+1326: ↓
+1327: System kirim notifikasi ke Wali kelas
+1328: ↓
+1329: Masuk ke Approval Wali Kelas/Wakasek/ TU
+1330: ↓
+1331: Disetujui / Ditolak
+1332: ↓
+1333: Update Status Absensi
+1334: ↓
+1335: Notifikasi ke siswa & Orang Tua
+1337: Validasi system :Apakah form terisi, Apakah siswa terdaftar, Apakah tanggal sudah lewat.
+1338: Jika valid : Status = Pending Approval
+1340: Flow bayar tunggakan khusus transfer
+1341: START
+1342: ↓
+1343: Login siswa
+1344: ↓
+1345: Menu: Keuangan
+1346: ↓
+1347: Load data siswa
+1348: ↓
+1349: Query tagihan
+1350: ↓
+1351: Tampilkan:
+1352: - lunas
+1353: - belum bayar & jatuh tempo
+1354: ↓
+1355: User pilih tagihan
+1356: ↓
+1357: - Input metode pembayaran : Transfer
+1358: - Tampilkan no rek sekolah
+1359: - Tanggal bayar
+1360: - Upload bukti bayar
+1361: ↓
+1362: Klik SIMPAN
+1363: ↓
+1364: Notifikasi pembayaran bendahara/teller
+1365: ↓
+1366: Masuk Sistem cek oleh bendahara/teller
+1367: ↓
+1368: Disetujui / Ditolak
+1369: ↓
+1370: Pembayaran Anak Update
+1371: ↓
+1372: END
+1374: Validasi system :Apakah form terisi
+1375: Jika valid : Status = Pending Approval
+1377: 11. FLOW ORANG TUA
+1378: Fitur:
+1379: UD akun diri
+1380: lihat absensi anak
+1381: ajukan absen anak
+1382: lihat tagihan anak
+1383: bayar tagihan anak
+1384: lihat keuangan sekolah (jika diijinkan)
+1385: lihat pengumuman
+1387: Flow melihat absensi anak
+1388: START
+1389: ↓
+1390: Login orang tua
+1391: ↓
+1392: Pilih anak
+1393: ↓
+1394: Load data siswa
+1395: ↓
+1396: User Klik Menu "Absensi Anak"
+1397: ↓
+1398: System Request Data Absensi dari Database
+1399: (Query by User_ID)
+1400: ↓
+1401: System Menampilkan:
+1402: - Total Hadir (tepat waktu/telat)
+1403: -Total Dispensasi
+1404: - Total Izin
+1405: - Total Sakit
+1406: - Total Alpha
+1407: ↓
+1408: User Pilih Filter
+1409: - Hari
+1410: - Minggu
+1411: - Bulan
+1412: - Semester
+1413: ↓
+1414: System Menampilkan Detail Absensi
+1415: ↓
+1416: User Klik Salah Satu Tanggal
+1417: ↓
+1418: System Menampilkan Detail
+1419: - Jam Masuk
+1420: - Jam Pulang
+1421: - Status
+1422: - Lokasi RFID scan/GPS
+1423: ↓
+1424: END
+1427: Flow Melihat Tagihan Anak
+1428: START
+1429: ↓
+1430: Login orang tua
+1431: ↓
+1432: Menu: Keuangan anak
+1433: ↓
+1434: Pilih anak
+1435: ↓
+1436: Load data anak
+1437: ↓
+1438: Query tagihan
+1439: ↓
+1440: Tampilkan:
+1441: - lunas
+1442: - belum bayar & jatuh tempo
+1443: ↓
+1444: END
+1446: Flow bayar tunggakan anak khusus transfer
+1447: START
+1448: ↓
+1449: Login orang tua
+1450: ↓
+1451: Menu: Keuangan anak
+1452: ↓
+1453: Pilih anak
+1454: ↓
+1455: Load data anak
+1456: ↓
+1457: Query tagihan
+1458: ↓
+1459: Tampilkan:
+1460: - lunas
+1461: - belum bayar & jatuh tempo
+1462: ↓
+1463: User pilih tagihan
+1464: ↓
+1465: - Input metode pembayaran : Transfer (auto)
+1466: - Tampilkan no rek sekolah
+1467: - Tanggal bayar
+1468: - Upload bukti bayar
+1469: ↓
+1470: Klik SIMPAN
+1471: ↓
+1472: Notifikasi pembayaran bendahara/teller
+1473: ↓
+1474: Masuk Sistem cek oleh bendahara/teller
+1475: ↓
+1476: Disetujui / Ditolak
+1477: ↓
+1478: Pembayaran Anak Update
+1479: ↓
+1480: END
+1482: Validasi system :Apakah form terisi
+1483: Jika valid : Status = Pending Approval
+1485: Flow orang tua ajukan sakit/izin
+1486: Orang Tua Login Eduja
+1487: ↓
+1488: Dashboard Orang Tua
+1489: ↓
+1490: Pilih Anak
+1491: ↓
+1492: Menu Absensi
+1493: ↓
+1494: Laporkan Sakit / Izin
+1495: ↓
+1496: Isi Form :
+1497: Nama anak (auto)
+1498: Kelas (auto)
+1499: Jenis izin (radio button : sakit,izin)
+1500: Tanggal (Kalender, jika pilih sakit)
+1501: Tanggal mulai dan selesai (Kalender, jika pilih izin)
+1502: Keterangan
+1503: Upload surat (optional)
+1504: ↓
+1505: Submit
+1506: ↓
+1507: System kirim notifikasi ke Wali kelas
+1508: ↓
+1509: Masuk Sistem Approval Wali Kelas/Wakasek/ TU
+1510: ↓
+1511: Disetujui / Ditolak
+1512: ↓
+1513: Absensi Anak Update
+1514: ↓
+1515: END
+1516: Validasi system :Apakah form terisi, Apakah siswa terdaftar, Apakah tanggal sudah lewat.
+1517: Jika valid : Status = Pending Approval
+1519: Flow orang tua request pindah sekolah
+1520: Orang Tua Mengajukan Pindah
+1521: ↓
+1522: Wakasek/Kepala TU login
+1523: ↓
+1524: Menu Manajemen Siswa
+1525: ↓
+1526: Pilih Siswa
+1527: ↓
+1528: Ubah Status
+1529: ↓
+1530: Pilih "Pindah Sekolah"
+1531: ↓
+1532: Input Form :
+1533: Alasan pindah
+1534: Input Sekolah Tujuan
+1535: Tanggal pindah
+1536: Upload surat pindah
+1537: ↓
+1538: Submit
+1541: 12. FLOW ABSENSI RFID (SISTEM TEKNIS)
+1542: Flow absen RFID (PC lokal + cloud).
+1543: START
+1544: ↓
+1545: Guru, tendik, siswa tap RFID
+1546: ↓
+1547: Reader kirim UID
+1548: ↓
+1549: PC lokal membaca UID
+1550: ↓
+1551: Match dengan database Guru, tendik, siswa lokal
+1552: ↓
+1553: Save attendance (MySQL)
+1554: ↓
+1555: Trigger WhatsApp
+1556: ↓
+1557: Queue sync
+1558: ↓
+1559: Scheduler Sync (per jam)
+1560: ↓
+1561: Kirim data ke Cloud API
+1562: ↓
+1563: [Success?]
+1564: NO → retry queue
+1566: YES → delete queue
+1567: ↓
+1568: END
+1572: Flow absensi GPS
+1573: START
+1574: ↓
+1575: Login
+1576: ↓
+1577: Klik tombol ABSEN [datang/pulang?]
+1578: ↓
+1579: System ambil:
+1580: GPS
+1581: Time
+1582: Photo
+1583: ↓
+1584: [Lokasi valid?]
+1585: NO
+1586: ↓
+1587: Tolak absensi
+1589: YES
+1590: ↓
+1591: Save attendance
+1592: ↓
+1593: END
+1595: Flow absensi GPS bantu teman
+1596: START
+1597: ↓
+1598: Login
+1599: ↓
+1600: Pilih teman yang mau dibantu
+1601: ↓
+1602: Klik tombol ABSEN [datang/pulang?]
+1603: ↓
+1604: System ambil:
+1605: GPS
+1606: Time
+1607: Photo
+1608: ↓
+1609: [Lokasi valid?]
+1610: NO
+1611: ↓
+1612: Tolak absensi
+1614: YES
+1615: ↓
+1616: Save attendance
+1617: ↓
+1618: END
+1620: Flow lihat Riwayat absen diri
+1621: START
+1622: ↓
+1623: User Login
+1624: ↓
+1625: System Authenticate User
+1626: ↓
+1627: System Detect Role
+1628: ↓
+1629: User Klik Menu "Absensi Saya"
+1630: ↓
+1631: System Request Data Absensi dari Database
+1632: (Query by User_ID)
+1633: ↓
+1634: System Menampilkan:
+1635: - Total Hadir (tepat waktu/telat khusus siswa)
+1636: -Total Dispensasi
+1637: - Total Izin
+1638: - Total Sakit
+1639: - Total Alpha
+1640: ↓
+1641: User Pilih Filter
+1642: - Hari
+1643: - Minggu
+1644: - Bulan
+1645: - Semester
+1646: ↓
+1647: System Menampilkan Detail Absensi
+1648: ↓
+1649: User Klik Salah Satu Tanggal
+1650: ↓
+1651: System Menampilkan Detail
+1652: - Jam Masuk
+1653: - Jam Pulang
+1654: - Status
+1655: - Lokasi RFID scan/GPS
+1656: ↓
+1657: END
+1659: Flow lihat absen guru/tendik/siswa
+1660: START
+1661: ↓
+1662: Admin Login
+1663: ↓
+1664: System Authenticate Admin
+1665: ↓
+1666: User Klik Menu "Manajemen Absensi"
+1667: ↓
+1668: System Menampilkan Dashboard Absensi
+1669: Summary:
+1670: - Jumlah Hadir Hari Ini
+1671: - Guru Hadir
+1672: - Tendik Hadir
+1673: - Siswa Hadir
+1674: - Siswa Terlambat
+1675: - Alpha
+1676: ↓
+1677: User Pilih Filter
+1678: - Jenis User (Guru / Tendik / Siswa)
+1679: - Kelas (jika pilih siswa)
+1680: - Jurusan (jika pilih siswa)
+1681: - Tanggal
+1682: ↓
+1683: System Query Database
+1684: ↓
+1685: System Menampilkan Table Absensi
+1686: Kolom:
+1687: - Nama
+1688: - Role
+1689: - Kelas / Jurusan
+1690: - Jam Masuk
+1691: - Jam Pulang
+1692: - Status (s/i/a/telat)
+1693: ↓
+1694: User Klik Salah Satu guru/tendik/siswa
+1695: ↓
+1696: System Menampilkan Detail Riwayat Absensi
+1697: - Kalender Kehadiran
+1698: - Grafik Kehadiran
+1699: ↓
+1700: User Export Data
+1701: (PDF / Excel)
+1702: ↓
+1703: END
+1705: Flow update absen siswa
+1706: Approval Wali kelas/ Wakasek/ TU
+1707: ↓
+1708: Update Attendance Table
+1709: ↓
+1710: Status = Izin / Sakit / Dispensasi
+1711: ↓
+1712: Update Rekap Absensi
+1713: ↓
+1714: Masuk Laporan Bulanan
+1716: Flow update izin/cuti guru/tendik
+1717: Approval Kepsek/ Wakasek/ TU
+1718: ↓
+1719: Update Attendance Table
+1720: ↓
+1721: Status = Sakit / Cuti
+1722: ↓
+1723: Update Rekap Absensi
+1724: ↓
+1725: Masuk Laporan Bulanan
+1727: Flow E-Learning AI
+1728: START ↓ User membuka fitur AI ↓ Input pertanyaan ↓ Backend kirim request ke AI API ↓ AI memproses prompt ↓ Kirim hasil ke aplikasi ↓ User dapat menyimpan materi
+1729: ↓ END
+1731: Flow Buat Pengumuman
+1732: START ↓ User membuat pengumuman ↓ Pilih target penerima (satu sekolah/guru(seluruh/perorangan)/
+1733: tendik(seluruh/perorangan)/siswa (seluruh/per jurusan/per Tingkat/
+1734: per kelas/ perorangan)/orang tua) ↓ Simpan pengumuman ↓ Kirim ke WhatsApp Gateway ↓ Simpan log pengiriman
+1735: ↓ END
+1737: Flow lihat pengumuman
+1738: START
+1739: ↓
+1740: User Login
+1741: ↓
+1742: System Authenticate
+1743: ↓
+1744: User Klik Menu "Pengumuman"
+1745: ↓
+1746: System Query Database Announcement
+1747: ↓
+1748: System Menampilkan List Pengumuman
+1750: - Judul
+1751: - Tanggal
+1752: - Kategori
+1753: - Ringkasan
+1754: ↓
+1755: User Klik Pengumuman
+1756: ↓
+1757: System Menampilkan Detail
+1758: - Judul
+1759: - Isi Pengumuman
+1760: - Lampiran
+1761: - Foto
+1762: - File
+1763: ↓
+1764: System Tandai sebagai "Read"
+1765: ↓
+1766: User Bisa
+1767: - Download File
+1768: - Share
+1769: - Bookmark
+1770: ↓
+1771: END
+1773: Flow Alumni
+1774: Usert sekolah set status siswa = LULUS
+1775: ↓
+1776: Sistem otomatis membuat profil alumni
+1777: ↓
+1778: Sistem mengirim notifikasi ke alumni
+1779: ↓
+1780: Alumni login ke aplikasi
+1781: ↓
+1782: Alumni diminta melengkapi data
+1784: Flow Update data alumni
+1785: Alumni Login di akun aplikasi
+1786: ↓
+1787: Masuk ke menu Profil Akun
+1788: ↓
+1789: Klik Update Data
+1790: ↓
+1791: Form data muncul
+1792: ↓
+1793: Alumni mengisi data :
+1794: 1. Nama Lengkap (auto)
+1795: 2. NISN (auto)
+1796: 3. Nomor HP 4. Email 5. Alamat 6. Desa/Kelurahan 7. Kabupaten/Kota
+1797: 8. Provinsi
+1798: 9. Status saat ini (melanjutkan Pendidikan/Kuliah/bekerja/kuliah sambil bekerja/wirausaha/gap year)
+1799: 10. Riwayat Pendidikan
+1800: (table, system isi otomatis nama sekolah dan tahun masuk dan lulus jika alumni pemakai aplikasi ini.
+1801: Jika sekolah sebelumnya belum pakai aplikasi ini, alumni bisa menambah Riwayat pendidikannya sendiri berupa nama sekolah/kampus, jurusan, tahun masuk, tahun lulus)
+1802: 11. Pekerjaan saat ini (muncul otomatis berdasarkan status saat ini,
+1803: Pelajar jika melanjutkan Pendidikan/Mahasiswa jika Kuliah
+1804: isi pekerjaan sendiri jika bekerja/kuliah sambil bekerja/wirausaha/kosongkan jika gap year)
+1805: ↓
+1806: Klik Simpan
+1807: ↓
+1808: Sistem validasi data
+1809: ↓
+1810: Database diperbarui
+1811: ↓
+1812: Status update berhasil

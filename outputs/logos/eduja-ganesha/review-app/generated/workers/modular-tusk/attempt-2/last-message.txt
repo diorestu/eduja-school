@@ -1,0 +1,5 @@
+Generated the image with `image_gen.imagegen`, but no savable local PNG path was exposed by the native tool, so I could not place `image.png` at the requested destination.
+
+I wrote the required failed worker result JSON here:
+
+`outputs/logos/eduja-ganesha/review-app/generated/workers/modular-tusk/attempt-2/result.json`

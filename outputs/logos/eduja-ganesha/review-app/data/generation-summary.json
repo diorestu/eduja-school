@@ -1,0 +1,13 @@
+{
+  "status": "complete",
+  "requested": 8,
+  "generated": 8,
+  "failed": 0,
+  "shortlist": [
+    "elephant-arch",
+    "knowledge-fold",
+    "adaptive-herd"
+  ],
+  "selected": null,
+  "note": "Generated typography is directional. Final mark and wordmark require deterministic vector production and trademark review."
+}

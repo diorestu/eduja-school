@@ -1,0 +1,7 @@
+{
+  "id": "adaptive-herd",
+  "status": "failed",
+  "image_path": null,
+  "error": "Native image generation did not expose a local PNG path or image bytes to save.",
+  "caveats": ""
+}

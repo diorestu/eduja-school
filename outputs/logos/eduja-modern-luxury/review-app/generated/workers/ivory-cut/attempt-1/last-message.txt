@@ -1,0 +1,7 @@
+Done.
+
+Generated PNG:
+`outputs/logos/eduja-modern-luxury/review-app/generated/workers/ivory-cut/attempt-1/image.png`
+
+Worker JSON:
+`outputs/logos/eduja-modern-luxury/review-app/generated/workers/ivory-cut/attempt-1/result.json`

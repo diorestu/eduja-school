@@ -1,0 +1,5 @@
+Done. Generated one PNG with `image_gen.imagegen` and saved:
+
+`/Users/user/Documents/PROJECTS/eduja/outputs/logos/eduja-ganesha/review-app/generated/workers/wisdom-crown/attempt-2/image.png`
+
+Wrote the required `result.json` with status `complete`.

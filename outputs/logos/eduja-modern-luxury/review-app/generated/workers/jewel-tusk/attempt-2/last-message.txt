@@ -1,0 +1,5 @@
+Generated the image via `image_gen.imagegen`, but the tool did not expose a local file path or image payload I could save to the requested PNG path.
+
+Wrote the required failed worker result JSON at:
+
+`outputs/logos/eduja-modern-luxury/review-app/generated/workers/jewel-tusk/attempt-2/result.json`

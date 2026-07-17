@@ -1,0 +1,8 @@
+{
+  "id": "adaptive-herd",
+  "status": "failed",
+  "attempt": 2,
+  "pid": 290,
+  "startedAt": "2026-07-14T02:10:47.666308+00:00",
+  "lastHeartbeatAt": "2026-07-14T02:11:35.222036+00:00"
+}

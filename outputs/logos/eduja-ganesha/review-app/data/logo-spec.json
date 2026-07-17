@@ -1,0 +1,182 @@
+{
+  "meta": {
+    "title": "Eksplorasi Logo EDUJA — Gajah / Ganesha",
+    "stage": "Logo exploration",
+    "brand_name": "EDUJA",
+    "anchor": "Platform manajemen sekolah dengan kemungkinan ekspansi ke LPK",
+    "summary": "Delapan arah identitas minimal-luxury yang mengambil kebijaksanaan, daya ingat, dan keteguhan gajah tanpa menggambar figur religius secara literal.",
+    "hallmark_critique": "P5 H5 E4 S5 R5 V5"
+  },
+  "constraints": {
+    "preserve": [
+      "ejaan merek: EDUJA",
+      "fokus utama pada sekolah",
+      "mampu bekerja sebagai ikon aplikasi dan materi promosi",
+      "warna utama teal EDUJA #006266",
+      "kesan minimal, berbeda, dan luxury"
+    ],
+    "avoid": [
+      "penggambaran Ganesha atau ikonografi religius secara literal",
+      "maskot gajah kartun",
+      "graduation cap generik",
+      "buku terbuka yang klise tanpa gestur khas",
+      "ornamen rumit yang gagal pada ukuran favicon",
+      "kemiripan dengan lambang universitas atau lembaga resmi",
+      "tagline atau klaim yang belum disetujui"
+    ]
+  },
+  "routes": [
+    {
+      "id": "elephant-arch",
+      "label": "Elephant Arch",
+      "family": "geometric symbol",
+      "usage_contexts": [
+        "app icon",
+        "favicon",
+        "website header"
+      ],
+      "prompt": "Design one original premium minimalist logo exploration for the Indonesian education technology brand EDUJA on a pure white square inspection background. Route: Elephant Arch. Create a bold low-detail elephant head from two architectural arches and one continuous downward trunk; the outer silhouette should subtly resemble a protective school gateway. Symmetrical at first glance but with one intelligent asymmetrical cut. Deep EDUJA teal #006266 with warm ivory negative space, flat vector-like geometry, no gradients, no shadows, no mockup, no badge container. Include a restrained uppercase EDUJA wordmark below the symbol, but prioritize the symbol. High-end education technology identity, distinct at 24 px. Do not depict the Hindu deity Ganesha, religious ornaments, crown, graduation cap, cartoon mascot, stock icon, or detailed tusks.",
+      "rationale": "Menggabungkan kepala gajah dan gerbang sekolah dalam satu siluet yang stabil.",
+      "best_for": "Identitas utama dan ikon aplikasi yang mudah dikenali.",
+      "decision_advice": "Pilih jika EDUJA ingin terlihat mapan, aman, dan tetap modern.",
+      "watch_out": "Simetri berlebihan dapat terasa seperti lambang pemerintahan.",
+      "next_step": "Sederhanakan kurva menjadi grid vektor dan uji pada 16, 24, dan 32 px.",
+      "final_owner": "external-production-identity",
+      "next_prompt_hints": []
+    },
+    {
+      "id": "e-trunk-monogram",
+      "label": "E-Trunk Monogram",
+      "family": "monogram",
+      "usage_contexts": [
+        "app icon",
+        "social avatar",
+        "favicon"
+      ],
+      "prompt": "Design one original premium minimalist logo exploration for EDUJA on a pure white square inspection background. Route: E-Trunk Monogram. Construct a single continuous geometric stroke that reads first as a capital E and then reveals an elephant trunk in negative space. Compact near-square silhouette, precise optical balance, one memorable inner cut, deep teal #006266 and charcoal ink only, flat vector-like mark, no gradients, shadows, 3D, or enclosing rounded-square app tile. Add a small restrained uppercase EDUJA wordmark below. Sophisticated education software identity, legible at favicon size. Avoid literal elephant face, Hindu Ganesha imagery, graduation cap, generic book, mascot, ornate line art, and stock monogram styling.",
+      "rationale": "Mengunci nama EDUJA langsung ke metafora belalai tanpa perlu maskot.",
+      "best_for": "Ikon aplikasi, favicon, dan avatar sosial.",
+      "decision_advice": "Pilih jika prioritasnya adalah kepemilikan bentuk yang kompak dan digital-first.",
+      "watch_out": "Huruf E harus tetap terbaca tanpa membuat belalai terasa dipaksakan.",
+      "next_step": "Buat tiga alternatif ketebalan stroke dan lakukan tes blur 16 px.",
+      "final_owner": "external-production-identity",
+      "next_prompt_hints": []
+    },
+    {
+      "id": "knowledge-fold",
+      "label": "Knowledge Fold",
+      "family": "negative-space symbol",
+      "usage_contexts": [
+        "website",
+        "presentasi",
+        "materi promosi"
+      ],
+      "prompt": "Design one original minimal-luxury logo exploration for EDUJA on a pure white square inspection background. Route: Knowledge Fold. Create an abstract elephant profile using exactly two folded planes; the negative space between them quietly forms one page of a book, without showing a generic open-book icon. The trunk becomes a page-turn gesture. Use deep teal #006266, warm ivory, and a very restrained muted antique-gold accent on only one small plane. Flat crisp vector-like shapes, no gradients, shadows, 3D, mockup, crest, or decorative border. Include a refined uppercase EDUJA wordmark below, secondary to the mark. Avoid deity imagery, cartoon elephants, graduation caps, laurel wreaths, temple motifs, and fine details.",
+      "rationale": "Metafora belajar hadir melalui lipatan dan ruang negatif, bukan ikon buku literal.",
+      "best_for": "Materi promosi, website, dan presentasi institusi.",
+      "decision_advice": "Pilih jika narasi pendidikan perlu terasa jelas namun tetap subtil.",
+      "watch_out": "Aksen emas harus tetap sekunder agar tidak terlihat seperti fintech.",
+      "next_step": "Kunci versi satu warna dan versi dua warna sebelum menyusun wordmark.",
+      "final_owner": "external-production-identity",
+      "next_prompt_hints": []
+    },
+    {
+      "id": "wisdom-crown",
+      "label": "Wisdom Crest",
+      "family": "premium geometric",
+      "usage_contexts": [
+        "brand campaign",
+        "sertifikat",
+        "website header"
+      ],
+      "prompt": "Design one original luxury-minimal logo exploration for EDUJA on a pure white square inspection background. Route: Wisdom Crest. Build an abstract frontal elephant from three tapered geometric forms; the ears rise into a subtle three-point rhythm suggesting excellence, but never a literal crown. The trunk ends in a small upward terminal suggesting progress. Deep teal #006266 with warm ivory and one muted antique-gold micro accent, flat vector construction, generous whitespace, strong silhouette, no gradients, shadows, 3D, seal border, or mockup. Add an elegant uppercase EDUJA wordmark below. Avoid Ganesha depiction, religious symbols, royal crown cliché, laurel wreath, graduation cap, mascot, and ornamental filigree.",
+      "rationale": "Memberi rasa prestisius tanpa memakai mahkota atau segel secara harfiah.",
+      "best_for": "Kampanye merek, sertifikat, dan komunikasi premium.",
+      "decision_advice": "Pilih jika EDUJA ingin naik kelas secara visual tanpa menjadi kaku.",
+      "watch_out": "Gestur puncak tidak boleh terbaca sebagai mahkota kerajaan.",
+      "next_step": "Reduksi menjadi versi monokrom dan cek asosiasi simbol sebelum produksi.",
+      "final_owner": "external-production-identity",
+      "next_prompt_hints": []
+    },
+    {
+      "id": "modular-tusk",
+      "label": "Modular Tusk",
+      "family": "tech modular",
+      "usage_contexts": [
+        "dashboard",
+        "app icon",
+        "produk digital"
+      ],
+      "prompt": "Design one original premium technology logo exploration for EDUJA on a pure white square inspection background. Route: Modular Tusk. Assemble an abstract elephant signal from four modular rounded rectangular units on a precise grid; two units imply ears, one negative-space channel becomes the trunk, and one diagonal notch hints at a tusk. It should feel like a flexible school management system, not a mascot. Deep EDUJA teal #006266 plus charcoal ink, flat vector-like geometry, no gradients, shadows, circuits, nodes, rounded-square app container, or UI mockup. Add a clean uppercase EDUJA wordmark below. Avoid literal Ganesha, religious ornament, generic SaaS sparkle, graduation cap, book icon, and excessive detail.",
+      "rationale": "Bahasa modular mencerminkan produk yang terdiri dari banyak modul sekolah.",
+      "best_for": "Dashboard, produk digital, dan arsitektur sub-brand modul.",
+      "decision_advice": "Pilih jika karakter software perlu lebih kuat daripada karakter institusi.",
+      "watch_out": "Jangan sampai terlihat seperti ikon database atau jaringan generik.",
+      "next_step": "Turunkan grid menjadi sistem ikon modul yang konsisten.",
+      "final_owner": "external-production-identity",
+      "next_prompt_hints": []
+    },
+    {
+      "id": "quiet-seal",
+      "label": "Quiet Seal",
+      "family": "modern heritage",
+      "usage_contexts": [
+        "dokumen resmi",
+        "seragam",
+        "materi cetak"
+      ],
+      "prompt": "Design one original modern-heritage logo exploration for EDUJA on a pure white square inspection background. Route: Quiet Seal. Create a sparse circular stamp built from a single elephant-trunk spiral and two restrained ear cuts; the circle is incomplete and contemporary, not an academic crest. The center negative space should suggest an eye or seed of knowledge. Deep teal #006266, monochrome flat vector-like line and shape, high contrast, no gradients, shadows, laurel, shield, stars, dates, motto, temple motifs, or decorative border. Place a refined uppercase EDUJA wordmark below. Avoid literal deity imagery, cartoon mascot, university seal cliché, graduation cap, and small illegible details.",
+      "rationale": "Membawa rasa heritage dan otoritas tanpa menjadi lambang sekolah tradisional.",
+      "best_for": "Dokumen, seragam, stempel, dan aplikasi satu warna.",
+      "decision_advice": "Pilih jika kepercayaan institusional menjadi pesan utama.",
+      "watch_out": "Lingkaran harus tetap terbuka agar tidak terasa seperti stempel pemerintah.",
+      "next_step": "Uji bordir, stempel tinta, dan cetak satu warna.",
+      "final_owner": "external-production-identity",
+      "next_prompt_hints": []
+    },
+    {
+      "id": "memory-glyph",
+      "label": "Memory Glyph",
+      "family": "utility symbol",
+      "usage_contexts": [
+        "favicon",
+        "mobile app",
+        "watermark"
+      ],
+      "prompt": "Design one original favicon-first logo glyph for EDUJA on a pure white square inspection background. Route: Memory Glyph. Create an ultra-compact abstract elephant using one thick outer curve and one square counter-space; the square counter subtly represents a classroom or saved record, while the outer curve reads as ear and trunk. Maximum three shapes, deep teal #006266 only, flat vector-like construction, optically centered, distinctive at 16 px. No wordmark inside the main mark; show a small uppercase EDUJA label below only for identification. No gradients, shadows, 3D, app-tile container, literal elephant face, Ganesha imagery, mascot, graduation cap, or generic letter icon.",
+      "rationale": "Rute paling utilitarian: satu glyph kuat untuk layar dan watermark kecil.",
+      "best_for": "Favicon, ikon mobile, watermark, dan loading mark.",
+      "decision_advice": "Pilih jika ketahanan pada ukuran sangat kecil adalah prioritas tertinggi.",
+      "watch_out": "Kesederhanaan ekstrem membutuhkan proporsi yang benar-benar khas.",
+      "next_step": "Pixel-fit versi 16 dan 20 px serta susun animasi loading sederhana.",
+      "final_owner": "external-production-identity",
+      "next_prompt_hints": []
+    },
+    {
+      "id": "adaptive-herd",
+      "label": "Adaptive Herd",
+      "family": "adaptive system",
+      "usage_contexts": [
+        "brand system",
+        "sub-brand sekolah",
+        "kampanye"
+      ],
+      "prompt": "Design one original adaptive identity logo exploration for EDUJA on a pure white square inspection background. Route: Adaptive Herd. Show one primary abstract elephant mark made from three interlocking geometric petals: ear, forehead, and trunk. Beside or beneath it, discreetly show two tiny simplified responsive reductions of the same mark to demonstrate an identity family, not multiple unrelated logos. Deep EDUJA teal #006266, warm ivory, and charcoal ink, flat vector-like geometry, no gradients, shadows, 3D, mockups, or colorful mascot system. Include a restrained uppercase EDUJA wordmark. The mark should feel premium, intelligent, modular, and suitable for future school or LPK sub-brands. Avoid Ganesha depiction, religious ornament, graduation cap, book cliché, and excessive detail.",
+      "rationale": "Menyiapkan identitas yang bisa berkembang ke sekolah, modul, dan kelak LPK.",
+      "best_for": "Sistem merek jangka panjang dan keluarga sub-brand.",
+      "decision_advice": "Pilih jika fleksibilitas ekspansi lebih penting daripada satu ikon tunggal.",
+      "watch_out": "Sistem harus tetap memiliki satu bentuk primer yang mudah diingat.",
+      "next_step": "Definisikan master mark, responsive reductions, dan aturan warna sub-brand.",
+      "final_owner": "external-production-identity",
+      "next_prompt_hints": []
+    }
+  ],
+  "handoff": {
+    "default_owner": "external-production-identity",
+    "next_prompt_hints": [
+      "pertahankan bentuk yang lolos tes 16 px",
+      "buat versi monokrom sebelum memperluas palet",
+      "susun ulang wordmark EDUJA secara deterministik saat vektorisasi"
+    ]
+  }
+}

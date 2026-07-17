@@ -1,0 +1,5 @@
+Generated exactly one image with `image_gen.imagegen`, but the tool response did not expose savable PNG bytes or a filesystem path here, so I could not write `image.png`.
+
+Wrote the required failure JSON to:
+
+`/Users/user/Documents/PROJECTS/eduja/outputs/logos/eduja-modern-luxury/review-app/generated/workers/jewel-tusk/attempt-1/result.json`

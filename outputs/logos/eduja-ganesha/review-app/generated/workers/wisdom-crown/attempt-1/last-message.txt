@@ -1,0 +1,5 @@
+Generated exactly one image with `image_gen.imagegen`, but the tool did not expose a local PNG path or image bytes for me to save to the requested location.
+
+Wrote the required failure JSON at:
+
+`/Users/user/Documents/PROJECTS/eduja/outputs/logos/eduja-ganesha/review-app/generated/workers/wisdom-crown/attempt-1/result.json`

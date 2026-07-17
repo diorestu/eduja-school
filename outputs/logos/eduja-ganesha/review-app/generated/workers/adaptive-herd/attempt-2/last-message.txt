@@ -1,0 +1,4 @@
+Generated with `image_gen.imagegen`, but the tool did not expose a local PNG path or bytes I could save to the requested location.
+
+Wrote failed worker result JSON here:
+[ result.json](/Users/user/Documents/PROJECTS/eduja/outputs/logos/eduja-ganesha/review-app/generated/workers/adaptive-herd/attempt-2/result.json)

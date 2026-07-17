@@ -1,0 +1,5 @@
+Generated with `image_gen.imagegen`, but the tool did not expose a filesystem-accessible PNG path or bytes to save as `image.png`.
+
+Wrote the required failed worker JSON to:
+
+`outputs/logos/eduja-ganesha/review-app/generated/workers/elephant-arch/attempt-1/result.json`

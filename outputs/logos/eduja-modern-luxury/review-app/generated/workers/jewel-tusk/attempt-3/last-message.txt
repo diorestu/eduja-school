@@ -1,0 +1,4 @@
+Failed to save the generated PNG because the native image tool returned no filesystem artifact I could copy to the requested path.
+
+Wrote the required failure JSON to:
+`outputs/logos/eduja-modern-luxury/review-app/generated/workers/jewel-tusk/attempt-3/result.json`

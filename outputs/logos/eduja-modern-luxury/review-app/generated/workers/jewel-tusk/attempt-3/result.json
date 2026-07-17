@@ -1,0 +1,7 @@
+{
+  "id": "jewel-tusk",
+  "status": "failed",
+  "image_path": null,
+  "error": "Native image generation returned an image but no saveable filesystem artifact was available.",
+  "caveats": ""
+}

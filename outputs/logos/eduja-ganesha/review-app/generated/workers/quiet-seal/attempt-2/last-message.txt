@@ -1,0 +1,5 @@
+Done. Generated and saved:
+
+`outputs/logos/eduja-ganesha/review-app/generated/workers/quiet-seal/attempt-2/image.png`
+
+Wrote the required `result.json` with status `complete`.

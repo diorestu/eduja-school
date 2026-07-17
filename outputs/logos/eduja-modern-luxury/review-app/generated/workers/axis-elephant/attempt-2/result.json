@@ -1,0 +1,7 @@
+{
+  "id": "axis-elephant",
+  "status": "failed",
+  "image_path": null,
+  "error": "Native image generation produced an image but did not expose a saveable PNG file path in this environment.",
+  "caveats": ""
+}

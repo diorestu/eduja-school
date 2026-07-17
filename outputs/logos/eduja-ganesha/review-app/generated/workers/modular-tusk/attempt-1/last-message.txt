@@ -1,0 +1,4 @@
+Generated exactly one image with `image_gen.imagegen`, but the tool did not expose a local PNG artifact I could save to the requested path.
+
+Wrote the required failure JSON at:
+`outputs/logos/eduja-ganesha/review-app/generated/workers/modular-tusk/attempt-1/result.json`

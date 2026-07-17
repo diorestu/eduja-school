@@ -1,0 +1,5 @@
+Generated via `image_gen.imagegen`, but the tool did not expose a local PNG artifact I could copy to the requested path.
+
+I wrote the required failed result JSON at:
+
+`outputs/logos/eduja-modern-luxury/review-app/generated/workers/aureum-trunk-symbol-v2/attempt-1/result.json`
