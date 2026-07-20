@@ -50,8 +50,8 @@
 
             <!-- Logo (mobile only) -->
             <a href="/dashboard" class="xl:hidden">
-                <img class="dark:hidden" src="/images/logo/logo.svg" alt="Logo" />
-                <img class="hidden dark:block" src="/images/logo/logo-dark.svg" alt="Logo" />
+                <img class="dark:hidden" src="/images/logo/logo-wide.png" alt="Logo" height="36" />
+                <img class="hidden dark:block" src="/images/logo/logo-wide-dark.png" alt="Logo" height="36" />
             </a>
 
             <!-- Application Menu Toggle (mobile only) -->
