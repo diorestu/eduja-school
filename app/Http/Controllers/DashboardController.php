@@ -14,6 +14,16 @@ class DashboardController extends Controller
 {
     public function index(SchoolContext $schoolContext)
     {
+        $user = auth()->user();
+        if ($user) {
+            if ($user->hasRole('siswa')) {
+                return redirect()->route('portal.siswa');
+            }
+            if ($user->hasRole('orang_tua')) {
+                return redirect()->route('portal.orang-tua');
+            }
+        }
+
         $schoolId = $schoolContext->activeSchoolId();
         $scope = fn ($query) => $schoolId ? $query->where('school_id', $schoolId) : $query;
 

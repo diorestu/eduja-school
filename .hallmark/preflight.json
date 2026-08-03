@@ -1,0 +1,8 @@
+{
+  "date": "2026-07-27",
+  "framework": "Laravel Blade + Tailwind CSS v4",
+  "font": "Inter",
+  "palette": "EDUJA dark tosca with orange accent",
+  "motion": "CSS scroll reveal and restrained transforms",
+  "scope": "homepage dashboard illustration and public footer"
+}

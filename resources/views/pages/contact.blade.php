@@ -1,293 +1,194 @@
 <!DOCTYPE html>
 <html lang="id" class="scroll-smooth" x-data>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="/favicon.png">
-    <title>Hubungi Kami - Eduja</title>
-    
-    <!-- Meta SEO -->
-    <meta name="description" content="Hubungi tim dukungan Eduja untuk demo aplikasi sekolah gratis atau konsultasi paket langganan.">
-    
-    <!-- Google Fonts & Icons -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-    
-    <!-- Tailwind v4 and Custom Styles -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    
-    <script>
-        // Inline theme initialization to prevent flash on load
-        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        const savedTheme = localStorage.getItem('theme');
-        const theme = savedTheme || systemTheme;
-        if (theme === 'dark') {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-    </script>
-    
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            transition: background-color 0.5s ease, color 0.5s ease;
-        }
-
-        /* Dark Theme Default */
-        html.dark body {
-            background-color: #08080c;
-            color: #f3f4f6;
-        }
-        /* Light Theme */
-        html:not(.dark) body {
-            background-color: #fcfcfd;
-            color: #1f2937;
-        }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            border-radius: 4px;
-        }
-        html.dark ::-webkit-scrollbar-thumb {
-            background: #1a1a24;
-        }
-        html:not(.dark) ::-webkit-scrollbar-thumb {
-            background: #e2e8f0;
-        }
-
-        /* Apple Glassmorphism Nav */
-        .glass-nav {
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            transition: background-color 0.5s ease, border-color 0.5s ease;
-        }
-        html.dark .glass-nav {
-            background: rgba(8, 8, 12, 0.75);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        html:not(.dark) .glass-nav {
-            background: rgba(252, 252, 253, 0.75);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-        }
-
-        /* Apple Glassmorphism Card */
-        .glass-card {
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        html.dark .glass-card {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        html:not(.dark) .glass-card {
-            background: rgba(255, 255, 255, 0.6);
-            border: 1px solid rgba(0, 0, 0, 0.06);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.02);
-        }
-
-        html.dark .glass-card:hover {
-            background: rgba(255, 255, 255, 0.04);
-            border-color: rgba(0, 98, 102, 0.4);
-            transform: translateY(-4px);
-            box-shadow: 0 20px 40px -15px rgba(0, 98, 102, 0.15);
-        }
-        html:not(.dark) .glass-card:hover {
-            background: rgba(255, 255, 255, 0.9);
-            border-color: rgba(0, 98, 102, 0.25);
-            transform: translateY(-4px);
-            box-shadow: 0 20px 45px -12px rgba(0, 98, 102, 0.08);
-        }
-
-        /* Gradient Text */
-        html.dark .gradient-text {
-            background: linear-gradient(135deg, #ffffff 30%, #a5b1c2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        html:not(.dark) .gradient-text {
-            background: linear-gradient(135deg, #111827 30%, #4b5563 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-    </style>
+    @include('partials.public-head', [
+        'title' => 'Kontak Eduja — Demo untuk SMP & SMK',
+        'description' => 'Hubungi tim Eduja untuk demo dan konsultasi implementasi platform manajemen SMP atau SMK Anda.'
+    ])
 </head>
 <body class="antialiased">
 
-    <!-- Header / Navbar -->
-    <header class="fixed top-0 left-0 right-0 z-50 glass-nav">
-        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-            <a href="/" class="flex items-center gap-2 text-xl font-bold tracking-tight text-gray-900 dark:text-white">
-                <span class="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center text-white shadow-xs">E</span>
-                Eduja
-            </a>
-            
-            <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600 dark:text-gray-400">
-                <a href="/#fitur" class="hover:text-gray-900 dark:hover:text-white transition-colors">Fitur Utama</a>
-                <a href="/pricing" class="hover:text-gray-900 dark:hover:text-white transition-colors">Harga</a>
-                <a href="/contact" class="text-brand-500 dark:text-brand-400 font-semibold transition-colors">Kontak</a>
-            </nav>
+    @include('partials.public-nav', ['activePage' => 'kontak'])
 
-            <div class="flex items-center gap-4">
-                <!-- Dark/Light Theme Toggle -->
-                <button @click="$store.theme.toggle()" class="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300 transition-colors" aria-label="Toggle Theme">
-                    <i x-show="$store.theme.theme === 'light'" class="bx bx-moon text-lg"></i>
-                    <i x-show="$store.theme.theme === 'dark'" class="bx bx-sun text-lg" style="display: none;"></i>
-                </button>
+    {{-- HERO --}}
+    <section class="relative pt-28 pb-12 px-6 overflow-hidden">
+        <div class="hero-orb hero-orb-1" style="opacity: 0.5;"></div>
+        <div class="max-w-7xl mx-auto relative z-10">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
 
-                <a href="{{ route('login') }}" class="rounded-full bg-gray-900 text-white dark:bg-white dark:text-black px-5 py-2 text-xs font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-all shadow-xs">
-                    Masuk Aplikasi <i class="bx bx-right-arrow-alt align-middle ml-1"></i>
-                </a>
-            </div>
-        </div>
-    </header>
+                {{-- LEFT INFO PANEL --}}
+                <div class="lg:col-span-5 space-y-8 pt-4">
+                    <div>
+                        <div class="section-tag mb-5 inline-flex"><i class="bx bx-message-dots"></i> Bicara dengan Kami</div>
+                        <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight leading-tight mb-5">
+                            <span class="gradient-text">Mari rapikan</span><br>
+                            <span class="text-gray-900 dark:text-white">kebutuhan sekolah Anda.</span>
+                        </h1>
+                        <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 leading-relaxed">
+                            Ceritakan kebutuhan SMP atau SMK Anda. Kami akan menunjukkan modul yang paling relevan, alur implementasinya, dan cara memulai tanpa membuat tim sekolah kewalahan.
+                        </p>
+                    </div>
 
-    <!-- CONTACT CONTAINER -->
-    <section class="pt-32 pb-24 px-6 max-w-7xl mx-auto z-10 relative">
-        <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-brand-500/5 dark:bg-brand-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+                    {{-- Contact Info --}}
+                    <div class="space-y-5">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-2xl bg-brand-500/10 border border-brand-500/15 text-brand-500 flex items-center justify-center text-xl shrink-0">
+                                <i class="bx bxl-whatsapp"></i>
+                            </div>
+                            <div>
+                                <span class="text-[10px] text-gray-400 uppercase tracking-wider font-bold block mb-0.5">WhatsApp — Respons Cepat</span>
+                                <a href="https://wa.me/628123456789" target="_blank" rel="noopener noreferrer"
+                                   class="text-sm font-bold text-gray-800 dark:text-white hover:text-brand-500 dark:hover:text-brand-400 transition-colors">
+                                    +62 812-3456-789
+                                </a>
+                                <span class="text-[10px] text-gray-400 block mt-0.5">Senin–Jumat, 08.00–17.00 WIB</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-2xl bg-brand-500/10 border border-brand-500/15 text-brand-500 flex items-center justify-center text-xl shrink-0">
+                                <i class="bx bxs-envelope"></i>
+                            </div>
+                            <div>
+                                <span class="text-[10px] text-gray-400 uppercase tracking-wider font-bold block mb-0.5">Email Resmi</span>
+                                <a href="mailto:info@eduja.id"
+                                   class="text-sm font-bold text-gray-800 dark:text-white hover:text-brand-500 dark:hover:text-brand-400 transition-colors">
+                                    info@eduja.id
+                                </a>
+                                <span class="text-[10px] text-gray-400 block mt-0.5">Dibalas dalam 1 hari kerja</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-2xl bg-brand-500/10 border border-brand-500/15 text-brand-500 flex items-center justify-center text-xl shrink-0">
+                                <i class="bx bxs-map"></i>
+                            </div>
+                            <div>
+                                <span class="text-[10px] text-gray-400 uppercase tracking-wider font-bold block mb-0.5">Kantor Pusat</span>
+                                <p class="text-sm font-bold text-gray-800 dark:text-white">Jakarta, Indonesia</p>
+                                <span class="text-[10px] text-gray-400 block mt-0.5">Layanan tersedia untuk seluruh Indonesia</span>
+                            </div>
+                        </div>
+                    </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start relative z-10">
-            <!-- Left Info Panel -->
-            <div class="lg:col-span-5 space-y-8">
-                <div>
-                    <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight gradient-text leading-tight mb-4">
-                        Hubungi Tim Eduja
-                    </h1>
-                    <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 leading-relaxed">
-                        Punya pertanyaan mengenai fitur, integrasi sistem, atau ingin mengajukan demo virtual khusus untuk instansi sekolah Anda? Kami siap membantu.
-                    </p>
+                    {{-- Value Props --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        @foreach([
+                            ['bx-check-shield', 'Demo 100% gratis', 'Tanpa kartu kredit, tanpa kewajiban.'],
+                            ['bx-time-five', 'Onboarding cepat', 'Sekolah aktif dalam 3–5 hari kerja.'],
+                            ['bx-support', 'Pendampingan penuh', 'Tim kami hadir selama implementasi.'],
+                            ['bx-trending-up', 'Hasil terukur', 'Efisiensi operasional meningkat sejak hari pertama.'],
+                        ] as $v)
+                        <div class="flex items-start gap-3 p-4 glass-card rounded-xl">
+                            <i class="bx {{ $v[0] }} text-brand-500 text-lg mt-0.5 shrink-0"></i>
+                            <div>
+                                <p class="text-xs font-bold text-gray-900 dark:text-white">{{ $v[1] }}</p>
+                                <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{{ $v[2] }}</p>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
                 </div>
 
-                <div class="space-y-6">
-                    <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-lg bg-brand-500/10 text-brand-500 flex items-center justify-center text-lg">
-                            <i class="bx bxs-phone-call"></i>
+                {{-- RIGHT FORM PANEL --}}
+                <div class="lg:col-span-7">
+                    <div class="glass-card rounded-3xl p-8 sm:p-10">
+                        <div class="mb-6">
+                            <h2 class="text-xl font-extrabold text-gray-900 dark:text-white">Jadwalkan Demo atau Kirim Pesan</h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Isi formulir di bawah ini dan tim kami akan menghubungi Anda melalui WhatsApp atau email dalam 1×24 jam kerja.</p>
                         </div>
-                        <div>
-                            <span class="text-[10px] text-gray-400 uppercase tracking-wider block font-semibold">WhatsApp Gateway</span>
-                            <a href="https://wa.me/628123456789" class="text-sm font-bold text-gray-800 dark:text-white hover:text-brand-500 transition-colors">+62 812-3456-789</a>
-                        </div>
+
+                        @if(session('success'))
+                            <div class="mb-6 rounded-2xl bg-green-500/10 border border-green-500/20 p-5 flex items-start gap-3">
+                                <i class="bx bxs-check-circle text-green-500 text-xl shrink-0 mt-0.5"></i>
+                                <div>
+                                    <p class="text-sm font-bold text-green-700 dark:text-green-400">Formulir Terkirim!</p>
+                                    <p class="text-xs text-green-600 dark:text-green-400/80 mt-1">{{ session('success') }}</p>
+                                </div>
+                            </div>
+                        @endif
+
+                        <form action="{{ route('contact.send') }}" method="POST" class="space-y-5">
+                            @csrf
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                <div>
+                                    <label class="mb-2 block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Lengkap <span class="text-red-400">*</span></label>
+                                    <input type="text" name="name" required placeholder="Masukkan nama Anda"
+                                           class="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white/60 dark:bg-white/3 py-3 px-4 text-sm text-gray-800 dark:text-white placeholder-gray-400 transition-all">
+                                </div>
+                                <div>
+                                    <label class="mb-2 block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jabatan</label>
+                                    <select name="role"
+                                            class="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white/60 dark:bg-white/3 py-3 px-4 text-sm text-gray-800 dark:text-gray-300 transition-all">
+                                        <option value="">Pilih jabatan Anda</option>
+                                        <option>Kepala Sekolah</option>
+                                        <option>Pengurus Yayasan</option>
+                                        <option>Bendahara Sekolah</option>
+                                        <option>Tenaga Administrasi (TU)</option>
+                                        <option>Guru / Wali Kelas</option>
+                                        <option>Lainnya</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="mb-2 block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Lembaga / Sekolah <span class="text-red-400">*</span></label>
+                                <input type="text" name="school_name" required placeholder="Contoh: SMP Negeri 5 Bandung / Yayasan Nur Ilmu"
+                                       class="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white/60 dark:bg-white/3 py-3 px-4 text-sm text-gray-800 dark:text-white placeholder-gray-400 transition-all">
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                <div>
+                                    <label class="mb-2 block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email Sekolah <span class="text-red-400">*</span></label>
+                                    <input type="email" name="email" required placeholder="admin@sekolah.sch.id"
+                                           class="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white/60 dark:bg-white/3 py-3 px-4 text-sm text-gray-800 dark:text-white placeholder-gray-400 transition-all">
+                                </div>
+                                <div>
+                                    <label class="mb-2 block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">No. WhatsApp <span class="text-red-400">*</span></label>
+                                    <input type="tel" name="phone" required placeholder="08xx-xxxx-xxxx"
+                                           class="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white/60 dark:bg-white/3 py-3 px-4 text-sm text-gray-800 dark:text-white placeholder-gray-400 transition-all">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="mb-2 block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kebutuhan / Pesan <span class="text-red-400">*</span></label>
+                                <textarea name="message" rows="4" required
+                                          placeholder="Ceritakan kondisi sekolah Anda dan apa yang ingin Anda capai bersama Eduja..."
+                                          class="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white/60 dark:bg-white/3 py-3 px-4 text-sm text-gray-800 dark:text-white placeholder-gray-400 transition-all resize-none"></textarea>
+                            </div>
+
+                            <div class="flex items-start gap-3">
+                                <input type="checkbox" id="agree" name="agree" required class="mt-1 accent-brand-500">
+                                <label for="agree" class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed cursor-pointer">
+                                    Saya setuju dihubungi oleh tim Eduja melalui WhatsApp atau email untuk keperluan demo dan konsultasi.
+                                </label>
+                            </div>
+
+                            <button type="submit" id="btn-send-contact"
+                                    class="group w-full rounded-full bg-brand-500 py-4 text-center text-sm font-bold text-white hover:bg-brand-600 transition-all shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2">
+                                <i class="bx bx-paper-plane text-base group-hover:translate-x-1 transition-transform"></i>
+                                Kirim & Jadwalkan Demo Gratis
+                            </button>
+                            <p class="text-center text-[11px] text-gray-400">🔒 Data Anda aman dan tidak akan disebarluaskan.</p>
+                        </form>
                     </div>
-                    <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-lg bg-brand-500/10 text-brand-500 flex items-center justify-center text-lg">
-                            <i class="bx bxs-envelope"></i>
-                        </div>
-                        <div>
-                            <span class="text-[10px] text-gray-400 uppercase tracking-wider block font-semibold">Email Resmi</span>
-                            <a href="mailto:info@eduja.sch.id" class="text-sm font-bold text-gray-800 dark:text-white hover:text-brand-500 transition-colors">info@eduja.sch.id</a>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-lg bg-brand-500/10 text-brand-500 flex items-center justify-center text-lg">
-                            <i class="bx bxs-map"></i>
-                        </div>
-                        <div>
-                            <span class="text-[10px] text-gray-400 uppercase tracking-wider block font-semibold">Kantor Pusat</span>
-                            <p class="text-sm font-bold text-gray-800 dark:text-white">Jakarta, Indonesia</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Form Panel -->
-            <div class="lg:col-span-7">
-                <div class="glass-card rounded-3xl p-8">
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Kirim Pesan</h3>
-                    
-                    @if(session('success'))
-                        <div class="mb-6 rounded-xl bg-green-500/10 border border-green-500/20 p-4 text-xs sm:text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
-                            <i class="bx bxs-check-circle text-lg"></i> {{ session('success') }}
-                        </div>
-                    @endif
-
-                    <form action="{{ route('contact.send') }}" method="POST" class="space-y-5">
-                        @csrf
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                            <div>
-                                <label class="mb-1.5 block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Anda</label>
-                                <input type="text" name="name" required placeholder="Masukkan nama"
-                                    class="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-white/2 py-2.5 px-4 text-sm text-gray-800 dark:text-white focus:outline-none focus:border-brand-500 transition-all" />
-                            </div>
-                            <div>
-                                <label class="mb-1.5 block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Sekolah</label>
-                                <input type="text" name="school_name" required placeholder="Masukkan nama sekolah"
-                                    class="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-white/2 py-2.5 px-4 text-sm text-gray-800 dark:text-white focus:outline-none focus:border-brand-500 transition-all" />
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                            <div>
-                                <label class="mb-1.5 block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email Sekolah</label>
-                                <input type="email" name="email" required placeholder="alamat@sekolah.sch.id"
-                                    class="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-white/2 py-2.5 px-4 text-sm text-gray-800 dark:text-white focus:outline-none focus:border-brand-500 transition-all" />
-                            </div>
-                            <div>
-                                <label class="mb-1.5 block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">No. WhatsApp</label>
-                                <input type="tel" name="phone" required placeholder="Contoh: 0812..."
-                                    class="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-white/2 py-2.5 px-4 text-sm text-gray-800 dark:text-white focus:outline-none focus:border-brand-500 transition-all" />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="mb-1.5 block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Detail Kebutuhan / Pesan</label>
-                            <textarea name="message" rows="4" required placeholder="Tuliskan pesan Anda..."
-                                class="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-white/2 py-2.5 px-4 text-sm text-gray-800 dark:text-white focus:outline-none focus:border-brand-500 transition-all"></textarea>
-                        </div>
-
-                        <button type="submit" class="w-full rounded-full bg-brand-500 py-3.5 text-center text-sm font-semibold text-white hover:bg-brand-600 transition-all shadow-md">
-                            Kirim Formulir Demo <i class="bx bx-paper-plane align-middle ml-1"></i>
-                        </button>
-                    </form>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- FOOTER -->
-    <footer class="py-12 border-t border-gray-150 dark:border-white/5 px-6 bg-gray-50 dark:bg-black/40 transition-colors">
-        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-gray-500">
-            <p>&copy; 2026 Eduja System. Hak Cipta Dilindungi Undang-Undang.</p>
-            <div class="flex gap-6">
-                <a href="/#fitur" class="hover:text-gray-800 dark:hover:text-gray-300">Fitur</a>
-                <a href="/pricing" class="hover:text-gray-800 dark:hover:text-gray-300">Harga</a>
-                <a href="/contact" class="hover:text-gray-800 dark:hover:text-gray-300">Kontak</a>
+    {{-- TESTIMONIAL MINI --}}
+    <section class="py-16 px-6 section-divider scroll-reveal">
+        <div class="max-w-5xl mx-auto text-center">
+            <p class="text-xs text-gray-400 uppercase tracking-wider font-bold mb-8">Bergabunglah bersama mereka yang sudah merasakannya</p>
+            <div class="flex flex-wrap justify-center gap-3">
+                @foreach(['SMA Muhammadiyah Bandung', 'MTs Nurul Huda Surabaya', 'SD Al-Azhar Jakarta', 'SMK Teknik Semarang', 'SMP Yayasan Bina Putra', 'SDIT Pelangi Bali', 'SMA Negeri 3 Makassar', 'MAN 1 Yogyakarta'] as $school)
+                <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 px-4 py-2 rounded-full">{{ $school }}</span>
+                @endforeach
+                <span class="text-xs font-semibold text-brand-500 dark:text-brand-400 bg-brand-500/10 border border-brand-500/20 px-4 py-2 rounded-full">+192 sekolah lainnya...</span>
             </div>
         </div>
-    </footer>
+    </section>
 
-    <!-- Alpine.js theme store integration -->
-    <script>
-        document.addEventListener('alpine:init', () => {
-            Alpine.store('theme', {
-                init() {
-                    const savedTheme = localStorage.getItem('theme');
-                    this.theme = savedTheme || systemTheme;
-                    this.applyTheme();
-                },
-                theme: 'light',
-                toggle() {
-                    this.theme = this.theme === 'light' ? 'dark' : 'light';
-                    localStorage.setItem('theme', this.theme);
-                    this.applyTheme();
-                },
-                applyTheme() {
-                    if (this.theme === 'dark') {
-                        document.documentElement.classList.add('dark');
-                    } else {
-                        document.documentElement.classList.remove('dark');
-                    }
-                }
-            });
-        });
-    </script>
+    @include('partials.public-footer')
+    @include('partials.public-scripts')
 </body>
 </html>

@@ -1,448 +1,60 @@
 <!DOCTYPE html>
 <html lang="id" class="scroll-smooth" x-data>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="/favicon.png">
-    <title>Eduja - Sistem Manajemen Operasional & Keuangan Sekolah Modern</title>
-    
-    <!-- Meta SEO -->
-    <meta name="description" content="Eduja adalah sistem terpadu manajemen operasional dan keuangan sekolah di Indonesia. Mengelola SPP, Tabungan, Absensi, dan BKU Dana BOS secara presisi.">
-    <meta name="keywords" content="sistem sekolah, aplikasi spp, dana bos, bku sekolah, rkas, absensi siswa, tabungan siswa">
-    
-    <!-- Google Fonts & Icons -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-    
-    <!-- Tailwind v4 and Custom Styles -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    
-    <script>
-        // Inline theme initialization to prevent flash on load
-        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        const savedTheme = localStorage.getItem('theme');
-        const theme = savedTheme || systemTheme;
-        if (theme === 'dark') {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-    </script>
-    
+    @include('partials.public-head', [
+        'title' => 'Eduja — Operasional Sekolah, Lebih Ringan',
+        'description' => 'Eduja membantu sekolah mengelola akademik, keuangan, presensi, dan komunikasi dalam satu ruang kerja yang mudah digunakan.'
+    ])
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            transition: background-color 0.5s ease, color 0.5s ease;
-        }
-
-        /* Dark Theme Default */
-        html.dark body {
-            background-color: #08080c;
-            color: #f3f4f6;
-        }
-        /* Light Theme */
-        html:not(.dark) body {
-            background-color: #fcfcfd;
-            color: #1f2937;
-        }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            border-radius: 4px;
-            transition: background-color 0.3s;
-        }
-        html.dark ::-webkit-scrollbar-thumb {
-            background: #1a1a24;
-        }
-        html:not(.dark) ::-webkit-scrollbar-thumb {
-            background: #e2e8f0;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #006266;
-        }
-
-        /* Apple Glassmorphism Nav */
-        .glass-nav {
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            transition: background-color 0.5s ease, border-color 0.5s ease;
-        }
-        html.dark .glass-nav {
-            background: rgba(8, 8, 12, 0.75);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        html:not(.dark) .glass-nav {
-            background: rgba(252, 252, 253, 0.75);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-        }
-
-        /* Apple Glassmorphism Card */
-        .glass-card {
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        html.dark .glass-card {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        html:not(.dark) .glass-card {
-            background: rgba(255, 255, 255, 0.6);
-            border: 1px solid rgba(0, 0, 0, 0.06);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.02);
-        }
-
-        html.dark .glass-card:hover {
-            background: rgba(255, 255, 255, 0.04);
-            border-color: rgba(0, 98, 102, 0.4);
-            transform: translateY(-4px);
-            box-shadow: 0 20px 40px -15px rgba(0, 98, 102, 0.15);
-        }
-        html:not(.dark) .glass-card:hover {
-            background: rgba(255, 255, 255, 0.9);
-            border-color: rgba(0, 98, 102, 0.25);
-            transform: translateY(-4px);
-            box-shadow: 0 20px 45px -12px rgba(0, 98, 102, 0.08);
-        }
-
-        /* Gradient Text */
-        .gradient-text {
-            transition: background-image 0.5s ease;
-        }
-        html.dark .gradient-text {
-            background: linear-gradient(135deg, #ffffff 30%, #a5b1c2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        html:not(.dark) .gradient-text {
-            background: linear-gradient(135deg, #111827 30%, #4b5563 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        /* Native Scroll-Driven Animations */
-        @media (prefers-reduced-motion: no-preference) {
-            @supports ((animation-timeline: view()) and (animation-range: entry)) {
-                @keyframes fade-up {
-                    from {
-                        opacity: 0;
-                        transform: translateY(60px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-
-                .scroll-reveal {
-                    animation: fade-up auto linear both;
-                    animation-timeline: view();
-                    animation-range: entry 10% cover 40%;
-                }
-            }
-        }
-
-        /* Fallback Reveal Class if CSS Scroll-Driven Animations not supported */
-        .reveal-fallback {
-            opacity: 0;
-            transform: translateY(40px);
-            transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .reveal-fallback.active {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        :root { --cream:#fbf6ed; --ink:#173b3d; --teal:#087f7a; --mint:#d8f1e7; --peach:#f5c8ad; --yellow:#f6d873; --line:#dce5dc; }
+        body { background:var(--cream)!important; color:var(--ink); font-family: 'Inter', sans-serif; }
+        .eduja-display { font-family: Georgia, 'Times New Roman', serif; letter-spacing:-.06em; }
+        .landing-nav { background:rgba(251,246,237,.84); backdrop-filter:blur(18px); border-bottom:1px solid rgba(23,59,61,.08); }
+        .paper-grid { background-image:linear-gradient(rgba(8,127,122,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(8,127,122,.06) 1px,transparent 1px); background-size:26px 26px; }
+        .blob { border-radius:42% 58% 62% 38% / 45% 38% 62% 55%; }
+        .hero-card { box-shadow:0 24px 60px rgba(23,59,61,.14); transform:rotate(2deg); }
+        .hero-card:hover { transform:rotate(0) translateY(-6px); }
+        .feature-card { border:1px solid var(--line); background:rgba(255,255,255,.52); transition:transform .3s ease, box-shadow .3s ease; }
+        .feature-card:hover { transform:translateY(-5px); box-shadow:0 16px 35px rgba(23,59,61,.09); }
+        .sticker { animation:float 5s ease-in-out infinite; }
+        .sticker-delay { animation-delay:-2s; }
+        @keyframes float { 0%,100%{transform:translateY(0) rotate(-4deg)} 50%{transform:translateY(-9px) rotate(2deg)} }
+        @media (prefers-reduced-motion:reduce){.sticker{animation:none}.hero-card,.feature-card{transition:none}}
     </style>
 </head>
 <body class="antialiased">
+    @include('partials.public-nav', ['activePage' => 'home'])
 
-    <!-- Header / Navbar -->
-    <header class="fixed top-0 left-0 right-0 z-50 glass-nav">
-        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-            <a href="#" class="flex items-center gap-2 text-xl font-bold tracking-tight text-gray-900 dark:text-white">
-                <span class="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center text-white shadow-xs">E</span>
-                Eduja
-            </a>
-            
-            <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600 dark:text-gray-400">
-                <a href="#fitur" class="hover:text-gray-900 dark:hover:text-white transition-colors">Fitur Utama</a>
-                <a href="/pricing" class="hover:text-gray-900 dark:hover:text-white transition-colors">Harga</a>
-                <a href="/contact" class="hover:text-gray-900 dark:hover:text-white transition-colors">Kontak</a>
-            </nav>
-
-            <div class="flex items-center gap-4">
-                <!-- Dark/Light Theme Toggle -->
-                <button @click="$store.theme.toggle()" class="w-9 h-9 flex items-center justify-center rounded-full border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300 transition-colors" aria-label="Toggle Theme">
-                    <i x-show="$store.theme.theme === 'light'" class="bx bx-moon text-lg"></i>
-                    <i x-show="$store.theme.theme === 'dark'" class="bx bx-sun text-lg" style="display: none;"></i>
-                </button>
-
-                <a href="{{ route('login') }}" class="rounded-full bg-gray-900 text-white dark:bg-white dark:text-black px-5 py-2 text-xs font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-all shadow-xs">
-                    Masuk Aplikasi <i class="bx bx-right-arrow-alt align-middle ml-1"></i>
-                </a>
-            </div>
-        </div>
-    </header>
-
-    <!-- HERO SECTION -->
-    <section class="relative min-h-screen pt-32 pb-20 flex flex-col justify-center items-center px-6 overflow-hidden">
-        <!-- Glowing background decoration (Visible in dark mode) -->
-        <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-brand-500/5 dark:bg-brand-500/10 rounded-full blur-[120px] pointer-events-none"></div>
-
-        <div class="max-w-4xl mx-auto text-center z-10">
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 border border-brand-500/20 px-3.5 py-1 text-xs font-semibold text-brand-500 dark:text-brand-400 mb-6">
-                <i class="bx bxs-bolt"></i> Eduja System v1.0 Live
-            </span>
-            
-            <h1 class="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight gradient-text leading-[1.1] mb-6">
-                Sistem Sekolah Modern.<br>Ringkas. Presisi.
-            </h1>
-            
-            <p class="text-base sm:text-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed mb-10">
-                Sederhanakan manajemen operasional kesiswaan, penagihan SPP otomatis, simpanan tabungan, presensi harian, hingga pelaporan pertanggungjawaban Dana BOS (BKU) dalam satu dasbor terpadu.
-            </p>
-
-            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <a href="{{ route('login') }}" class="w-full sm:w-auto rounded-full bg-brand-500 px-8 py-3.5 text-center text-sm font-semibold text-white hover:bg-brand-600 transition-all shadow-md">
-                    Coba Demo Sekarang
-                </a>
-                <a href="#fitur" class="w-full sm:w-auto rounded-full border border-gray-200 dark:border-white/10 bg-white/2 px-8 py-3.5 text-center text-sm font-semibold text-gray-800 dark:text-white hover:bg-gray-50 dark:hover:bg-white/5 transition-all">
-                    Pelajari Fitur
-                </a>
-            </div>
-        </div>
-    </section>
-
-    <!-- SECTION: BRIEF VALUES -->
-    <section id="keunggulan" class="py-20 px-6 max-w-7xl mx-auto border-t border-gray-150 dark:border-white/5 scroll-reveal">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div class="p-6">
-                <span class="text-brand-500 text-3xl mb-4 block"><i class="bx bxs-zap"></i></span>
-                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Instan & Otomatis</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Pembuatan tagihan SPP ribuan siswa sekali klik, didukung rekap tunggakan real-time.</p>
-            </div>
-            <div class="p-6">
-                <span class="text-brand-500 text-3xl mb-4 block"><i class="bx bxs-lock-alt"></i></span>
-                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Aman & Terkendali</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Pembagian hak akses (KS, Bendahara, TU) yang membatasi hak input dan pelaporan keuangan.</p>
-            </div>
-            <div class="p-6">
-                <span class="text-brand-500 text-3xl mb-4 block"><i class="bx bxs-file-pdf"></i></span>
-                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Patuhi Regulasi BOS</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Kompilasi Buku Kas Umum (BKU) otomatis beserta Buku Pembantu Kas, Bank, & Pajak yang siap cetak.</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- SECTION: FEATURES -->
-    <section id="fitur" class="py-20 px-6 max-w-7xl mx-auto border-t border-gray-150 dark:border-white/5">
-        <div class="mb-12">
-            <span class="text-xs font-bold uppercase tracking-wider text-brand-500 dark:text-brand-400">Kemampuan Utama</span>
-            <h2 class="text-3xl sm:text-5xl font-bold text-gray-900 dark:text-white tracking-tight mt-2">Didesain khusus untuk tata kelola sekolah Indonesia.</h2>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            
-            <!-- Card 1: SPP -->
-            <div class="glass-card rounded-2xl p-6 flex flex-col justify-between min-h-[300px] scroll-reveal">
-                <div>
-                    <div class="w-12 h-12 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-500 dark:text-brand-400 flex items-center justify-center text-xl mb-6">
-                        <i class="bx bx-receipt"></i>
+    <main>
+        <section class="paper-grid relative overflow-hidden px-6 pb-20 pt-36 md:pb-28 md:pt-48">
+            <div class="mx-auto grid max-w-6xl items-center gap-14 lg:grid-cols-[.9fr_1.1fr]">
+                <div class="relative z-10">
+                    <p class="mb-6 text-sm font-black uppercase tracking-[.2em] text-[var(--teal)]">EDUJA — Sekolah Jadi Seru</p>
+                    <h1 class="eduja-display max-w-xl text-6xl leading-[.95] text-[var(--ink)] sm:text-7xl lg:text-[88px]">Operasional sekolah<br><em class="text-[var(--teal)]">lebih terarah.</em></h1>
+                    <p class="mt-7 max-w-lg text-base leading-8 text-[var(--ink)]/65 sm:text-lg">Satu platform untuk mengelola akademik, keuangan, presensi, dan komunikasi sekolah—dengan informasi yang jelas dan alur kerja yang mudah diikuti.</p>
+                    <div class="mt-9 flex flex-col gap-3 sm:flex-row"><a href="/contact" class="rounded-full bg-[var(--teal)] px-6 py-3.5 text-center text-sm font-bold text-white shadow-lg shadow-[var(--teal)]/20 transition hover:-translate-y-0.5">Jadwalkan demo gratis <i class="bx bx-arrow-back bx-rotate-180 ml-1 align-middle"></i></a><a href="#fitur" class="rounded-full border border-[var(--ink)]/20 px-6 py-3.5 text-center text-sm font-bold text-[var(--ink)] transition hover:bg-white/70">Lihat cara Eduja bekerja</a></div>
+                    <div class="mt-9 flex items-center gap-3 text-xs font-semibold text-[var(--ink)]/55"><span class="flex -space-x-2"><i class="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[var(--cream)] bg-[#f3b69b] not-italic">KS</i><i class="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[var(--cream)] bg-[#91d4be] not-italic">TU</i><i class="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[var(--cream)] bg-[#f3d27b] not-italic">BK</i></span> Dipakai oleh tim sekolah yang ingin bertumbuh
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Kasir SPP Modern</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Definisikan tarif SPP per tahun ajaran/kelas, terima angsuran pembayaran, rekap tunggakan siswa, dan cetak kuitansi seketika.</p>
                 </div>
-                <div class="pt-6 border-t border-gray-150 dark:border-white/5 mt-6 text-xs text-brand-500 dark:text-brand-400 font-semibold font-mono">MODUL KEUANGAN SPP</div>
-            </div>
-
-            <!-- Card 2: BKU -->
-            <div class="glass-card rounded-2xl p-6 flex flex-col justify-between min-h-[300px] scroll-reveal">
-                <div>
-                    <div class="w-12 h-12 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-500 dark:text-brand-400 flex items-center justify-center text-xl mb-6">
-                        <i class="bx bx-book-content"></i>
+                <div class="relative mx-auto w-full max-w-xl lg:ml-auto">
+                    <div class="blob absolute -right-3 top-2 h-[94%] w-[94%] bg-[var(--mint)]"></div><div class="blob absolute -bottom-7 -left-8 h-32 w-32 bg-[var(--peach)] opacity-80"></div>
+                    <div class="hero-card relative z-10 rounded-[30px] border-[10px] border-white bg-white p-4 transition duration-500 sm:p-6">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-4"><div><p class="text-[10px] font-bold uppercase tracking-widest text-[var(--teal)]">Ringkasan sekolah</p><h2 class="mt-1 text-lg font-black text-slate-800">SDN Harapan Jaya</h2></div><span class="text-xs font-semibold text-slate-400">Senin, 27 Juli</span></div>
+                        <div class="mt-5 grid grid-cols-2 gap-3"><div class="rounded-2xl bg-[#e9f6ee] p-4"><i class="bx bx-group text-xl text-[var(--teal)]"></i><p class="mt-3 text-[11px] font-semibold text-slate-500">Siswa aktif</p><strong class="text-2xl text-slate-800">1.248</strong></div><div class="rounded-2xl bg-[#fff4dc] p-4"><i class="bx bx-wallet text-xl text-[#c48814]"></i><p class="mt-3 text-[11px] font-semibold text-slate-500">SPP bulan ini</p><strong class="text-2xl text-slate-800">92<span class="text-base">%</span></strong></div></div>
+                        <div class="mt-3 rounded-2xl bg-slate-50 p-4"><div class="flex justify-between text-xs font-bold text-slate-600"><span>Kehadiran siswa</span><span class="text-[var(--teal)]">98,4%</span></div><div class="mt-3 h-3 overflow-hidden rounded-full bg-slate-200"><div class="h-full w-[98%] rounded-full bg-[var(--teal)]"></div></div><div class="mt-5 flex items-end gap-2" style="height:64px"><i class="h-[38%] flex-1 rounded-t-lg bg-[#b9e1d3]"></i><i class="h-[55%] flex-1 rounded-t-lg bg-[#8bcdb7]"></i><i class="h-[48%] flex-1 rounded-t-lg bg-[#b9e1d3]"></i><i class="h-[76%] flex-1 rounded-t-lg bg-[var(--teal)]"></i><i class="h-[64%] flex-1 rounded-t-lg bg-[#8bcdb7]"></i><i class="h-[88%] flex-1 rounded-t-lg bg-[var(--teal)]"></i></div></div>
+                        <div class="mt-3 flex items-center gap-3 rounded-2xl border border-[#f3ddd1] bg-[#fff9f4] p-3"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--peach)] text-lg">☕</span><p class="text-[11px] font-semibold leading-4 text-slate-600">Semua tugas hari ini<br><b class="text-slate-800">beres sebelum istirahat.</b></p><i class="bx bx-check-circle ml-auto text-xl text-[var(--teal)]"></i></div>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Buku Kas Umum & Pembantu</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Kompilasi BKU otomatis yang memisahkan pembukuan Kas Tunai, Rekening Bank, dan Pajak. Memudahkan pelaporan pertanggungjawaban dinas.</p>
-                </div>
-                <div class="pt-6 border-t border-gray-150 dark:border-white/5 mt-6 text-xs text-brand-500 dark:text-brand-400 font-semibold font-mono">MODUL DANA BOS & BKU</div>
-            </div>
-
-            <!-- Card 3: Tabungan -->
-            <div class="glass-card rounded-2xl p-6 flex flex-col justify-between min-h-[300px] scroll-reveal">
-                <div>
-                    <div class="w-12 h-12 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-500 dark:text-brand-400 flex items-center justify-center text-xl mb-6">
-                        <i class="bx bx-wallet"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Simpanan Tabungan Siswa</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Sistem pencatatan setoran dan penarikan tabungan titipan siswa yang akurat untuk brankas internal sekolah.</p>
-                </div>
-                <div class="pt-6 border-t border-gray-150 dark:border-white/5 mt-6 text-xs text-brand-500 dark:text-brand-400 font-semibold font-mono">MODUL TABUNGAN INTERNAL</div>
-            </div>
-
-            <!-- Card 4: Absensi -->
-            <div class="glass-card rounded-2xl p-6 flex flex-col justify-between min-h-[300px] scroll-reveal">
-                <div>
-                    <div class="w-12 h-12 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-500 dark:text-brand-400 flex items-center justify-center text-xl mb-6">
-                        <i class="bx bx-calendar-check"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Presensi Harian Siswa & GTK</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Lembar absensi digital harian dengan status Hadir, Sakit, Izin, Alfa, dan Dinas Luar (DL) bagi guru dan tenaga kependidikan.</p>
-                </div>
-                <div class="pt-6 border-t border-gray-150 dark:border-white/5 mt-6 text-xs text-brand-500 dark:text-brand-400 font-semibold font-mono">MODUL KESISWAAN & GTK</div>
-            </div>
-
-            <!-- Card 5: Pajak -->
-            <div class="glass-card rounded-2xl p-6 flex flex-col justify-between min-h-[300px] scroll-reveal">
-                <div>
-                    <div class="w-12 h-12 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-500 dark:text-brand-400 flex items-center justify-center text-xl mb-6">
-                        <i class="bx bx-calculator"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Kalkulator Pajak Belanja</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Perhitungan potongan pajak otomatis untuk PPN (11%), PPh 21, PPh 22, dan PPh 23 pada pencatatan belanja operasional sekolah.</p>
-                </div>
-                <div class="pt-6 border-t border-gray-150 dark:border-white/5 mt-6 text-xs text-brand-500 dark:text-brand-400 font-semibold font-mono">MODUL PERPAJAKAN BOS</div>
-            </div>
-
-            <!-- Card 6: Bagan -->
-            <div class="glass-card rounded-2xl p-6 flex flex-col justify-between min-h-[300px] scroll-reveal">
-                <div>
-                    <div class="w-12 h-12 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-500 dark:text-brand-400 flex items-center justify-center text-xl mb-6">
-                        <i class="bx bx-network-chart"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Struktur Organisasi Dinamis</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Visualisasi diagram hierarki bagan organisasi sekolah otomatis yang menarik, menghubungkan Kepala Sekolah sampai Guru Pengajar.</p>
-                </div>
-                <div class="pt-6 border-t border-gray-150 dark:border-white/5 mt-6 text-xs text-brand-500 dark:text-brand-400 font-semibold font-mono">MODUL STRUKTUR ORGANISASI</div>
-            </div>
-
-        </div>
-    </section>
-
-    <!-- SECTION: LIVE INTERACTIVE PREVIEW -->
-    <section id="demo" class="py-20 px-6 max-w-7xl mx-auto border-t border-gray-150 dark:border-white/5 scroll-reveal">
-        <div class="text-center mb-12">
-            <span class="text-xs font-bold uppercase tracking-wider text-brand-500 dark:text-brand-400">Preview Aplikasi</span>
-            <h2 class="text-3xl sm:text-5xl font-bold text-gray-900 dark:text-white tracking-tight mt-2">Dasbor Operasional Terpusat</h2>
-            <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 max-w-lg mx-auto mt-4">Lihat ringkasan visual data siswa, penerimaan SPP, saldo kas BKU, dan tunggakan secara seketika.</p>
-        </div>
-
-        <!-- Sleek Web Browser Mockup -->
-        <div class="glass-card rounded-2xl overflow-hidden border border-gray-200 dark:border-white/10 shadow-2xl max-w-5xl mx-auto">
-            <!-- Browser Header -->
-            <div class="bg-gray-100 dark:bg-white/5 px-4 py-3 flex items-center gap-2 border-b border-gray-200 dark:border-white/5">
-                <span class="w-3 h-3 rounded-full bg-red-500/80"></span>
-                <span class="w-3 h-3 rounded-full bg-yellow-500/80"></span>
-                <span class="w-3 h-3 rounded-full bg-green-500/80"></span>
-                <div class="bg-gray-200 dark:bg-black/20 text-[10px] text-gray-500 dark:text-gray-400 px-8 py-0.5 rounded-md ml-4 font-mono select-none">https://eduja.sch.id/dashboard</div>
-            </div>
-            <!-- Mockup Content -->
-            <div class="p-6 bg-gray-50 dark:bg-[#0c0c14] grid grid-cols-1 md:grid-cols-4 gap-4 text-left select-none pointer-events-none transition-colors">
-                <!-- Mock Cards -->
-                <div class="bg-white dark:bg-white/2 p-4 rounded-xl border border-gray-200 dark:border-white/5 transition-colors">
-                    <span class="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider block font-semibold">Siswa Aktif</span>
-                    <h5 class="text-lg font-bold text-gray-800 dark:text-white mt-1">1.240 <span class="text-[10px] text-gray-400 font-normal">siswa</span></h5>
-                </div>
-                <div class="bg-white dark:bg-white/2 p-4 rounded-xl border border-gray-200 dark:border-white/5 transition-colors">
-                    <span class="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider block font-semibold">Kas Masuk (SPP)</span>
-                    <h5 class="text-lg font-bold text-green-600 dark:text-green-500 mt-1">Rp 248.500.000</h5>
-                </div>
-                <div class="bg-white dark:bg-white/2 p-4 rounded-xl border border-gray-200 dark:border-white/5 transition-colors">
-                    <span class="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider block font-semibold">Belanja Operasional</span>
-                    <h5 class="text-lg font-bold text-red-500 dark:text-red-400 mt-1">Rp 120.400.000</h5>
-                </div>
-                <div class="bg-white dark:bg-white/2 p-4 rounded-xl border border-gray-200 dark:border-white/5 transition-colors">
-                    <span class="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider block font-semibold">Saldo Kas BKU</span>
-                    <h5 class="text-lg font-bold text-brand-600 dark:text-brand-400 mt-1">Rp 128.100.000</h5>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- SECTION: CALL TO ACTION -->
-    <section class="py-24 px-6 text-center relative overflow-hidden border-t border-gray-150 dark:border-white/5">
-        <!-- Decoration (Visible in dark mode) -->
-        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-brand-500/5 dark:bg-brand-500/10 rounded-full blur-[140px] pointer-events-none"></div>
+        <section id="fitur" class="px-6 py-24"><div class="mx-auto max-w-6xl"><div class="max-w-2xl"><p class="text-xs font-black uppercase tracking-[.2em] text-[var(--teal)]">Platform terintegrasi untuk sekolah</p><h2 class="eduja-display mt-4 text-5xl leading-none sm:text-6xl">Satu sistem untuk<br>keputusan yang lebih baik.</h2></div><div class="mt-14 grid gap-4 md:grid-cols-2 lg:grid-cols-4">@foreach([['icon'=>'bx-group','title'=>'Data terpusat','desc'=>'Kelola siswa, guru, kelas, dan tahun ajaran dari satu sumber informasi.'],['icon'=>'bx-wallet','title'=>'Keuangan transparan','desc'=>'Pantau SPP, BOS, BKU, dan tabungan dengan pencatatan yang konsisten.'],['icon'=>'bx-calendar-check','title'=>'Presensi terukur','desc'=>'Rekam kehadiran harian dan hasilkan rekap yang siap digunakan.'],['icon'=>'bx-message-rounded-dots','title'=>'Kolaborasi efektif','desc'=>'Percepat pengumuman, persetujuan, dan koordinasi antar-tim sekolah.']] as $feature)<article class="feature-card rounded-[24px] p-6"><div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--mint)] text-2xl text-[var(--teal)]"><i class="bx {{ $feature['icon'] }}"></i></div><h3 class="mt-6 text-base font-black">{{ $feature['title'] }}</h3><p class="mt-2 text-sm leading-6 text-[var(--ink)]/60">{{ $feature['desc'] }}</p></article>@endforeach</div></div></section>
 
-        <div class="max-w-3xl mx-auto z-10 relative">
-            <h2 class="text-3xl sm:text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight mb-6">
-                Siap memodernisasi manajemen keuangan sekolah Anda?
-            </h2>
-            <p class="text-gray-500 dark:text-gray-400 max-w-xl mx-auto text-sm sm:text-base leading-relaxed mb-8">
-                Tinggalkan pencatatan manual. Lindungi transparansi dana sekolah, percepat pelunasan tagihan, dan selesaikan BKU BOS tanpa lembur.
-            </p>
-            <a href="{{ route('login') }}" class="inline-flex rounded-full bg-brand-500 px-8 py-3.5 text-center text-sm font-semibold text-white hover:bg-brand-600 transition-all shadow-md">
-                Akses Dasbor Demo Sekarang <i class="bx bx-right-arrow-alt align-middle ml-1"></i>
-            </a>
-        </div>
-    </section>
+        <section id="cara-kerja" class="bg-[var(--ink)] px-6 py-24 text-white"><div class="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[.8fr_1.2fr] lg:items-center"><div><p class="text-xs font-black uppercase tracking-[.2em] text-[var(--yellow)]">Mulai dengan nyaman</p><h2 class="eduja-display mt-4 text-5xl leading-none sm:text-6xl">Dari kenal,<br>jadi terbiasa.</h2><p class="mt-6 max-w-md leading-7 text-white/60">Kami menemani sekolah dari demo sampai sistem benar-benar dipakai oleh tim setiap hari.</p></div><div class="grid gap-3 sm:grid-cols-3">@foreach([['n'=>'01','t'=>'Kenali kebutuhan','d'=>'Cerita dulu tentang ritme sekolah Anda.'],['n'=>'02','t'=>'Atur bersama','d'=>'Data dan alur kerja disiapkan dengan rapi.'],['n'=>'03','t'=>'Jalankan harian','d'=>'Tim siap bekerja lebih ringan bersama Eduja.']] as $step)<div class="rounded-[24px] border border-white/10 bg-white/5 p-5"><span class="text-3xl font-black text-[var(--yellow)]">{{ $step['n'] }}</span><h3 class="mt-10 font-black">{{ $step['t'] }}</h3><p class="mt-2 text-sm leading-6 text-white/55">{{ $step['d'] }}</p></div>@endforeach</div></div></section>
 
-    <!-- FOOTER -->
-    <footer class="py-12 border-t border-gray-150 dark:border-white/5 px-6 bg-gray-50 dark:bg-black/40 transition-colors">
-        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-gray-500">
-            <p>&copy; 2026 Eduja System. Hak Cipta Dilindungi Undang-Undang.</p>
-            <div class="flex gap-6">
-                <a href="#fitur" class="hover:text-gray-800 dark:hover:text-gray-300">Fitur</a>
-                <a href="/pricing" class="hover:text-gray-800 dark:hover:text-gray-300">Harga</a>
-                <a href="/contact" class="hover:text-gray-800 dark:hover:text-gray-300">Kontak</a>
-            </div>
-        </div>
-    </footer>
-
-    <!-- INTERSECTION OBSERVER REVEAL FALLBACK SCRIPT -->
-    <script>
-        // Check if browser natively supports scroll-driven animations
-        if (!CSS.supports('(animation-timeline: view()) and (animation-range: entry)')) {
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('active');
-                    }
-                });
-            }, {
-                threshold: 0.15
-            });
-
-            // Target scroll reveal elements
-            document.querySelectorAll('.scroll-reveal').forEach(el => {
-                el.classList.add('reveal-fallback');
-                observer.observe(el);
-            });
-        }
-    </script>
-    
-    <!-- Alpine.js theme store integration -->
-    <script>
-        document.addEventListener('alpine:init', () => {
-            Alpine.store('theme', {
-                init() {
-                    const savedTheme = localStorage.getItem('theme');
-                    this.theme = savedTheme || systemTheme;
-                    this.applyTheme();
-                },
-                theme: 'light',
-                toggle() {
-                    this.theme = this.theme === 'light' ? 'dark' : 'light';
-                    localStorage.setItem('theme', this.theme);
-                    this.applyTheme();
-                },
-                applyTheme() {
-                    if (this.theme === 'dark') {
-                        document.documentElement.classList.add('dark');
-                    } else {
-                        document.documentElement.classList.remove('dark');
-                    }
-                }
-            });
-        });
-    </script>
+        <section class="px-6 py-24"><div class="mx-auto flex max-w-4xl flex-col items-center rounded-[36px] bg-[var(--mint)] px-7 py-14 text-center"><h2 class="eduja-display mt-4 text-5xl leading-none sm:text-6xl">Saat sistemnya jelas,<br>sekolah bisa melangkah lebih jauh.</h2><p class="mt-5 max-w-lg text-sm leading-7 text-[var(--ink)]/65">Temukan bagaimana EDUJA membantu tim sekolah bekerja lebih efektif, transparan, dan fokus pada pendidikan.</p><a href="/contact" class="mt-8 rounded-full bg-[var(--teal)] px-7 py-3.5 text-sm font-bold text-white transition hover:bg-[#06645f]">Jadwalkan konsultasi <i class="bx bx-right-arrow-alt ml-1"></i></a></div></section>
+    </main>
+    @include('partials.public-footer')
+    @include('partials.public-scripts')
 </body>
 </html>

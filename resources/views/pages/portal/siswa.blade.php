@@ -1,646 +1,458 @@
-@extends('layouts.app')
+@extends('layouts.fullscreen-layout')
 
 @section('content')
-    <x-common.page-breadcrumb :pageTitle="$title" label="Portal" />
+    <div class="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col font-sans antialiased text-zinc-900 dark:text-zinc-50 relative"
+         x-data="{ 
+            activeTab: 'home', 
+            activeDay: 'Senin',
+            currentTime: '',
+            currentDate: '',
+            init() {
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+                const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                const updateTime = () => {
+                    const now = new Date();
+                    this.currentTime = now.toTimeString().split(' ')[0].substring(0, 5);
+                    this.currentDate = days[now.getDay()] + ', ' + now.getDate() + ' ' + months[now.getMonth()];
+                };
+                updateTime();
+                setInterval(updateTime, 1000);
+            }
+         }">
 
-    {{-- Session Flash Notifications --}}
-    @if(session('success'))
-        <div class="mb-5 flex items-center gap-3 rounded-xl border border-success-200 bg-success-50/50 p-4 text-sm font-medium text-success-800 dark:border-success-500/20 dark:bg-success-500/5 dark:text-success-400 backdrop-blur-md transition-all duration-300">
-            <i class="bx bx-check-circle text-xl text-success-600 dark:text-success-400"></i>
-            <div>{{ session('success') }}</div>
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="mb-5 flex items-center gap-3 rounded-xl border border-error-200 bg-error-50/50 p-4 text-sm font-medium text-error-800 dark:border-error-500/20 dark:bg-error-500/5 dark:text-error-400 backdrop-blur-md transition-all duration-300">
-            <i class="bx bx-error-circle text-xl text-error-600 dark:text-error-400"></i>
-            <div>{{ session('error') }}</div>
-        </div>
-    @endif
-
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        
-        {{-- LEFT COLUMN: PROFILE & ATTENDANCE --}}
-        <div class="lg:col-span-1 space-y-6">
-            
-            {{-- PROFILE CARD --}}
-            <div class="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-xs transition-all duration-300 hover:shadow-md dark:border-gray-800 dark:bg-white/[0.03]">
-                <div class="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-brand-500/10 blur-2xl"></div>
-                <div class="flex items-center gap-4">
-                    <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-brand-500 to-indigo-600 text-2xl font-bold text-white shadow-lg shadow-brand-500/20">
-                        {{ strtoupper(substr($student->name, 0, 2)) }}
-                    </div>
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ $student->name }}</h3>
-                        <p class="text-sm font-medium text-brand-600 dark:text-brand-400">{{ $className }}</p>
-                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">NISN: {{ $student->nisn }} | NIS: {{ $student->nis }}</p>
-                    </div>
+        {{-- 1. APP HEADER --}}
+        <div class="border-b border-zinc-200 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md sticky top-0 z-50">
+            <div class="max-w-2xl mx-auto w-full px-5 py-4 flex items-center justify-between">
+                <div class="flex items-center">
+                    <template x-if="activeTab === 'home'">
+                        <img src="/images/logo/logo-wide.png" alt="Eduja Logo" class="h-8 w-auto dark:brightness-0 dark:invert">
+                    </template>
+                    <template x-if="activeTab !== 'home'">
+                        <div>
+                            <span class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Portal Siswa</span>
+                            <h1 class="text-base font-black tracking-tight" x-text="activeTab === 'schedule' ? 'Jadwal Kelas' : (activeTab === 'grades' ? 'Laporan Rapor' : 'Pengajuan Izin')">Portal Siswa</h1>
+                        </div>
+                    </template>
                 </div>
-                
-                <div class="mt-6 grid grid-cols-2 gap-4 border-t border-gray-100 pt-5 dark:border-gray-800">
-                    <div>
-                        <span class="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Orang Tua/Wali</span>
-                        <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mt-0.5">{{ $student->parent_name }}</p>
-                    </div>
-                    <div>
-                        <span class="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">No. Telepon</span>
-                        <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mt-0.5">{{ $student->phone ?? '-' }}</p>
-                    </div>
-                </div>
-            </div>
+                <div class="flex items-center gap-2">
+                    @if(auth()->user()->hasRole(['super_admin', 'kepsek', 'tu', 'staf_tu', 'bendahara']))
+                        <a href="/dashboard" class="inline-flex items-center gap-1 rounded-lg border border-zinc-200 dark:border-zinc-800 px-2.5 py-1 text-[10px] font-bold text-zinc-650 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-850">
+                            <i class="bx bx-left-arrow-alt text-xs"></i> Admin
+                        </a>
+                    @else
+                        <span class="inline-flex items-center rounded-full bg-zinc-100 dark:bg-zinc-800 px-2.5 py-1 text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+                            {{ $student->nis }}
+                        </span>
+                    @endif
 
-            {{-- INTERACTIVE ATTENDANCE CARD --}}
-            <div x-data="{ 
-                currentTime: '', 
-                currentDate: '', 
-                init() {
-                    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-                    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-                    const updateTime = () => {
-                        const now = new Date();
-                        this.currentTime = now.toTimeString().split(' ')[0];
-                        this.currentDate = days[now.getDay()] + ', ' + now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
-                    };
-                    updateTime();
-                    setInterval(updateTime, 1000);
-                } 
-            }" class="rounded-2xl border border-gray-200 bg-white p-6 shadow-xs transition-all duration-300 hover:shadow-md dark:border-gray-800 dark:bg-white/[0.03]">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-base font-bold text-gray-950 dark:text-white">Presensi Mandiri</h3>
-                    <span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
-                        <span class="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-600 dark:bg-emerald-500 animate-pulse"></span>
-                        Lokasi Sesuai
-                    </span>
-                </div>
-
-                {{-- Time Clock --}}
-                <div class="my-6 text-center">
-                    <div class="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white" x-text="currentTime">00:00:00</div>
-                    <div class="mt-1 text-sm font-medium text-gray-500 dark:text-gray-400" x-text="currentDate">-</div>
-                </div>
-
-                {{-- Quick Attendance Buttons --}}
-                <div class="grid grid-cols-2 gap-4">
-                    {{-- Clock In --}}
-                    <form action="{{ route('portal.siswa.attendance') }}" method="POST">
+                    {{-- Logout Button --}}
+                    <form action="{{ route('logout') }}" method="POST" class="inline">
                         @csrf
-                        <input type="hidden" name="type" value="masuk">
-                        <button type="submit" 
-                            @if($todayAttendance && $todayAttendance->clock_in_at) disabled @endif
-                            class="flex w-full flex-col items-center justify-center rounded-xl border border-brand-200 bg-brand-50/50 p-4 transition-all duration-200 hover:bg-brand-100/50 active:scale-98 disabled:pointer-events-none disabled:border-gray-200 disabled:bg-gray-50 dark:border-brand-500/20 dark:bg-brand-500/5 dark:hover:bg-brand-500/10 dark:disabled:border-gray-800 dark:disabled:bg-gray-900/20 group">
-                            <i class="bx bxs-log-in text-2xl text-brand-600 dark:text-brand-400 transition-transform group-hover:scale-110"></i>
-                            <span class="mt-2 text-sm font-bold text-gray-900 dark:text-white">Masuk</span>
-                            <span class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                                @if($todayAttendance && $todayAttendance->clock_in_at)
-                                    {{ substr($todayAttendance->clock_in_at, 0, 5) }}
-                                @else
-                                    -- : --
-                                @endif
-                            </span>
-                        </button>
-                    </form>
-
-                    {{-- Clock Out --}}
-                    <form action="{{ route('portal.siswa.attendance') }}" method="POST">
-                        @csrf
-                        <input type="hidden" name="type" value="pulang">
-                        <button type="submit" 
-                            @if(!$todayAttendance || !$todayAttendance->clock_in_at || ($todayAttendance && $todayAttendance->clock_out_at)) disabled @endif
-                            class="flex w-full flex-col items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50/50 p-4 transition-all duration-200 hover:bg-indigo-100/50 active:scale-98 disabled:pointer-events-none disabled:border-gray-200 disabled:bg-gray-50 dark:border-indigo-500/20 dark:bg-indigo-500/5 dark:hover:bg-indigo-500/10 dark:disabled:border-gray-800 dark:disabled:bg-gray-900/20 group">
-                            <i class="bx bxs-log-out text-2xl text-indigo-600 dark:text-indigo-400 transition-transform group-hover:scale-110"></i>
-                            <span class="mt-2 text-sm font-bold text-gray-900 dark:text-white">Pulang</span>
-                            <span class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                                @if($todayAttendance && $todayAttendance->clock_out_at)
-                                    {{ substr($todayAttendance->clock_out_at, 0, 5) }}
-                                @else
-                                    -- : --
-                                @endif
-                            </span>
+                        <button type="submit" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-850 hover:text-zinc-800 dark:hover:text-zinc-200 transition" title="Keluar">
+                            <i class="bx bx-log-out text-sm"></i>
                         </button>
                     </form>
                 </div>
-
-                {{-- Action / Request Permission --}}
-                <div class="mt-5 flex justify-center">
-                    <button id="open-permission-modal"
-                        class="inline-flex items-center gap-2 text-xs font-semibold text-brand-600 hover:text-brand-700 hover:underline dark:text-brand-400 dark:hover:text-brand-300">
-                        <i class="bx bx-calendar-edit"></i>
-                        Ajukan Izin / Sakit
-                    </button>
-                </div>
             </div>
-
-            {{-- ATTENDANCE HISTORY LIST --}}
-            <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-xs dark:border-gray-800 dark:bg-white/[0.03]">
-                <h3 class="text-base font-bold text-gray-950 dark:text-white mb-4">Riwayat Kehadiran Terakhir</h3>
-                <div class="flow-root">
-                    <ul class="-my-4 divide-y divide-gray-100 dark:divide-gray-800">
-                        @forelse($attendanceHistory as $hist)
-                            <li class="py-3 flex items-center justify-between">
-                                <div class="flex items-center gap-3">
-                                    @if($hist->status === 'H')
-                                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
-                                            <i class="bx bx-check"></i>
-                                        </div>
-                                    @elseif($hist->status === 'S')
-                                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400">
-                                            <i class="bx bx-first-aid"></i>
-                                        </div>
-                                    @elseif($hist->status === 'I')
-                                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-                                            <i class="bx bx-envelope"></i>
-                                        </div>
-                                    @else
-                                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400">
-                                            <i class="bx bx-x"></i>
-                                        </div>
-                                    @endif
-                                    <div>
-                                        <p class="text-xs font-semibold text-gray-800 dark:text-gray-200">
-                                            {{ \Carbon\Carbon::parse($hist->attendance_date)->locale('id')->isoFormat('dddd, D MMMM') }}
-                                        </p>
-                                        <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
-                                            @if($hist->clock_in_at)
-                                                Masuk: {{ substr($hist->clock_in_at, 0, 5) }} @if($hist->clock_out_at) · Pulang: {{ substr($hist->clock_out_at, 0, 5) }} @endif
-                                            @else
-                                                {{ $hist->status === 'H' ? 'Hadir (Manual)' : ($hist->status === 'S' ? 'Sakit' : ($hist->status === 'I' ? 'Izin' : 'Alpa')) }}
-                                            @endif
-                                        </p>
-                                    </div>
-                                </div>
-                                <span class="text-xs font-bold 
-                                    @if($hist->status === 'H') text-emerald-600 dark:text-emerald-400
-                                    @elseif($hist->status === 'S') text-amber-600 dark:text-amber-400
-                                    @elseif($hist->status === 'I') text-indigo-600 dark:text-indigo-400
-                                    @else text-rose-600 dark:text-rose-400
-                                    @endif">
-                                    @if($hist->status === 'H') Hadir
-                                    @elseif($hist->status === 'S') Sakit
-                                    @elseif($hist->status === 'I') Izin
-                                    @else Alpa
-                                    @endif
-                                </span>
-                            </li>
-                        @empty
-                            <li class="py-6 text-center text-xs text-gray-400 dark:text-gray-500">Belum ada riwayat kehadiran bulan ini.</li>
-                        @endforelse
-                    </ul>
-                </div>
-            </div>
-
         </div>
 
-        {{-- RIGHT COLUMN: WEEKLY SCHEDULES & GRADES --}}
-        <div class="lg:col-span-2 space-y-6">
+        {{-- 2. SCROLLABLE CONTAINER --}}
+        <div class="flex-1 max-w-2xl mx-auto w-full px-5 py-6 pb-24 space-y-6">
 
-            {{-- QUICK STATS ROW --}}
-            <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-white/[0.03]">
-                    <span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Kehadiran</span>
-                    <h4 class="mt-2 text-2xl font-black text-gray-900 dark:text-white">{{ $stats['rate'] }}%</h4>
-                    <p class="text-[10px] text-gray-500 mt-1">Total Hadir: {{ $stats['hadir'] }} hari</p>
+            {{-- Session Flash Notifications (Placed below the header) --}}
+            @if(session('success'))
+                <div class="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-xs font-medium text-emerald-600 dark:text-emerald-400 backdrop-blur-md transition-all duration-300">
+                    <i class="bx bx-check-circle text-lg"></i>
+                    <div>{{ session('success') }}</div>
                 </div>
-                <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-white/[0.03]">
-                    <span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Rata-Rata Nilai</span>
-                    <h4 class="mt-2 text-2xl font-black text-gray-900 dark:text-white">85.4</h4>
-                    <p class="text-[10px] text-emerald-600 mt-1 font-semibold flex items-center gap-0.5">
-                        <i class="bx bx-trending-up"></i> +1.2 dari target
-                    </p>
-                </div>
-                <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-white/[0.03]">
-                    <span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Peringkat Kelas</span>
-                    <h4 class="mt-2 text-2xl font-black text-gray-900 dark:text-white">3 <span class="text-sm font-normal text-gray-400">/ 32</span></h4>
-                    <p class="text-[10px] text-gray-500 mt-1">Konsisten di Top 5</p>
-                </div>
-                <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-white/[0.03]">
-                    <span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Izin & Sakit</span>
-                    <h4 class="mt-2 text-2xl font-black text-gray-900 dark:text-white">{{ $stats['izin'] + $stats['sakit'] }}</h4>
-                    <p class="text-[10px] text-gray-500 mt-1">Izin: {{ $stats['izin'] }} · Sakit: {{ $stats['sakit'] }}</p>
-                </div>
-            </div>
+            @endif
 
-            {{-- WEEKLY CLASS SCHEDULE --}}
-            <div x-data="{ activeTab: 'Senin' }" class="rounded-2xl border border-gray-200 bg-white p-6 shadow-xs dark:border-gray-800 dark:bg-white/[0.03]">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                    <div>
-                        <h3 class="text-base font-bold text-gray-950 dark:text-white">Jadwal Kelas Mingguan</h3>
-                        <p class="text-xs text-gray-400 dark:text-gray-500">Mata pelajaran aktif hari Senin - Jumat</p>
-                    </div>
+            @if(session('error'))
+                <div class="flex items-center gap-3 rounded-xl border border-rose-500/20 bg-rose-500/5 p-4 text-xs font-medium text-rose-600 dark:text-rose-400 backdrop-blur-md transition-all duration-300">
+                    <i class="bx bx-error-circle text-lg"></i>
+                    <div>{{ session('error') }}</div>
+                </div>
+            @endif
+
+                {{-- ================= TAB 1: HOME ================= --}}
+                <div x-show="activeTab === 'home'" class="space-y-6">
                     
-                    {{-- Tabs --}}
-                    <div class="flex flex-wrap gap-1.5 rounded-xl bg-gray-50 p-1 dark:bg-gray-900">
+                    {{-- Student Simple Card --}}
+                    <div class="p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 flex items-center gap-4">
+                        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900 font-black text-lg">
+                            {{ strtoupper(substr($student->name, 0, 2)) }}
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-sm leading-tight text-zinc-900 dark:text-zinc-100">{{ $student->name }}</h3>
+                            <p class="text-xs text-zinc-500 mt-0.5">{{ $className }} · {{ $classLocation }}</p>
+                        </div>
+                    </div>
+
+                    {{-- Simple Attendance Panel --}}
+                    <div class="p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-4">
+                        <div class="flex justify-between items-center">
+                            <h4 class="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Presensi Mandiri</h4>
+                            <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                                <span class="mr-1 h-1 w-1 rounded-full bg-emerald-500 animate-pulse"></span>
+                                GPS Aktif
+                            </span>
+                        </div>
+
+                        {{-- Digital Clock --}}
+                        <div class="text-center py-2">
+                            <div class="text-3xl font-black tracking-tight" x-text="currentTime">00:00</div>
+                            <div class="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5" x-text="currentDate">-</div>
+                        </div>
+
+                        {{-- Buttons --}}
+                        <div class="grid grid-cols-2 gap-3">
+                            <form action="{{ route('portal.siswa.attendance') }}" method="POST">
+                                @csrf
+                                <input type="hidden" name="type" value="masuk">
+                                <button type="submit" 
+                                    @if($todayAttendance && $todayAttendance->clock_in_at) disabled @endif
+                                    class="w-full flex flex-col items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 py-3 transition hover:bg-zinc-100/50 dark:bg-zinc-900/50 dark:hover:bg-zinc-800/50 disabled:opacity-40 disabled:pointer-events-none group">
+                                    <i class="bx bxs-log-in text-lg text-zinc-700 dark:text-zinc-300"></i>
+                                    <span class="mt-1 text-xs font-bold">Masuk</span>
+                                    <span class="text-[9px] text-zinc-400 mt-0.5">
+                                        {{ $todayAttendance && $todayAttendance->clock_in_at ? substr($todayAttendance->clock_in_at, 0, 5) : '--:--' }}
+                                    </span>
+                                </button>
+                            </form>
+
+                            <form action="{{ route('portal.siswa.attendance') }}" method="POST">
+                                @csrf
+                                <input type="hidden" name="type" value="pulang">
+                                <button type="submit" 
+                                    @if(!$todayAttendance || !$todayAttendance->clock_in_at || ($todayAttendance && $todayAttendance->clock_out_at)) disabled @endif
+                                    class="w-full flex flex-col items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 py-3 transition hover:bg-zinc-100/50 dark:bg-zinc-900/50 dark:hover:bg-zinc-800/50 disabled:opacity-40 disabled:pointer-events-none group">
+                                    <i class="bx bxs-log-out text-lg text-zinc-700 dark:text-zinc-300"></i>
+                                    <span class="mt-1 text-xs font-bold">Pulang</span>
+                                    <span class="text-[9px] text-zinc-400 mt-0.5">
+                                        {{ $todayAttendance && $todayAttendance->clock_out_at ? substr($todayAttendance->clock_out_at, 0, 5) : '--:--' }}
+                                    </span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    {{-- Simple Stats Grid --}}
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-900/20">
+                            <span class="text-[9px] font-bold text-zinc-400 uppercase">Rata-rata Nilai</span>
+                            <div class="text-xl font-black mt-1">85.4</div>
+                        </div>
+                        <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-900/20">
+                            <span class="text-[9px] font-bold text-zinc-400 uppercase">Kehadiran Kelas</span>
+                            <div class="text-xl font-black mt-1">{{ $stats['rate'] }}%</div>
+                        </div>
+                    </div>
+
+                    {{-- Wali Kelas Row --}}
+                    <div class="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex justify-between items-center">
+                        <div>
+                            <span class="text-[9px] text-zinc-400 font-bold uppercase tracking-wider block">Wali Kelas</span>
+                            <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">{{ $homeroomTeacher->name }}</span>
+                        </div>
+                        <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $homeroomTeacher->phone ?? '081234567890') }}" target="_blank"
+                            class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 hover:bg-emerald-500/25 transition">
+                            <i class="bx bxl-whatsapp text-lg"></i>
+                        </a>
+                    </div>
+
+                    {{-- Recent Attendance History --}}
+                    <div class="space-y-3">
+                        <h4 class="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Absensi Terakhir</h4>
+                        <div class="divide-y divide-zinc-100 dark:divide-zinc-800 border-t border-b border-zinc-100 dark:border-zinc-800">
+                            @foreach($attendanceHistory as $hist)
+                                <div class="py-2.5 flex justify-between items-center text-xs">
+                                    <span class="font-medium text-zinc-600 dark:text-zinc-400">
+                                        {{ \Carbon\Carbon::parse($hist->attendance_date)->locale('id')->isoFormat('dddd, D MMM') }}
+                                    </span>
+                                    <span class="font-bold 
+                                        @if($hist->status === 'H') text-emerald-600 dark:text-emerald-400
+                                        @elseif($hist->status === 'S') text-amber-600 dark:text-amber-400
+                                        @elseif($hist->status === 'I') text-indigo-600 dark:text-indigo-400
+                                        @else text-rose-600 dark:text-rose-400
+                                        @endif">
+                                        @if($hist->status === 'H') Hadir
+                                        @elseif($hist->status === 'S') Sakit
+                                        @elseif($hist->status === 'I') Izin
+                                        @else Alpa
+                                        @endif
+                                    </span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ================= TAB 2: SCHEDULE ================= --}}
+                <div x-show="activeTab === 'schedule'" class="space-y-6">
+                    
+                    {{-- Day Switcher Horizontal --}}
+                    <div class="flex justify-between gap-1 p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl">
                         @foreach(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'] as $day)
-                            <button @click="activeTab = '{{ $day }}'" 
-                                :class="activeTab === '{{ $day }}' ? 'bg-white text-gray-950 font-bold shadow-xs dark:bg-gray-800 dark:text-white' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
-                                class="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200">
-                                {{ $day }}
+                            <button @click="activeDay = '{{ $day }}'" 
+                                :class="activeDay === '{{ $day }}' ? 'bg-white text-zinc-900 shadow-xs dark:bg-zinc-700 dark:text-white' : 'text-zinc-500 dark:text-zinc-400'"
+                                class="flex-1 text-center py-2 text-xs font-bold rounded-lg transition-all duration-200">
+                                {{ substr($day, 0, 3) }}
                             </button>
+                        @endforeach
+                    </div>
+
+                    {{-- Day Schedule List --}}
+                    <div class="space-y-4">
+                        @foreach(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'] as $day)
+                            <div x-show="activeDay === '{{ $day }}'" class="space-y-3">
+                                
+                                @if($day === 'Senin')
+                                    <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-start text-xs">
+                                        <div>
+                                            <h4 class="font-bold text-sm text-zinc-900 dark:text-zinc-100">Upacara Bendera</h4>
+                                            <p class="text-zinc-400 dark:text-zinc-500 mt-1">Lapangan Utama</p>
+                                        </div>
+                                        <span class="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold px-2 py-0.5 rounded-md">07:00 - 07:45</span>
+                                    </div>
+                                    <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-start text-xs">
+                                        <div>
+                                            <h4 class="font-bold text-sm text-zinc-900 dark:text-zinc-100">Matematika Wajib</h4>
+                                            <p class="text-zinc-400 dark:text-zinc-500 mt-1">Budi Santoso, S.Pd. · Ruang 102</p>
+                                        </div>
+                                        <span class="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold px-2 py-0.5 rounded-md">07:45 - 09:15</span>
+                                    </div>
+                                    <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 flex justify-between items-start text-xs opacity-60">
+                                        <div>
+                                            <h4 class="font-bold text-sm text-zinc-900 dark:text-zinc-100">Istirahat Pagi</h4>
+                                            <p class="text-zinc-400 dark:text-zinc-500 mt-1">Kantin Sekolah</p>
+                                        </div>
+                                        <span class="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold px-2 py-0.5 rounded-md">09:15 - 09:45</span>
+                                    </div>
+                                    <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-start text-xs">
+                                        <div>
+                                            <h4 class="font-bold text-sm text-zinc-900 dark:text-zinc-100">IPA Fisika</h4>
+                                            <p class="text-zinc-400 dark:text-zinc-500 mt-1">Sri Wahyuni, S.Si. · Lab Fisika</p>
+                                        </div>
+                                        <span class="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold px-2 py-0.5 rounded-md">09:45 - 11:15</span>
+                                    </div>
+                                @elseif($day === 'Selasa')
+                                    <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-start text-xs">
+                                        <div>
+                                            <h4 class="font-bold text-sm text-zinc-900 dark:text-zinc-100">Jasmani (PJOK)</h4>
+                                            <p class="text-zinc-400 dark:text-zinc-500 mt-1">Budi Santoso, S.Pd. · Lapangan Olahraga</p>
+                                        </div>
+                                        <span class="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold px-2 py-0.5 rounded-md">07:00 - 08:30</span>
+                                    </div>
+                                    <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-start text-xs">
+                                        <div>
+                                            <h4 class="font-bold text-sm text-zinc-900 dark:text-zinc-100">Bahasa Inggris</h4>
+                                            <p class="text-zinc-400 dark:text-zinc-500 mt-1">Ahmad Hidayat, S.Pd. · Ruang 102</p>
+                                        </div>
+                                        <span class="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold px-2 py-0.5 rounded-md">08:30 - 10:00</span>
+                                    </div>
+                                @elseif($day === 'Rabu')
+                                    <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-start text-xs">
+                                        <div>
+                                            <h4 class="font-bold text-sm text-zinc-900 dark:text-zinc-100">Pendidikan Agama</h4>
+                                            <p class="text-zinc-400 dark:text-zinc-500 mt-1">Sri Wahyuni, S.Si. · Ruang Kelas</p>
+                                        </div>
+                                        <span class="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold px-2 py-0.5 rounded-md">07:00 - 08:30</span>
+                                    </div>
+                                    <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-start text-xs">
+                                        <div>
+                                            <h4 class="font-bold text-sm text-zinc-900 dark:text-zinc-100">Seni Budaya</h4>
+                                            <p class="text-zinc-400 dark:text-zinc-500 mt-1">Ahmad Hidayat, S.Pd. · Aula Seni</p>
+                                        </div>
+                                        <span class="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold px-2 py-0.5 rounded-md">08:30 - 10:00</span>
+                                    </div>
+                                @elseif($day === 'Kamis')
+                                    <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-start text-xs">
+                                        <div>
+                                            <h4 class="font-bold text-sm text-zinc-900 dark:text-zinc-100">PPKn</h4>
+                                            <p class="text-zinc-400 dark:text-zinc-500 mt-1">Budi Santoso, S.Pd. · Ruang 102</p>
+                                        </div>
+                                        <span class="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold px-2 py-0.5 rounded-md">07:00 - 08:30</span>
+                                    </div>
+                                @elseif($day === 'Jumat')
+                                    <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 flex justify-between items-start text-xs">
+                                        <div>
+                                            <h4 class="font-bold text-sm text-zinc-900 dark:text-zinc-100">Pramuka</h4>
+                                            <p class="text-zinc-400 dark:text-zinc-500 mt-1">Lapangan Sekolah</p>
+                                        </div>
+                                        <span class="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold px-2 py-0.5 rounded-md">07:00 - 08:00</span>
+                                    </div>
+                                @endif
+
+                            </div>
                         @endforeach
                     </div>
                 </div>
 
-                {{-- Schedule List --}}
-                <div class="relative pl-6 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-gray-100 dark:before:bg-gray-800">
+                {{-- ================= TAB 3: GRADES ================= --}}
+                <div x-show="activeTab === 'grades'" class="space-y-6">
                     
-                    {{-- SENIN --}}
-                    <div x-show="activeTab === 'Senin'" class="space-y-6">
-                        <div class="relative group">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-brand-500 bg-white dark:bg-gray-950 group-hover:scale-120 transition-all duration-200"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">Upacara Bendera</h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Lapangan Utama</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-900 dark:text-gray-400">
-                                    07:00 - 07:45
-                                </span>
-                            </div>
-                        </div>
-                        <div class="relative group">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-brand-500 bg-white dark:bg-gray-950 group-hover:scale-120 transition-all duration-200"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">Matematika Wajib</h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Guru: Budi Santoso, S.Pd. · Ruang 102</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-900 dark:text-gray-400">
-                                    07:45 - 09:15
-                                </span>
-                            </div>
-                        </div>
-                        <div class="relative group opacity-60">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-gray-300 bg-white dark:bg-gray-950"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">Istirahat Pagi</h4>
-                                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Kantin / Area Sekolah</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-500 dark:bg-gray-900 dark:text-gray-500">
-                                    09:15 - 09:45
-                                </span>
-                            </div>
-                        </div>
-                        <div class="relative group">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-brand-500 bg-white dark:bg-gray-950 group-hover:scale-120 transition-all duration-200"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">IPA Fisika</h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Guru: Sri Wahyuni, S.Si. · Lab Fisika</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-900 dark:text-gray-400">
-                                    09:45 - 11:15
-                                </span>
-                            </div>
-                        </div>
-                        <div class="relative group">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-brand-500 bg-white dark:bg-gray-950 group-hover:scale-120 transition-all duration-200"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">Bahasa Indonesia</h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Guru: Ahmad Hidayat, S.Pd. · Ruang 102</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-900 dark:text-gray-400">
-                                    11:15 - 12:45
-                                </span>
-                            </div>
-                        </div>
+                    {{-- Minimalist Chart Container --}}
+                    <div class="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+                        <h4 class="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-3">Grafik Nilai</h4>
+                        <div id="grades-comparison-chart-mobile" class="min-h-[250px]"></div>
                     </div>
 
-                    {{-- SELASA --}}
-                    <div x-show="activeTab === 'Selasa'" class="space-y-6">
-                        <div class="relative group">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-brand-500 bg-white dark:bg-gray-950 group-hover:scale-120 transition-all duration-200"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">Pendidikan Jasmani (PJOK)</h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Guru: Budi Santoso, S.Pd. · Lapangan Olahraga</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-900 dark:text-gray-400">
-                                    07:00 - 08:30
-                                </span>
-                            </div>
-                        </div>
-                        <div class="relative group">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-brand-500 bg-white dark:bg-gray-950 group-hover:scale-120 transition-all duration-200"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">Bahasa Inggris</h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Guru: Ahmad Hidayat, S.Pd. · Ruang 102</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-900 dark:text-gray-400">
-                                    08:30 - 10:00
-                                </span>
-                            </div>
-                        </div>
-                        <div class="relative group opacity-60">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-gray-300 bg-white dark:bg-gray-950"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">Istirahat Pagi</h4>
-                                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Kantin / Area Sekolah</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-500 dark:bg-gray-900 dark:text-gray-500">
-                                    10:00 - 10:30
-                                </span>
-                            </div>
-                        </div>
-                        <div class="relative group">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-brand-500 bg-white dark:bg-gray-950 group-hover:scale-120 transition-all duration-200"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">IPS Sejarah</h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Guru: Sri Wahyuni, S.Si. · Ruang 102</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-900 dark:text-gray-400">
-                                    10:30 - 12:00
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- RABU --}}
-                    <div x-show="activeTab === 'Rabu'" class="space-y-6">
-                        <div class="relative group">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-brand-500 bg-white dark:bg-gray-950 group-hover:scale-120 transition-all duration-200"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">Pendidikan Agama & Budi Pekerti</h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Guru: Sri Wahyuni, S.Si. · Ruang Kelas</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-900 dark:text-gray-400">
-                                    07:00 - 08:30
-                                </span>
-                            </div>
-                        </div>
-                        <div class="relative group">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-brand-500 bg-white dark:bg-gray-950 group-hover:scale-120 transition-all duration-200"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">Seni Budaya</h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Guru: Ahmad Hidayat, S.Pd. · Aula Seni</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-900 dark:text-gray-400">
-                                    08:30 - 10:00
-                                </span>
-                            </div>
-                        </div>
-                        <div class="relative group opacity-60">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-gray-300 bg-white dark:bg-gray-950"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">Istirahat Pagi</h4>
-                                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Kantin / Area Sekolah</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-500 dark:bg-gray-900 dark:text-gray-500">
-                                    10:00 - 10:30
-                                </span>
-                            </div>
-                        </div>
-                        <div class="relative group">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-brand-500 bg-white dark:bg-gray-950 group-hover:scale-120 transition-all duration-200"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">Kimia Terapan</h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Guru: Sri Wahyuni, S.Si. · Lab Kimia</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-900 dark:text-gray-400">
-                                    10:30 - 12:00
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- KAMIS --}}
-                    <div x-show="activeTab === 'Kamis'" class="space-y-6">
-                        <div class="relative group">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-brand-500 bg-white dark:bg-gray-950 group-hover:scale-120 transition-all duration-200"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">Pendidikan Pancasila & Kewarganegaraan</h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Guru: Budi Santoso, S.Pd. · Ruang 102</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-900 dark:text-gray-400">
-                                    07:00 - 08:30
-                                </span>
-                            </div>
-                        </div>
-                        <div class="relative group">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-brand-500 bg-white dark:bg-gray-950 group-hover:scale-120 transition-all duration-200"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">Matematika Wajib</h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Guru: Budi Santoso, S.Pd. · Ruang 102</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-900 dark:text-gray-400">
-                                    08:30 - 10:00
-                                </span>
-                            </div>
-                        </div>
-                        <div class="relative group opacity-60">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-gray-300 bg-white dark:bg-gray-950"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">Istirahat Pagi</h4>
-                                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Kantin / Area Sekolah</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-500 dark:bg-gray-900 dark:text-gray-500">
-                                    10:00 - 10:30
-                                </span>
-                            </div>
-                        </div>
-                        <div class="relative group">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-brand-500 bg-white dark:bg-gray-950 group-hover:scale-120 transition-all duration-200"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">Biologi Seluler</h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Guru: Sri Wahyuni, S.Si. · Lab Biologi</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-900 dark:text-gray-400">
-                                    10:30 - 12:00
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- JUMAT --}}
-                    <div x-show="activeTab === 'Jumat'" class="space-y-6">
-                        <div class="relative group">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-brand-500 bg-white dark:bg-gray-950 group-hover:scale-120 transition-all duration-200"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">Pramuka / Pembiasaan Diri</h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Lapangan Sekolah</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-900 dark:text-gray-400">
-                                    07:00 - 08:00
-                                </span>
-                            </div>
-                        </div>
-                        <div class="relative group">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-brand-500 bg-white dark:bg-gray-950 group-hover:scale-120 transition-all duration-200"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">Bahasa Inggris Praktis</h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Guru: Ahmad Hidayat, S.Pd. · Ruang 102</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-900 dark:text-gray-400">
-                                    08:00 - 09:30
-                                </span>
-                            </div>
-                        </div>
-                        <div class="relative group opacity-60">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-gray-300 bg-white dark:bg-gray-950"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">Istirahat Pagi</h4>
-                                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Kantin / Area Sekolah</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-500 dark:bg-gray-900 dark:text-gray-500">
-                                    09:30 - 10:00
-                                </span>
-                            </div>
-                        </div>
-                        <div class="relative group">
-                            <span class="absolute -left-[20px] top-1.5 h-3 w-3 rounded-full border-2 border-brand-500 bg-white dark:bg-gray-950 group-hover:scale-120 transition-all duration-200"></span>
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pl-4">
-                                <div>
-                                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">Geografi & Kebumian</h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Guru: Sri Wahyuni, S.Si. · Ruang 102</p>
-                                </div>
-                                <span class="inline-flex self-start sm:self-center items-center rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-900 dark:text-gray-400">
-                                    10:00 - 11:30
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            {{-- GRADES MONITOR & CHART --}}
-            <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-xs dark:border-gray-800 dark:bg-white/[0.03]">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                    <div>
-                        <h3 class="text-base font-bold text-gray-950 dark:text-white">Monitor Nilai Akademik</h3>
-                        <p class="text-xs text-gray-400 dark:text-gray-500">Hasil penilaian komparatif semester ganjil</p>
-                    </div>
-                </div>
-
-                {{-- Chart container --}}
-                <div class="mb-6 rounded-xl border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/40">
-                    <div id="grades-comparison-chart" class="min-h-[280px]"></div>
-                </div>
-
-                {{-- Grades Table --}}
-                <div class="max-w-full overflow-x-auto custom-scrollbar">
-                    <table class="w-full min-w-[640px]">
-                        <thead>
-                            <tr class="border-b border-gray-100 dark:border-gray-800 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                <th class="pb-3 font-semibold">Mata Pelajaran</th>
-                                <th class="pb-3 text-center font-semibold">Tugas Harian</th>
-                                <th class="pb-3 text-center font-semibold">Nilai UTS</th>
-                                <th class="pb-3 text-center font-semibold">Nilai UAS</th>
-                                <th class="pb-3 text-center font-semibold">Nilai Akhir</th>
-                                <th class="pb-3 text-center font-semibold">Grade</th>
-                                <th class="pb-3 text-right font-semibold">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                    {{-- Grades List style --}}
+                    <div class="space-y-3">
+                        <h4 class="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Rincian Mata Pelajaran</h4>
+                        <div class="divide-y divide-zinc-100 dark:divide-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden bg-white dark:bg-zinc-900">
                             @php
                                 $grades = [
-                                    ['subject' => 'Matematika Wajib', 'tugas' => 85, 'uts' => 80, 'uas' => 88, 'akhir' => 84.6, 'grade' => 'A', 'status' => 'Lulus'],
-                                    ['subject' => 'IPA Fisika', 'tugas' => 90, 'uts' => 85, 'uas' => 82, 'akhir' => 85.1, 'grade' => 'A', 'status' => 'Lulus'],
-                                    ['subject' => 'Kimia Terapan', 'tugas' => 78, 'uts' => 72, 'uas' => 75, 'akhir' => 74.8, 'grade' => 'B', 'status' => 'Lulus'],
-                                    ['subject' => 'Bahasa Indonesia', 'tugas' => 95, 'uts' => 90, 'uas' => 92, 'akhir' => 92.1, 'grade' => 'A', 'status' => 'Lulus'],
-                                    ['subject' => 'Bahasa Inggris', 'tugas' => 88, 'uts' => 85, 'uas' => 87, 'akhir' => 86.7, 'grade' => 'A', 'status' => 'Lulus'],
-                                    ['subject' => 'PJOK', 'tugas' => 92, 'uts' => 95, 'uas' => 90, 'akhir' => 92.2, 'grade' => 'A', 'status' => 'Lulus'],
-                                    ['subject' => 'IPS Sejarah', 'tugas' => 80, 'uts' => 75, 'uas' => 78, 'akhir' => 77.3, 'grade' => 'B', 'status' => 'Lulus'],
+                                    ['subject' => 'Matematika Wajib', 'akhir' => 84.6, 'grade' => 'A', 'status' => 'Lulus'],
+                                    ['subject' => 'IPA Fisika', 'akhir' => 85.1, 'grade' => 'A', 'status' => 'Lulus'],
+                                    ['subject' => 'Kimia Terapan', 'akhir' => 74.8, 'grade' => 'B', 'status' => 'Lulus'],
+                                    ['subject' => 'Bahasa Indonesia', 'akhir' => 92.1, 'grade' => 'A', 'status' => 'Lulus'],
+                                    ['subject' => 'Bahasa Inggris', 'akhir' => 86.7, 'grade' => 'A', 'status' => 'Lulus'],
+                                    ['subject' => 'PJOK', 'akhir' => 92.2, 'grade' => 'A', 'status' => 'Lulus'],
+                                    ['subject' => 'IPS Sejarah', 'akhir' => 77.3, 'grade' => 'B', 'status' => 'Lulus'],
                                 ];
                             @endphp
                             @foreach($grades as $g)
-                                <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/10 transition-colors">
-                                    <td class="py-3 text-sm font-bold text-gray-850 dark:text-gray-200">{{ $g['subject'] }}</td>
-                                    <td class="py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">{{ $g['tugas'] }}</td>
-                                    <td class="py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">{{ $g['uts'] }}</td>
-                                    <td class="py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400">{{ $g['uas'] }}</td>
-                                    <td class="py-3 text-center text-sm font-bold text-gray-900 dark:text-white">{{ $g['akhir'] }}</td>
-                                    <td class="py-3 text-center text-sm">
-                                        <span class="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-black
-                                            {{ $g['grade'] === 'A' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-400' }}">
+                                <div class="p-4 flex justify-between items-center text-xs hover:bg-zinc-50/50 dark:hover:bg-zinc-850/50 transition">
+                                    <div>
+                                        <h5 class="font-bold text-zinc-800 dark:text-zinc-200">{{ $g['subject'] }}</h5>
+                                        <span class="text-[10px] text-zinc-400 mt-0.5 block">Status: {{ $g['status'] }}</span>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <span class="font-black text-sm">{{ $g['akhir'] }}</span>
+                                        <span class="inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black
+                                            {{ $g['grade'] === 'A' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400' }}">
                                             {{ $g['grade'] }}
                                         </span>
-                                    </td>
-                                    <td class="py-3 text-right text-sm">
-                                        <span class="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
-                                            {{ $g['status'] }}
-                                        </span>
-                                    </td>
-                                </tr>
+                                    </div>
+                                </div>
                             @endforeach
-                        </tbody>
-                    </table>
+                        </div>
+                    </div>
                 </div>
-            </div>
+
+                {{-- ================= TAB 4: PERMISSION ================= --}}
+                <div x-show="activeTab === 'permissions'" class="space-y-6">
+                    
+                    {{-- Minimal Form --}}
+                    <div class="p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-4">
+                        <h4 class="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Form Pengajuan</h4>
+
+                        <form action="{{ route('portal.siswa.permission') }}" method="POST" class="space-y-4 text-xs" enctype="multipart/form-data">
+                            @csrf
+                            <div>
+                                <label class="mb-1.5 block font-bold text-zinc-500" for="request_type">
+                                    Jenis Izin
+                                </label>
+                                <select id="request_type" name="request_type" required
+                                    class="h-9 w-full rounded-lg border border-zinc-200 bg-transparent px-3 py-1 text-xs text-zinc-800 focus:border-zinc-900 focus:outline-hidden dark:border-zinc-800 dark:bg-zinc-950 dark:text-white">
+                                    <option value="Izin" class="dark:bg-zinc-950">Izin</option>
+                                    <option value="Sakit" class="dark:bg-zinc-950">Sakit</option>
+                                </select>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="mb-1.5 block font-bold text-zinc-500" for="start_date">
+                                        Dari Tanggal
+                                    </label>
+                                    <input id="start_date" name="start_date" type="date" required value="{{ date('Y-m-d') }}"
+                                        class="h-9 w-full rounded-lg border border-zinc-200 bg-transparent px-3 py-1 text-xs text-zinc-800 focus:border-zinc-900 focus:outline-hidden dark:border-zinc-800 dark:bg-zinc-950 dark:text-white">
+                                </div>
+                                <div>
+                                    <label class="mb-1.5 block font-bold text-zinc-500" for="end_date">
+                                        Sampai Tanggal
+                                    </label>
+                                    <input id="end_date" name="end_date" type="date" required value="{{ date('Y-m-d') }}"
+                                        class="h-9 w-full rounded-lg border border-zinc-200 bg-transparent px-3 py-1 text-xs text-zinc-800 focus:border-zinc-900 focus:outline-hidden dark:border-zinc-800 dark:bg-zinc-950 dark:text-white">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="mb-1.5 block font-bold text-zinc-500" for="reason">
+                                    Alasan
+                                </label>
+                                <textarea id="reason" name="reason" rows="3" required placeholder="Berikan alasan pengajuan..."
+                                    class="w-full rounded-lg border border-zinc-200 bg-transparent px-3 py-2 text-xs text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-hidden dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"></textarea>
+                            </div>
+
+                            {{-- Camera Attachment Input --}}
+                            <div>
+                                <label class="mb-1.5 block font-bold text-zinc-500" for="attachment">
+                                    Foto Surat Keterangan / Surat Dokter (Kamera Langsung)
+                                </label>
+                                <input type="file" id="attachment" name="attachment" accept="image/*" capture="environment"
+                                    class="w-full rounded-lg border border-zinc-200 bg-transparent px-3 py-1.5 text-xs text-zinc-800 focus:border-zinc-900 focus:outline-hidden dark:border-zinc-800 dark:bg-zinc-950 dark:text-white file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-[10px] file:font-bold file:bg-zinc-900 file:text-white dark:file:bg-zinc-100 dark:file:text-zinc-900 cursor-pointer">
+                                <span class="text-[10px] text-zinc-450 dark:text-zinc-500 mt-1 block font-medium">Hanya menerima foto langsung dari kamera (tidak bisa memilih file dari galeri).</span>
+                            </div>
+
+                            <button type="submit"
+                                class="h-9 w-full rounded-lg bg-zinc-900 text-white font-bold hover:bg-zinc-800 transition active:scale-95 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
+                                Kirim Pengajuan
+                              </button>
+                        </form>
+                    </div>
+
+                    {{-- Requests Status History --}}
+                    <div class="space-y-3">
+                        <h4 class="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Status Terakhir</h4>
+                        <div class="divide-y divide-zinc-100 dark:divide-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden bg-white dark:bg-zinc-900">
+                            @forelse($permissionRequests as $req)
+                                <div class="p-4 flex justify-between items-center text-xs">
+                                    <div>
+                                        <h5 class="font-bold text-zinc-850 dark:text-zinc-200">{{ $req->request_type }}</h5>
+                                        <span class="text-[10px] text-zinc-400 block mt-0.5">{{ \Carbon\Carbon::parse($req->start_date)->locale('id')->isoFormat('D MMM') }}</span>
+                                    </div>
+                                    <span class="inline-flex rounded-md px-2 py-0.5 text-[10px] font-bold
+                                        @if($req->status === 'approved') bg-emerald-500/10 text-emerald-600
+                                        @elseif($req->status === 'rejected') bg-rose-500/10 text-rose-600
+                                        @else bg-amber-500/10 text-amber-600
+                                        @endif">
+                                        @if($req->status === 'approved') Disetujui
+                                        @elseif($req->status === 'rejected') Ditolak
+                                        @else Pending
+                                        @endif
+                                    </span>
+                                </div>
+                            @empty
+                                <div class="p-6 text-center text-xs text-zinc-400 dark:text-zinc-500">Belum ada pengajuan izin.</div>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
 
         </div>
 
-    </div>
-
-    {{-- HTML5 DIALOG FOR PERMISSION REQUEST (ACCESSIBLE / LIGHT DISMISS STYLE) --}}
-    <dialog id="permission-dialog" class="backdrop:bg-gray-950/40 backdrop:backdrop-blur-xs rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-950 max-w-md w-full focus:outline-hidden transition-all duration-300">
-        <div class="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-gray-800">
-            <h3 class="text-base font-bold text-gray-950 dark:text-white">Formulir Pengajuan Izin / Sakit</h3>
-            <button id="close-permission-dialog" class="text-gray-400 hover:text-gray-700 dark:hover:text-white text-xl">
-                <i class="bx bx-x"></i>
-            </button>
-        </div>
-
-        <form action="{{ route('portal.siswa.permission') }}" method="POST" class="mt-4 space-y-4">
-            @csrf
-            <div>
-                <label class="mb-1.5 block text-xs font-bold text-gray-700 dark:text-gray-400" for="request_type">
-                    Jenis Pengajuan
-                </label>
-                <select id="request_type" name="request_type" required
-                    class="h-10 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm text-gray-800 focus:border-brand-500 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
-                    <option value="Izin" class="dark:bg-gray-900">Izin (Hal Penting)</option>
-                    <option value="Sakit" class="dark:bg-gray-900">Sakit (Kondisi Kesehatan)</option>
-                </select>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="mb-1.5 block text-xs font-bold text-gray-700 dark:text-gray-400" for="start_date">
-                        Mulai Tanggal
-                    </label>
-                    <input id="start_date" name="start_date" type="date" required value="{{ date('Y-m-d') }}"
-                        class="h-10 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm text-gray-800 focus:border-brand-500 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
-                </div>
-                <div>
-                    <label class="mb-1.5 block text-xs font-bold text-gray-700 dark:text-gray-400" for="end_date">
-                        Hingga Tanggal
-                    </label>
-                    <input id="end_date" name="end_date" type="date" required value="{{ date('Y-m-d') }}"
-                        class="h-10 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm text-gray-800 focus:border-brand-500 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
-                </div>
-            </div>
-
-            <div>
-                <label class="mb-1.5 block text-xs font-bold text-gray-700 dark:text-gray-400" for="reason">
-                    Alasan / Keterangan
-                </label>
-                <textarea id="reason" name="reason" rows="3" required placeholder="Berikan alasan pengajuan..."
-                    class="w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-500 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"></textarea>
-            </div>
-
-            <div class="pt-2">
-                <button type="submit"
-                    class="inline-flex h-10 w-full items-center justify-center rounded-xl bg-gradient-to-tr from-brand-500 to-indigo-600 px-4 text-sm font-bold text-white transition hover:from-brand-650 hover:to-indigo-700 shadow-md shadow-brand-500/10 active:scale-98">
-                    Kirim Pengajuan
+        {{-- 3. APP STICKY BOTTOM NAVIGATION (PWA style fixed bottom navigation bar) --}}
+        <div class="fixed bottom-0 left-0 right-0 border-t border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md z-50">
+            <div class="max-w-2xl mx-auto w-full px-6 py-2.5 flex justify-between items-center">
+                <button @click="activeTab = 'home'" 
+                    :class="activeTab === 'home' ? 'text-zinc-950 dark:text-white' : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-650'"
+                    class="flex flex-col items-center justify-center flex-1 py-1 transition duration-150">
+                    <i class="bx bx-home-alt text-xl"></i>
+                    <span class="text-[9px] font-bold mt-1">Beranda</span>
+                </button>
+                <button @click="activeTab = 'schedule'" 
+                    :class="activeTab === 'schedule' ? 'text-zinc-950 dark:text-white' : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-650'"
+                    class="flex flex-col items-center justify-center flex-1 py-1 transition duration-150">
+                    <i class="bx bx-calendar text-xl"></i>
+                    <span class="text-[9px] font-bold mt-1">Jadwal</span>
+                </button>
+                <button @click="activeTab = 'grades'" 
+                    :class="activeTab === 'grades' ? 'text-zinc-950 dark:text-white' : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-650'"
+                    class="flex flex-col items-center justify-center flex-1 py-1 transition duration-150">
+                    <i class="bx bx-star text-xl"></i>
+                    <span class="text-[9px] font-bold mt-1">Nilai</span>
+                </button>
+                <button @click="activeTab = 'permissions'" 
+                    :class="activeTab === 'permissions' ? 'text-zinc-950 dark:text-white' : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-650'"
+                    class="flex flex-col items-center justify-center flex-1 py-1 transition duration-150">
+                    <i class="bx bx-receipt text-xl"></i>
+                    <span class="text-[9px] font-bold mt-1">Izin</span>
                 </button>
             </div>
-        </form>
-    </dialog>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
@@ -648,30 +460,6 @@
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // Native Dialog triggers
-            const dialog = document.getElementById('permission-dialog');
-            const openBtn = document.getElementById('open-permission-modal');
-            const closeBtn = document.getElementById('close-permission-dialog');
-
-            if (openBtn && dialog) {
-                openBtn.addEventListener('click', () => dialog.showModal());
-            }
-            if (closeBtn && dialog) {
-                closeBtn.addEventListener('click', () => dialog.close());
-            }
-
-            // Close dialog when click outside (light-dismiss fallback)
-            if (dialog) {
-                dialog.addEventListener('click', (event) => {
-                    const rect = dialog.getBoundingClientRect();
-                    const isInDialog = (rect.top <= event.clientY && event.clientY <= rect.top + rect.height &&
-                        rect.left <= event.clientX && event.clientX <= rect.left + rect.width);
-                    if (!isInDialog) {
-                        dialog.close();
-                    }
-                });
-            }
-
             // ApexCharts setup
             const options = {
                 series: [{
@@ -683,7 +471,7 @@
                 }],
                 chart: {
                     type: 'bar',
-                    height: 280,
+                    height: 250,
                     toolbar: {
                         show: false
                     },
@@ -693,7 +481,7 @@
                     bar: {
                         horizontal: false,
                         columnWidth: '55%',
-                        borderRadius: 6,
+                        borderRadius: 4,
                         endingShape: 'rounded'
                     },
                 },
@@ -710,31 +498,23 @@
                     labels: {
                         style: {
                             colors: '#9ca3af',
-                            fontSize: '11px',
+                            fontSize: '10px',
                             fontWeight: 500
                         }
                     }
                 },
                 yaxis: {
-                    title: {
-                        text: 'Skor Nilai',
-                        style: {
-                            color: '#9ca3af',
-                            fontSize: '11px',
-                            fontWeight: 500
-                        }
-                    },
                     min: 50,
                     max: 100,
                     labels: {
                         style: {
                             colors: '#9ca3af',
-                            fontSize: '11px',
+                            fontSize: '10px',
                             fontWeight: 500
                         }
                     }
                 },
-                colors: ['#4f46e5', '#38bdf8'],
+                colors: ['#18181b', '#a1a1aa'], // Apple/Shadcn minimal color scheme (zinc-900, zinc-400)
                 fill: {
                     opacity: 1
                 },
@@ -748,19 +528,19 @@
                 legend: {
                     position: 'top',
                     horizontalAlign: 'right',
-                    fontSize: '12px',
+                    fontSize: '10px',
                     fontWeight: 500,
                     labels: {
                         colors: '#9ca3af'
                     }
                 },
                 grid: {
-                    borderColor: '#f1f5f9',
+                    borderColor: '#f4f4f5',
                     strokeDashArray: 4
                 }
             };
 
-            const chart = new ApexCharts(document.querySelector("#grades-comparison-chart"), options);
+            const chart = new ApexCharts(document.querySelector("#grades-comparison-chart-mobile"), options);
             chart.render();
         });
     </script>

@@ -27,9 +27,17 @@ Route::get('/', function () {
     return view('pages.landing');
 })->name('landing');
 
+Route::get('/layanan', function () {
+    return view('pages.layanan');
+})->name('layanan');
+
 Route::get('/pricing', function () {
     return view('pages.pricing');
 })->name('pricing');
+
+Route::get('/blog', function () {
+    return view('pages.blog');
+})->name('blog');
 
 Route::get('/contact', function () {
     return view('pages.contact');
@@ -119,13 +127,13 @@ Route::middleware('auth')->group(function () {
         Route::middleware('role:super_admin,kepsek,wakasek,tu,staf_tu,alumni')->get('/alumni', [AcademicFoundationController::class, 'alumni'])->name('alumni.index');
 
         // --- KESISWAAN & OPERASIONAL SEKOLAH (FASE 2) ---
-        Route::middleware('role:super_admin,staf_tu')->prefix('akademik')->name('akademik.')->group(function () {
+        Route::middleware('role:super_admin,kepsek,staf_tu')->prefix('akademik')->name('akademik.')->group(function () {
             Route::get('/', [AcademicYearController::class, 'index'])->name('index');
             Route::post('/', [AcademicYearController::class, 'store'])->name('store');
             Route::post('/{id}/toggle', [AcademicYearController::class, 'toggleActive'])->name('toggle');
         });
 
-        Route::middleware('role:super_admin,staf_tu')->prefix('kelas')->name('kelas.')->group(function () {
+        Route::middleware('role:super_admin,kepsek,staf_tu')->prefix('kelas')->name('kelas.')->group(function () {
             Route::get('/', [SchoolClassController::class, 'index'])->name('index');
             Route::post('/', [SchoolClassController::class, 'store'])->name('store');
         });

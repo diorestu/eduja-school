@@ -37,6 +37,15 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        \Illuminate\Support\Facades\DB::table('transactions')->delete();
+        \Illuminate\Support\Facades\DB::table('invoice_items')->delete();
+        \Illuminate\Support\Facades\DB::table('invoices')->delete();
+        \Illuminate\Support\Facades\DB::table('expenses')->delete();
+        \Illuminate\Support\Facades\DB::table('budget_categories')->delete();
+        \Illuminate\Support\Facades\DB::table('student_savings')->delete();
+        \Illuminate\Support\Facades\DB::table('student_attendances')->delete();
+        \Illuminate\Support\Facades\DB::table('teacher_attendances')->delete();
+
         $school = School::updateOrCreate(
             ['npsn' => '50100199'],
             [
@@ -78,7 +87,34 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        foreach ([[$admin, 'kepsek'], [$admin, 'yayasan'], [$bendahara, 'bendahara'], [$tu, 'tu']] as [$user, $role]) {
+        $siswaUser = User::updateOrCreate(
+            ['email' => 'siswa@eduja.sch.id'],
+            [
+                'name' => 'Aditya Pratama',
+                'password' => Hash::make('password'),
+                'role' => 'siswa',
+            ]
+        );
+
+        $ortuUser = User::updateOrCreate(
+            ['email' => 'ortu@eduja.sch.id'],
+            [
+                'name' => 'Slamet Pratama',
+                'password' => Hash::make('password'),
+                'role' => 'orang_tua',
+            ]
+        );
+
+        foreach ([
+            [$admin, 'kepsek'],
+            [$admin, 'super_admin'],
+            [$admin, 'yayasan'],
+            [$bendahara, 'bendahara'],
+            [$tu, 'tu'],
+            [$tu, 'staf_tu'],
+            [$siswaUser, 'siswa'],
+            [$ortuUser, 'orang_tua']
+        ] as [$user, $role]) {
             SchoolUserRole::updateOrCreate(
                 ['school_id' => $school->id, 'user_id' => $user->id, 'role' => $role],
                 ['is_active' => true],
