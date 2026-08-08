@@ -68,8 +68,8 @@
                 &copy; {{ date('Y') }} Eduja. Hak Cipta Dilindungi Undang-Undang. &nbsp;|&nbsp; Made with <i class="bx bxs-heart text-brand-500 text-xs align-middle"></i> for Indonesian Schools
             </p>
             <div class="flex items-center gap-4 text-[11px] text-white/60">
-                <a href="#" class="hover:text-white transition-colors">Kebijakan Privasi</a>
-                <a href="#" class="hover:text-white transition-colors">Syarat & Ketentuan</a>
+                <a href="{{ route('privacy-policy') }}" class="hover:text-white transition-colors">Kebijakan Privasi</a>
+                <a href="{{ route('terms-of-service') }}" class="hover:text-white transition-colors">Syarat & Ketentuan</a>
             </div>
         </div>
     </div>

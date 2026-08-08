@@ -43,6 +43,24 @@ Route::get('/contact', function () {
     return view('pages.contact');
 })->name('contact');
 
+Route::get('/kebijakan-privasi', function () {
+    return view('pages.legal', [
+        'document' => 'privacy-policy',
+        'activePage' => 'privasi',
+        'title' => 'Kebijakan Privasi EDUJA',
+        'description' => 'Kebijakan Privasi EDUJA menjelaskan pengelolaan data siswa, guru, orang tua, dan sekolah secara transparan.',
+    ]);
+})->name('privacy-policy');
+
+Route::get('/syarat-ketentuan', function () {
+    return view('pages.legal', [
+        'document' => 'terms-of-service',
+        'activePage' => 'syarat',
+        'title' => 'Syarat & Ketentuan EDUJA',
+        'description' => 'Syarat dan Ketentuan penggunaan platform EDUJA untuk sekolah dan seluruh penggunanya.',
+    ]);
+})->name('terms-of-service');
+
 Route::post('/contact', function (\Illuminate\Http\Request $request) {
     $request->validate([
         'name' => 'required|string|max:100',
