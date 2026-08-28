@@ -5,7 +5,7 @@
 
         {{-- Logo --}}
         <a href="/" class="flex items-center" aria-label="Eduja - Beranda">
-            <img src="/images/logo/logo-wide.png" alt="Eduja - Sekolah Makin Seru" class="h-9 w-auto object-contain">
+            <img src="/images/logo/logo-wide.png" alt="Eduja - Sekolah Makin Seru" class="h-7 sm:h-8 lg:h-9 w-auto object-contain">
         </a>
 
         {{-- Desktop Nav --}}
