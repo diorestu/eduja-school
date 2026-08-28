@@ -13,6 +13,7 @@ use App\Http\Controllers\OperationsFoundationController;
 use App\Http\Controllers\PortalFoundationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SchoolClassController;
+use App\Http\Controllers\SchoolRolePermissionController;
 use App\Http\Controllers\SchoolSelectionController;
 use App\Http\Controllers\SppReportController;
 use App\Http\Controllers\SppTariffController;
@@ -99,74 +100,93 @@ Route::middleware('auth')->group(function () {
         // Dashboard
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-        Route::middleware('role:dinas,super_admin,kepsek')->get('/dinas', [ExecutiveDashboardController::class, 'dinas'])->name('dinas.dashboard');
-        Route::middleware('role:yayasan,super_admin,kepsek')->get('/yayasan', [ExecutiveDashboardController::class, 'yayasan'])->name('yayasan.dashboard');
-
-        Route::middleware('role:super_admin,kepsek,wakasek,tu,staf_tu')->prefix('academic')->name('academic.')->group(function () {
-            Route::get('/departments', [AcademicFoundationController::class, 'departments'])->name('departments');
-            Route::post('/departments', [AcademicFoundationController::class, 'storeDepartment'])->name('departments.store');
-            Route::get('/promotion', [AcademicFoundationController::class, 'promotion'])->name('promotion');
-            Route::post('/promotion', [AcademicFoundationController::class, 'promote'])->name('promotion.store');
-            Route::get('/graduation', [AcademicFoundationController::class, 'graduation'])->name('graduation');
-            Route::post('/graduation', [AcademicFoundationController::class, 'graduate'])->name('graduation.store');
+        Route::middleware('role:super_admin,kepsek')->prefix('settings')->name('settings.')->group(function () {
+            Route::get('/permissions', [SchoolRolePermissionController::class, 'index'])->name('permissions.index');
+            Route::put('/permissions', [SchoolRolePermissionController::class, 'update'])->name('permissions.update');
         });
 
-        Route::middleware('role:super_admin,kepsek,wakasek,tu,staf_tu,bendahara,wali_kelas')->prefix('approvals')->name('approvals.')->group(function () {
+        Route::middleware('permission:executive.district,dinas,super_admin,kepsek')->get('/dinas', [ExecutiveDashboardController::class, 'dinas'])->name('dinas.dashboard');
+        Route::middleware('permission:executive.foundation,yayasan,super_admin,kepsek')->get('/yayasan', [ExecutiveDashboardController::class, 'yayasan'])->name('yayasan.dashboard');
+
+        Route::prefix('academic')->name('academic.')->group(function () {
+            Route::middleware('permission:academic.departments,super_admin,kepsek,wakasek,tu,staf_tu')->group(function () {
+                Route::get('/departments', [AcademicFoundationController::class, 'departments'])->name('departments');
+                Route::post('/departments', [AcademicFoundationController::class, 'storeDepartment'])->name('departments.store');
+            });
+            Route::middleware('permission:academic.promotion,super_admin,kepsek,wakasek,tu,staf_tu')->group(function () {
+                Route::get('/promotion', [AcademicFoundationController::class, 'promotion'])->name('promotion');
+                Route::post('/promotion', [AcademicFoundationController::class, 'promote'])->name('promotion.store');
+            });
+            Route::middleware('permission:academic.graduation,super_admin,kepsek,wakasek,tu,staf_tu')->group(function () {
+                Route::get('/graduation', [AcademicFoundationController::class, 'graduation'])->name('graduation');
+                Route::post('/graduation', [AcademicFoundationController::class, 'graduate'])->name('graduation.store');
+            });
+        });
+
+        Route::middleware('permission:finance.approvals,super_admin,kepsek,wakasek,tu,staf_tu,bendahara,wali_kelas')->prefix('approvals')->name('approvals.')->group(function () {
             Route::post('/{approval}/approve', [ApprovalController::class, 'approve'])->name('approve');
             Route::post('/{approval}/reject', [ApprovalController::class, 'reject'])->name('reject');
         });
 
-        Route::middleware('role:super_admin,bendahara')->prefix('finance')->name('finance.')->group(function () {
-            Route::get('/accounts', [FinanceFoundationController::class, 'accounts'])->name('accounts');
-            Route::post('/accounts', [FinanceFoundationController::class, 'storeAccount'])->name('accounts.store');
-            Route::get('/income-types', [FinanceFoundationController::class, 'incomeTypes'])->name('income-types');
-            Route::get('/expense-types', [FinanceFoundationController::class, 'expenseTypes'])->name('expense-types');
-            Route::get('/budgets', [FinanceFoundationController::class, 'budgets'])->name('budgets');
-            Route::get('/approvals', [FinanceFoundationController::class, 'approvals'])->name('approvals');
-            Route::get('/billing', [FinanceFoundationController::class, 'billing'])->name('billing');
-            Route::get('/closing', [FinanceFoundationController::class, 'closing'])->name('closing');
+        Route::prefix('finance')->name('finance.')->group(function () {
+            Route::middleware('permission:finance.accounts,super_admin,bendahara')->group(function () {
+                Route::get('/accounts', [FinanceFoundationController::class, 'accounts'])->name('accounts');
+                Route::post('/accounts', [FinanceFoundationController::class, 'storeAccount'])->name('accounts.store');
+            });
+            Route::middleware('permission:finance.income_types,super_admin,bendahara')->get('/income-types', [FinanceFoundationController::class, 'incomeTypes'])->name('income-types');
+            Route::middleware('permission:finance.expense_types,super_admin,bendahara')->get('/expense-types', [FinanceFoundationController::class, 'expenseTypes'])->name('expense-types');
+            Route::middleware('permission:finance.budgets,super_admin,bendahara')->get('/budgets', [FinanceFoundationController::class, 'budgets'])->name('budgets');
+            Route::middleware('permission:finance.approvals,super_admin,bendahara')->get('/approvals', [FinanceFoundationController::class, 'approvals'])->name('approvals');
+            Route::middleware('permission:finance.billing,super_admin,bendahara')->get('/billing', [FinanceFoundationController::class, 'billing'])->name('billing');
+            Route::middleware('permission:finance.closing,super_admin,bendahara')->get('/closing', [FinanceFoundationController::class, 'closing'])->name('closing');
         });
 
-        Route::middleware('role:super_admin,guru,wali_kelas,kepsek')->get('/portal/guru', [PortalFoundationController::class, 'guru'])->name('portal.guru');
-        Route::middleware('role:super_admin,siswa')->get('/portal/siswa', [PortalFoundationController::class, 'siswa'])->name('portal.siswa');
-        Route::middleware('role:super_admin,siswa')->post('/portal/siswa/attendance', [PortalFoundationController::class, 'storeAttendance'])->name('portal.siswa.attendance');
-        Route::middleware('role:super_admin,siswa')->post('/portal/siswa/permission', [PortalFoundationController::class, 'storePermission'])->name('portal.siswa.permission');
-        Route::middleware('role:super_admin,orang_tua')->get('/portal/orang-tua', [PortalFoundationController::class, 'orangTua'])->name('portal.orang-tua');
+        Route::middleware('permission:portal.teacher,super_admin,guru,wali_kelas,kepsek')->get('/portal/guru', [PortalFoundationController::class, 'guru'])->name('portal.guru');
+        Route::middleware('permission:portal.student,super_admin,siswa')->group(function () {
+            Route::get('/portal/siswa', [PortalFoundationController::class, 'siswa'])->name('portal.siswa');
+            Route::post('/portal/siswa/attendance', [PortalFoundationController::class, 'storeAttendance'])->name('portal.siswa.attendance');
+            Route::post('/portal/siswa/permission', [PortalFoundationController::class, 'storePermission'])->name('portal.siswa.permission');
+        });
+        Route::middleware('permission:portal.parent,super_admin,orang_tua')->get('/portal/orang-tua', [PortalFoundationController::class, 'orangTua'])->name('portal.orang-tua');
 
-        Route::middleware('role:super_admin,kepsek,wakasek,tu,staf_tu,guru,wali_kelas')->group(function () {
-            Route::get('/attendance/requests', [OperationsFoundationController::class, 'attendanceRequests'])->name('attendance.requests');
-            Route::get('/attendance/rfid-sync', [OperationsFoundationController::class, 'rfidSync'])->name('attendance.rfid-sync');
+        Route::middleware('permission:attendance.requests,super_admin,kepsek,wakasek,tu,staf_tu,guru,wali_kelas')
+            ->get('/attendance/requests', [OperationsFoundationController::class, 'attendanceRequests'])->name('attendance.requests');
+        Route::middleware('permission:attendance.rfid,super_admin,kepsek,wakasek,tu,staf_tu,guru,wali_kelas')
+            ->get('/attendance/rfid-sync', [OperationsFoundationController::class, 'rfidSync'])->name('attendance.rfid-sync');
+        Route::middleware('permission:announcements.view,super_admin,kepsek,wakasek,tu,staf_tu,guru,wali_kelas')->group(function () {
             Route::get('/announcements', [OperationsFoundationController::class, 'announcements'])->name('announcements.index');
             Route::post('/announcements', [OperationsFoundationController::class, 'storeAnnouncement'])->name('announcements.store');
         });
 
-        Route::middleware('role:super_admin,kepsek,wakasek,tu,staf_tu,guru,wali_kelas')->get('/ai', [OperationsFoundationController::class, 'ai'])->name('ai.index');
-        Route::middleware('role:super_admin,kepsek,wakasek,tu,staf_tu,guru,wali_kelas')->post('/ai', [OperationsFoundationController::class, 'storeAi'])->name('ai.store');
-        Route::middleware('role:super_admin,kepsek,wakasek,tu,staf_tu,alumni')->get('/alumni', [AcademicFoundationController::class, 'alumni'])->name('alumni.index');
+        Route::middleware('permission:ai.use,super_admin,kepsek,wakasek,tu,staf_tu,guru,wali_kelas')->group(function () {
+            Route::get('/ai', [OperationsFoundationController::class, 'ai'])->name('ai.index');
+            Route::post('/ai', [OperationsFoundationController::class, 'storeAi'])->name('ai.store');
+        });
+        Route::middleware('permission:academic.alumni,super_admin,kepsek,wakasek,tu,staf_tu,alumni')->get('/alumni', [AcademicFoundationController::class, 'alumni'])->name('alumni.index');
 
         // --- KESISWAAN & OPERASIONAL SEKOLAH (FASE 2) ---
-        Route::middleware('role:super_admin,kepsek,staf_tu')->prefix('akademik')->name('akademik.')->group(function () {
+        Route::middleware('permission:academic_years.view,super_admin,kepsek,staf_tu')->prefix('akademik')->name('akademik.')->group(function () {
             Route::get('/', [AcademicYearController::class, 'index'])->name('index');
             Route::post('/', [AcademicYearController::class, 'store'])->name('store');
             Route::post('/{id}/toggle', [AcademicYearController::class, 'toggleActive'])->name('toggle');
         });
 
-        Route::middleware('role:super_admin,kepsek,staf_tu')->prefix('kelas')->name('kelas.')->group(function () {
+        Route::middleware('permission:classes.view,super_admin,kepsek,staf_tu')->prefix('kelas')->name('kelas.')->group(function () {
             Route::get('/', [SchoolClassController::class, 'index'])->name('index');
             Route::post('/', [SchoolClassController::class, 'store'])->name('store');
         });
 
-        Route::middleware('role:super_admin,staf_tu')->prefix('siswa')->name('siswa.')->group(function () {
+        Route::middleware('permission:students.view,super_admin,staf_tu')->prefix('siswa')->name('siswa.')->group(function () {
             Route::get('/', [StudentController::class, 'index'])->name('index');
             Route::post('/', [StudentController::class, 'store'])->name('store');
         });
 
-        Route::middleware('role:super_admin,staf_tu')->prefix('guru')->name('guru.')->group(function () {
+        Route::middleware('permission:teachers.view,super_admin,staf_tu')->prefix('guru')->name('guru.')->group(function () {
             Route::get('/', [TeacherController::class, 'index'])->name('index');
             Route::post('/', [TeacherController::class, 'store'])->name('store');
         });
 
-        Route::middleware('role:super_admin,staf_tu')->get('/struktur', function () {
+        Route::middleware('permission:organization.view,super_admin,staf_tu')->get('/struktur', function () {
             $principal = \App\Models\Teacher::where('role_type', 'Kepala Sekolah')->where('is_active', true)->first();
             $treasurer = \App\Models\Teacher::where('role_type', 'Bendahara')->where('is_active', true)->first();
             $staff = \App\Models\Teacher::where('role_type', 'Staf TU')->where('is_active', true)->get();
@@ -182,41 +202,48 @@ Route::middleware('auth')->group(function () {
         })->name('struktur.index');
 
         // --- KEUANGAN SPP (FASE 3) ---
-        Route::middleware('role:super_admin,kepsek,bendahara')->prefix('spp')->name('spp.')->group(function () {
-            Route::get('/tarif', [SppTariffController::class, 'index'])->name('tarif.index');
-            Route::post('/tarif', [SppTariffController::class, 'store'])->name('tarif.store');
-
-            Route::get('/transaksi', [SppTransactionController::class, 'index'])->name('transaksi.index');
-            Route::post('/transaksi/generate', [SppTransactionController::class, 'generateInvoices'])->name('transaksi.generate');
-            Route::post('/transaksi/{id}/bayar', [SppTransactionController::class, 'pay'])->name('transaksi.pay');
-
-            Route::get('/laporan', [SppReportController::class, 'index'])->name('laporan.index');
+        Route::prefix('spp')->name('spp.')->group(function () {
+            Route::middleware('permission:spp.tariffs,super_admin,kepsek,bendahara')->group(function () {
+                Route::get('/tarif', [SppTariffController::class, 'index'])->name('tarif.index');
+                Route::post('/tarif', [SppTariffController::class, 'store'])->name('tarif.store');
+            });
+            Route::middleware('permission:spp.transactions,super_admin,kepsek,bendahara')->group(function () {
+                Route::get('/transaksi', [SppTransactionController::class, 'index'])->name('transaksi.index');
+                Route::post('/transaksi/generate', [SppTransactionController::class, 'generateInvoices'])->name('transaksi.generate');
+                Route::post('/transaksi/{id}/bayar', [SppTransactionController::class, 'pay'])->name('transaksi.pay');
+            });
+            Route::middleware('permission:spp.reports,super_admin,kepsek,bendahara')->get('/laporan', [SppReportController::class, 'index'])->name('laporan.index');
         });
 
         // --- KEUANGAN BOS & BKU (FASE 4) ---
-        Route::middleware('role:super_admin,kepsek,bendahara')->prefix('bos')->name('bos.')->group(function () {
-            Route::get('/anggaran', [BosController::class, 'anggaran'])->name('anggaran.index');
-            Route::post('/anggaran', [BosController::class, 'storeAnggaran'])->name('anggaran.store');
-
-            Route::get('/belanja', [BosController::class, 'belanja'])->name('belanja.index');
-            Route::post('/belanja', [BosController::class, 'storeBelanja'])->name('belanja.store');
-
-            Route::get('/bku', [BosController::class, 'bku'])->name('bku.index');
+        Route::prefix('bos')->name('bos.')->group(function () {
+            Route::middleware('permission:bos.budgets,super_admin,kepsek,bendahara')->group(function () {
+                Route::get('/anggaran', [BosController::class, 'anggaran'])->name('anggaran.index');
+                Route::post('/anggaran', [BosController::class, 'storeAnggaran'])->name('anggaran.store');
+            });
+            Route::middleware('permission:bos.expenses,super_admin,kepsek,bendahara')->group(function () {
+                Route::get('/belanja', [BosController::class, 'belanja'])->name('belanja.index');
+                Route::post('/belanja', [BosController::class, 'storeBelanja'])->name('belanja.store');
+            });
+            Route::middleware('permission:bos.ledger,super_admin,kepsek,bendahara')->get('/bku', [BosController::class, 'bku'])->name('bku.index');
         });
 
         // --- SIMPANAN / TABUNGAN ---
-        Route::middleware('role:super_admin,kepsek,bendahara')->prefix('tabungan')->name('tabungan.')->group(function () {
+        Route::middleware('permission:student_savings.view,super_admin,kepsek,bendahara')->prefix('tabungan')->name('tabungan.')->group(function () {
             Route::get('/', [StudentSavingController::class, 'index'])->name('index');
             Route::post('/', [StudentSavingController::class, 'store'])->name('store');
         });
 
         // --- ABSENSI / PRESENSI ---
-        Route::middleware('role:super_admin,staf_tu')->prefix('presensi')->name('presensi.')->group(function () {
-            Route::get('/siswa', [AttendanceController::class, 'siswa'])->name('siswa');
-            Route::post('/siswa', [AttendanceController::class, 'storeSiswa'])->name('siswa.store');
-
-            Route::get('/gtk', [AttendanceController::class, 'gtk'])->name('gtk');
-            Route::post('/gtk', [AttendanceController::class, 'storeGtk'])->name('gtk.store');
+        Route::prefix('presensi')->name('presensi.')->group(function () {
+            Route::middleware('permission:student_attendance.view,super_admin,staf_tu')->group(function () {
+                Route::get('/siswa', [AttendanceController::class, 'siswa'])->name('siswa');
+                Route::post('/siswa', [AttendanceController::class, 'storeSiswa'])->name('siswa.store');
+            });
+            Route::middleware('permission:teacher_attendance.view,super_admin,staf_tu')->group(function () {
+                Route::get('/gtk', [AttendanceController::class, 'gtk'])->name('gtk');
+                Route::post('/gtk', [AttendanceController::class, 'storeGtk'])->name('gtk.store');
+            });
         });
 
     });

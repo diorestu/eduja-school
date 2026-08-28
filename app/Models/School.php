@@ -37,4 +37,9 @@ class School extends Model
     {
         return $this->hasMany(SchoolUserRole::class);
     }
+
+    public function rolePermissions(): HasMany
+    {
+        return $this->hasMany(SchoolRolePermission::class);
+    }
 }

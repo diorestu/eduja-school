@@ -49,9 +49,9 @@
             </button>
 
             <!-- Logo (mobile only) -->
-            <a href="/dashboard" class="xl:hidden">
-                <img class="dark:hidden" src="/images/logo/logo-wide.png" alt="Logo" height="36" />
-                <img class="hidden dark:block" src="/images/logo/logo-wide-dark.png" alt="Logo" height="36" />
+            <a href="/dashboard" class="flex min-w-0 flex-1 items-center justify-center px-2 xl:hidden">
+                <img class="h-7 w-auto max-w-full object-contain sm:h-8 dark:hidden" src="/images/logo/logo-wide.png" alt="Logo" />
+                <img class="hidden h-7 w-auto max-w-full object-contain sm:h-8 dark:block" src="/images/logo/logo-wide-dark.png" alt="Logo" />
             </a>
 
             <!-- Application Menu Toggle (mobile only) -->
