@@ -11,32 +11,70 @@ use App\Models\StudentAttendance;
 use App\Models\Teacher;
 use App\Models\Transaction;
 use Illuminate\View\View;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Carbon\Carbon;
 
 class ExecutiveDashboardController extends Controller
 {
     public function dinas(): View
     {
-        return $this->render('Dashboard Dinas', School::query()->pluck('id')->all(), 'Agregat lintas sekolah untuk pemantauan dinas.');
+        $months = collect(range(5, 0))->map(fn (int $offset) => now()->subMonths($offset)->startOfMonth());
+        $schoolQuery = School::query()->where('is_active', true);
+        $schoolIds = (clone $schoolQuery)->pluck('id');
+        $districtDashboard = [
+            'schoolBreakdown' => [
+                'sd_mi' => (clone $schoolQuery)->whereIn('level', ['sd', 'mi'])->count(),
+                'smp_mts' => (clone $schoolQuery)->whereIn('level', ['smp', 'mts'])->count(),
+                'sma_ma' => (clone $schoolQuery)->whereIn('level', ['sma', 'ma'])->count(),
+                'smk_mak' => (clone $schoolQuery)->whereIn('level', ['smk', 'mak'])->count(),
+                'negeri' => (clone $schoolQuery)->where('ownership', 'negeri')->count(),
+                'swasta' => (clone $schoolQuery)->where('ownership', 'swasta')->count(),
+            ],
+            'people' => [
+                'students' => Student::whereIn('school_id', $schoolIds)->where('is_active', true)->count(),
+                'teachers' => Teacher::whereIn('school_id', $schoolIds)->where('is_active', true)->where('role_type', 'Guru')->count(),
+                'staff' => Teacher::whereIn('school_id', $schoolIds)->where('is_active', true)->where('role_type', '!=', 'Guru')->count(),
+            ],
+            'months' => $months->map(fn (Carbon $month) => $month->format('M Y'))->values()->all(),
+            'attendance' => [
+                'students' => $months->map(fn (Carbon $month) => StudentAttendance::whereIn('school_id', $schoolIds)->whereDate('attendance_date', '>=', $month)->whereDate('attendance_date', '<', $month->copy()->addMonth())->where('status', 'H')->count())->values()->all(),
+                'teachers' => $months->map(fn (Carbon $month) => \App\Models\TeacherAttendance::whereIn('school_id', $schoolIds)->whereHas('teacher', fn ($query) => $query->where('role_type', 'Guru'))->whereDate('attendance_date', '>=', $month)->whereDate('attendance_date', '<', $month->copy()->addMonth())->where('status', 'H')->count())->values()->all(),
+                'staff' => $months->map(fn (Carbon $month) => \App\Models\TeacherAttendance::whereIn('school_id', $schoolIds)->whereHas('teacher', fn ($query) => $query->where('role_type', '!=', 'Guru'))->whereDate('attendance_date', '>=', $month)->whereDate('attendance_date', '<', $month->copy()->addMonth())->where('status', 'H')->count())->values()->all(),
+            ],
+            'bos' => $months->map(fn (Carbon $month) => (float) Expense::where('source_funding', 'BOS')->where('status', '!=', 'rejected')->whereDate('transaction_date', '>=', $month)->whereDate('transaction_date', '<', $month->copy()->addMonth())->sum('amount'))->values()->all(),
+        ];
+
+        return view('pages.foundation.dinas', compact('districtDashboard'));
     }
 
-    public function yayasan(): View
+    public function yayasan(Request $request): View
     {
-        $schoolIds = School::query()
-            ->whereNotNull('foundation_name')
-            ->pluck('id')
-            ->all();
+        $foundationSchools = $this->foundationSchools($request);
+        $schoolIds = $foundationSchools->pluck('id')->all();
 
-        if ($schoolIds === []) {
-            $schoolIds = School::query()->pluck('id')->all();
-        }
-
-        return $this->render('Dashboard Yayasan', $schoolIds, 'Ringkasan sekolah dalam naungan yayasan aktif.');
+        return $this->render('Dashboard Yayasan', $schoolIds, 'Ringkasan sekolah dalam naungan yayasan aktif.', $foundationSchools);
     }
 
-    private function render(string $title, array $schoolIds, string $description): View
+    public function yayasanSchool(Request $request, School $school): View
+    {
+        $foundationSchools = $this->foundationSchools($request);
+        abort_unless($foundationSchools->contains('id', $school->id), 403);
+
+        return $this->render('Detail '.$school->name, [$school->id], 'Statistik sekolah dalam cakupan yayasan.', $foundationSchools, $school);
+    }
+
+    private function foundationSchools(Request $request)
+    {
+        return School::query()->where('is_active', true)
+            ->whereHas('roles', fn ($query) => $query->where('user_id', $request->user()->id)->where('role', 'yayasan')->where('is_active', true))
+            ->orderBy('name')->get();
+    }
+
+    private function render(string $title, array $schoolIds, string $description, $foundationSchools = null, ?School $selectedSchool = null): View
     {
         $schoolScope = fn ($query) => $schoolIds === [] ? $query : $query->whereIn('school_id', $schoolIds);
-        $totalCollected = (float) Transaction::sum('amount_paid');
+        $totalCollected = (float) $schoolScope(Transaction::query())->sum('amount_paid');
         $totalInvoices = (float) $schoolScope(Invoice::query())->sum('total_amount');
 
         $metrics = [
@@ -47,13 +85,15 @@ class ExecutiveDashboardController extends Controller
             ['label' => 'Presensi Hari Ini', 'value' => $schoolScope(StudentAttendance::query())->whereDate('attendance_date', today())->count()],
             ['label' => 'SPP Terkumpul', 'value' => 'Rp '.number_format($totalCollected, 0, ',', '.')],
             ['label' => 'Tunggakan', 'value' => 'Rp '.number_format(max($totalInvoices - $totalCollected, 0), 0, ',', '.')],
-            ['label' => 'Pengeluaran BOS', 'value' => 'Rp '.number_format((float) $schoolScope(Expense::query())->where('source_funding', 'BOS')->sum('amount'), 0, ',', '.')],
+            ['label' => 'Pengeluaran BOS', 'value' => 'Rp '.number_format((float) $schoolScope(Expense::query())->where('status', 'approved')->where('source_funding', 'BOS')->sum('amount'), 0, ',', '.')],
         ];
 
         return view('pages.foundation.index', [
             'title' => $title,
             'eyebrow' => 'Monitoring Eksekutif',
             'description' => $description,
+            'foundationSchools' => $foundationSchools,
+            'selectedSchool' => $selectedSchool,
             'metrics' => $metrics,
             'sections' => [
                 [

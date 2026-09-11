@@ -48,8 +48,8 @@ class MenuHelper
                 'icon' => 'charts',
                 'name' => 'Eksekutif',
                 'subItems' => [
-                    ['name' => 'Dashboard Dinas', 'path' => '/dinas', 'permission' => 'executive.district', 'roles' => ['dinas', 'super_admin', 'kepsek'], 'pro' => false],
-                    ['name' => 'Dashboard Yayasan', 'path' => '/yayasan', 'permission' => 'executive.foundation', 'roles' => ['yayasan', 'super_admin', 'kepsek'], 'pro' => false],
+                    ['name' => 'Dashboard Dinas', 'path' => '/dinas', 'permission' => 'executive.district', 'roles' => ['dinas'], 'pro' => false],
+                    ['name' => 'Dashboard Yayasan', 'path' => '/yayasan', 'permission' => 'executive.foundation', 'roles' => ['yayasan'], 'pro' => false],
                 ],
             ],
             [

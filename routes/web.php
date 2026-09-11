@@ -91,6 +91,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/school/select', [SchoolSelectionController::class, 'index'])->name('school.select');
     Route::post('/school/switch', [SchoolSelectionController::class, 'switch'])->name('school.switch');
 
+    Route::middleware('permission:executive.foundation,yayasan')->group(function () {
+        Route::get('/yayasan', [ExecutiveDashboardController::class, 'yayasan'])->name('yayasan.dashboard');
+        Route::get('/yayasan/sekolah/{school}', [ExecutiveDashboardController::class, 'yayasanSchool'])->name('yayasan.school');
+    });
+
     // Profile
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
     Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -100,13 +105,12 @@ Route::middleware('auth')->group(function () {
         // Dashboard
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-        Route::middleware('role:super_admin,kepsek')->prefix('settings')->name('settings.')->group(function () {
+        Route::middleware('superadmin')->prefix('settings')->name('settings.')->group(function () {
             Route::get('/permissions', [SchoolRolePermissionController::class, 'index'])->name('permissions.index');
             Route::put('/permissions', [SchoolRolePermissionController::class, 'update'])->name('permissions.update');
         });
 
-        Route::middleware('permission:executive.district,dinas,super_admin,kepsek')->get('/dinas', [ExecutiveDashboardController::class, 'dinas'])->name('dinas.dashboard');
-        Route::middleware('permission:executive.foundation,yayasan,super_admin,kepsek')->get('/yayasan', [ExecutiveDashboardController::class, 'yayasan'])->name('yayasan.dashboard');
+        Route::middleware('permission:executive.district,dinas')->get('/dinas', [ExecutiveDashboardController::class, 'dinas'])->name('dinas.dashboard');
 
         Route::prefix('academic')->name('academic.')->group(function () {
             Route::middleware('permission:academic.departments,super_admin,kepsek,wakasek,tu,staf_tu')->group(function () {

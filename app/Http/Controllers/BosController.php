@@ -6,7 +6,10 @@ use App\Models\BudgetCategory;
 use App\Models\Expense;
 use App\Models\AcademicYear;
 use App\Models\Transaction;
+use App\Models\ApprovalRequest;
+use App\Services\SchoolContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class BosController extends Controller
 {
@@ -41,15 +44,17 @@ class BosController extends Controller
     /**
      * Display list of expenses and record form.
      */
-    public function belanja()
+    public function belanja(SchoolContext $schoolContext)
     {
+        $schoolId = $schoolContext->activeSchoolId();
         $expenses = Expense::with(['budgetCategory', 'academicYear'])
+            ->where('school_id', $schoolId)
             ->orderBy('transaction_date', 'desc')
             ->get();
             
         $categories = BudgetCategory::where('is_active', true)->orderBy('code')->get();
-        $academicYears = AcademicYear::all();
-        $activeYear = AcademicYear::where('is_active', true)->first();
+        $academicYears = AcademicYear::where('school_id', $schoolId)->get();
+        $activeYear = AcademicYear::where('school_id', $schoolId)->where('is_active', true)->first();
 
         return view('pages.keuangan.bos.belanja', [
             'title' => 'Pencatatan Belanja & Operasional Sekolah',
@@ -63,7 +68,7 @@ class BosController extends Controller
     /**
      * Store new expense with tax calculations.
      */
-    public function storeBelanja(Request $request)
+    public function storeBelanja(Request $request, SchoolContext $schoolContext)
     {
         $validated = $request->validate([
             'budget_category_id' => 'nullable|exists:budget_categories,id',
@@ -84,9 +89,22 @@ class BosController extends Controller
         $validated['tax_amount'] = $request->has('tax_amount') ? $request->input('tax_amount') : 0.00;
         $validated['is_tax_paid'] = $request->has('is_tax_paid') ? (bool) $request->input('is_tax_paid') : false;
 
-        Expense::create($validated);
+        $schoolId = $schoolContext->activeSchoolId();
+        abort_unless($schoolId, 403);
+        $expense = DB::transaction(function () use ($validated, $schoolId, $request) {
+            $expense = Expense::create(array_merge($validated, ['school_id' => $schoolId, 'status' => 'pending']));
+            ApprovalRequest::create([
+                'school_id' => $schoolId,
+                'requested_by' => $request->user()->id,
+                'approvable_type' => Expense::class,
+                'approvable_id' => $expense->id,
+                'type' => 'expense',
+                'status' => 'pending',
+            ]);
+            return $expense;
+        });
 
-        return redirect()->back()->with('success', 'Transaksi belanja operasional berhasil dicatat!');
+        return redirect()->back()->with('success', 'Pengeluaran dibuat dan menunggu approval kepala sekolah.');
     }
 
     /**
@@ -98,7 +116,7 @@ class BosController extends Controller
         $sppPayments = Transaction::with(['invoice.student'])->get();
 
         // 2. Gather all Expenses (Pengeluaran Operasional)
-        $expenses = Expense::all();
+        $expenses = Expense::where('status', 'approved')->where('school_id', app(SchoolContext::class)->activeSchoolId())->get();
 
         // ==========================================
         // 3. COMPILE BUKU KAS UMUM (BKU) LEDGER

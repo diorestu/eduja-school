@@ -12,7 +12,7 @@ class FinanceLedgerService
     public function summary(?int $schoolId = null): array
     {
         $transactions = Transaction::query();
-        $expenses = Expense::query();
+        $expenses = Expense::query()->where('status', 'approved');
         $invoices = Invoice::query();
         $accounts = SchoolAccount::query();
 

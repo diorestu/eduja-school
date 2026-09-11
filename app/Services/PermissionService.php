@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\MenuHelper;
 use App\Models\SchoolRolePermission;
 use App\Models\User;
 
@@ -59,8 +60,20 @@ class PermissionService
     {
         $roles = $this->rolesForActiveSchool($user);
 
+        if (str_starts_with($permission, 'executive.')) {
+            $requiredRole = $permission === 'executive.district' ? 'dinas' : 'yayasan';
+            return in_array($requiredRole, $roles, true);
+        }
+
         if (count(array_intersect($roles, ['super_admin', 'kepsek'])) > 0) {
             return true;
+        }
+
+        if (in_array('pic_sekolah', $roles, true)) {
+            return collect(MenuHelper::permissionCatalog())
+                ->flatMap(fn (array $group) => $group['items'])
+                ->pluck('permission')
+                ->contains($permission);
         }
 
         if (count(array_intersect($roles, $defaultRoles)) > 0) {

@@ -11,7 +11,7 @@
                     Platform operasional sekolah yang membantu setiap tim bekerja lebih terarah, kolaboratif, dan berdampak.
                 </p>
                 <div class="flex items-center gap-3">
-                    <a href="https://wa.me/628123456789" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp Eduja"
+                    <a href="https://wa.me/628179792288" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp Eduja"
                        class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white flex items-center justify-center transition-colors">
                         <i class="bx bxl-whatsapp text-lg"></i>
                     </a>

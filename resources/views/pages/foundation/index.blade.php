@@ -28,6 +28,22 @@
 @section('content')
     <x-common.page-breadcrumb :pageTitle="$title" :label="$eyebrow ?? 'EDUJA'" />
 
+    @if($foundationSchools ?? false)
+        <section class="mb-4 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-brand-500">Cakupan yayasan</p>
+                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Dashboard agregat seluruh sekolah yang terafiliasi.</p>
+            </div>
+            <label class="sr-only" for="foundation-school-select">Buka detail sekolah</label>
+            <select id="foundation-school-select" onchange="if(this.value) window.location.href=this.value" class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 sm:w-72">
+                <option value="{{ route('yayasan.dashboard') }}">Semua sekolah · Agregat yayasan</option>
+                @foreach($foundationSchools as $foundationSchool)
+                    <option value="{{ route('yayasan.school', $foundationSchool) }}" @selected(($selectedSchool?->id ?? null) === $foundationSchool->id)>{{ $foundationSchool->name }} · Detail sekolah</option>
+                @endforeach
+            </select>
+        </section>
+    @endif
+
     @if(session('success'))
         <div class="mb-4 rounded-lg border border-success-200 bg-success-50 px-3 py-2 text-sm font-medium text-success-700 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-400">
             {{ session('success') }}

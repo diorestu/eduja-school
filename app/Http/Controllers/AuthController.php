@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\School;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class AuthController extends Controller
 {
@@ -52,22 +54,26 @@ class AuthController extends Controller
     public function signup(Request $request)
     {
         $validated = $request->validate([
-            'fname' => 'required|string|max:100',
-            'lname' => 'required|string|max:100',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6',
+            'registration_type' => 'required|in:guru,wali_murid,sekolah',
+            'fname' => 'required|string|max:100', 'lname' => 'required|string|max:100',
+            'email' => 'required|email|unique:users,email', 'password' => 'required|string|min:6',
+            'school_code' => 'nullable|string|max:50', 'school_name' => 'required_if:registration_type,sekolah|string|max:150',
         ]);
-
-        $user = User::create([
-            'name' => $validated['fname'] . ' ' . $validated['lname'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'role' => 'staf_tu' // Default role for self-registration
-        ]);
-
-        Auth::login($user);
-
-        return redirect()->route('dashboard')->with('success', 'Akun berhasil didaftarkan!');
+        $type = $validated['registration_type'];
+        $role = ['guru' => 'guru', 'wali_murid' => 'orang_tua', 'sekolah' => 'pic_sekolah'][$type];
+        $school = null;
+        if (in_array($type, ['guru', 'wali_murid'], true) && ! empty($validated['school_code'])) {
+            $school = School::where('registration_code', $validated['school_code'])->where('status', 'active')->first();
+            if (! $school) return back()->withErrors(['school_code' => 'Kode sekolah tidak valid atau sekolah belum aktif.'])->withInput();
+        }
+        $user = DB::transaction(function () use ($validated, $type, $role, $school) {
+            $user = User::create(['name' => $validated['fname'].' '.$validated['lname'], 'email' => $validated['email'], 'password' => Hash::make($validated['password']), 'role' => $role, 'registration_type' => $type, 'onboarding_status' => $type === 'sekolah' ? 'pending' : 'active']);
+            if ($type === 'sekolah') $school = School::create(['name' => $validated['school_name'], 'status' => 'pending', 'is_active' => false, 'registration_code' => strtoupper('EDUJA-'.substr(bin2hex(random_bytes(4)), 0, 8))]);
+            if ($school) $school->roles()->create(['user_id' => $user->id, 'role' => $role, 'is_active' => $type !== 'sekolah', 'membership_status' => $type === 'sekolah' ? 'pending' : 'active']);
+            return $user;
+        });
+        if ($type === 'wali_murid') Auth::login($user);
+        return $type === 'wali_murid' ? redirect()->route('dashboard')->with('success', 'Akun wali murid berhasil didaftarkan!') : redirect()->route('login')->with('success', $type === 'sekolah' ? 'Pendaftaran sekolah menunggu verifikasi superadmin.' : 'Silakan verifikasi email sebelum masuk.');
     }
 
     /**

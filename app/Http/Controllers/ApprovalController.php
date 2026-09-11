@@ -34,6 +34,11 @@ class ApprovalController extends Controller
     private function transition(Request $request, ApprovalRequest $approval, SchoolContext $schoolContext, string $status, string $message): RedirectResponse
     {
         abort_unless($approval->school_id === $schoolContext->activeSchoolId(), 403);
+        abort_unless($approval->status === 'pending', 422, 'Approval ini sudah diproses.');
+
+        if ($approval->type === 'expense') {
+            abort_unless($request->user()->hasRole(['kepsek', 'super_admin']), 403);
+        }
 
         $validated = $request->validate([
             'note' => ['nullable', 'string', 'max:1000'],

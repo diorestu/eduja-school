@@ -97,7 +97,7 @@ class FinanceFoundationController extends Controller
                 ['label' => 'Approval Pending', 'value' => ApprovalRequest::where('school_id', $schoolContext->activeSchoolId())->where('status', 'pending')->count()],
                 ['label' => 'Bukti Transfer', 'value' => PaymentSubmission::where('school_id', $schoolContext->activeSchoolId())->count()],
             ],
-            'rows' => ApprovalRequest::where('school_id', $schoolContext->activeSchoolId())->latest()->get(['id', 'type', 'status', 'note']),
+            'rows' => ApprovalRequest::where('school_id', $schoolContext->activeSchoolId())->where('type', 'expense')->latest()->get(['id', 'type', 'status', 'note']),
             'columns' => ['type' => 'Tipe', 'status' => 'Status', 'note' => 'Catatan'],
             'approvalActions' => true,
         ]);

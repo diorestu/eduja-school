@@ -5,7 +5,7 @@
 
     <!-- SECTION 1: OPERATIONAL METRICS -->
     <span class="block mb-3 text-xs font-bold uppercase tracking-wider text-gray-400">Ringkasan Operasional Sekolah</span>
-    <div id="tour-operational-metrics" class="grid grid-cols-1 gap-4 sm:grid-cols-3 md:gap-6 mb-6">
+    <div id="tour-operational-metrics" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 md:gap-6 mb-6">
         
         <!-- Metrics Siswa -->
         <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
@@ -16,6 +16,18 @@
             <h4 class="mt-1.5 font-bold text-gray-800 text-xl dark:text-white/90">
                 {{ $totalStudents }} <span class="text-xs font-normal text-gray-400">siswa</span>
             </h4>
+        </div>
+
+        <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
+            <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-500"><i class="bx bx-id-card"></i></div>
+            <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Total Tendik</span>
+            <h4 class="mt-1.5 text-xl font-bold text-gray-800 dark:text-white/90">{{ $totalStaff }} <span class="text-xs font-normal text-gray-400">tendik</span></h4>
+        </div>
+
+        <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
+            <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600 dark:bg-cyan-500/10 dark:text-cyan-500"><i class="bx bx-git-branch"></i></div>
+            <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Jurusan</span>
+            <h4 class="mt-1.5 text-xl font-bold text-gray-800 dark:text-white/90">{{ $departmentCount }} <span class="text-xs font-normal text-gray-400">jurusan</span></h4>
         </div>
 
         <!-- Metrics GTK -->
@@ -40,6 +52,16 @@
             </h4>
         </div>
     </div>
+
+    <section class="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]"><h4 class="font-semibold text-gray-800 dark:text-white/90">Kehadiran 6 Bulan Terakhir</h4><p class="mt-1 text-xs text-gray-500">Rekap hadir siswa, guru, dan tendik.</p><div id="principal-attendance-chart" class="mt-4 min-h-[280px]"></div></div>
+        <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]"><h4 class="font-semibold text-gray-800 dark:text-white/90">Pemasukan & Pengeluaran</h4><p class="mt-1 text-xs text-gray-500">Ringkasan keuangan sekolah per bulan.</p><div id="principal-finance-chart" class="mt-4 min-h-[280px]"></div></div>
+    </section>
+
+    <section class="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]"><h4 class="font-semibold text-gray-800 dark:text-white/90">Pengumuman Terbaru</h4><div class="mt-4 space-y-3">@forelse($latestAnnouncements as $announcement)<div class="rounded-xl border border-gray-100 px-4 py-3 dark:border-gray-800"><p class="text-sm font-semibold text-gray-800 dark:text-white/90">{{ $announcement->title }}</p><p class="mt-1 text-xs text-gray-500">{{ $announcement->published_at?->translatedFormat('d M Y') ?? 'Belum dipublikasikan' }}</p></div>@empty<p class="text-sm text-gray-500">Belum ada pengumuman.</p>@endforelse</div></div>
+        <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]"><h4 class="font-semibold text-gray-800 dark:text-white/90">Konteks Sekolah Aktif</h4><p class="mt-2 text-sm leading-6 text-gray-500">Semua angka di dashboard ini mengikuti sekolah aktif yang dipilih setelah login. Gunakan dropdown sekolah di header untuk berpindah konteks.</p></div>
+    </section>
 
     <!-- SECTION 2: FINANCIAL METRICS -->
     <span class="block mb-3 text-xs font-bold uppercase tracking-wider text-gray-400">Ringkasan Finansial Sekolah (SPP & Operasional)</span>
@@ -208,6 +230,12 @@
         </div>
 
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => { const attendance = @json($attendanceSeries); const finance = @json($financeSeries); if (!window.ApexCharts) return;
+            new ApexCharts(document.querySelector('#principal-attendance-chart'), { chart:{type:'line',height:280,toolbar:{show:false}}, series:[{name:'Siswa',data:attendance.students},{name:'Guru',data:attendance.teachers},{name:'Tendik',data:attendance.staff}], xaxis:{categories:attendance.months}, stroke:{curve:'smooth',width:3}, colors:['#087f7a','#6366f1','#f59e0b'], legend:{position:'top'}}).render();
+            new ApexCharts(document.querySelector('#principal-finance-chart'), { chart:{type:'bar',height:280,toolbar:{show:false}}, series:[{name:'Pemasukan',data:finance.income},{name:'Pengeluaran',data:finance.expenses}], xaxis:{categories:finance.months}, colors:['#16a34a','#ef4444'], plotOptions:{bar:{borderRadius:5,columnWidth:'55%'}}, tooltip:{y:{formatter:value=>'Rp '+new Intl.NumberFormat('id-ID').format(value)}}}).render(); });
+    </script>
 
     <!-- Onboarding Tour Script -->
     <script>

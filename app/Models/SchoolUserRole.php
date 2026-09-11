@@ -15,6 +15,7 @@ class SchoolUserRole extends Model
         'user_id',
         'role',
         'is_active',
+        'membership_status',
     ];
 
     protected $casts = [

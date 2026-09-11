@@ -20,6 +20,8 @@ class School extends Model
         'city',
         'province',
         'is_active',
+        'status',
+        'registration_code',
     ];
 
     protected $casts = [

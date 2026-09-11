@@ -49,6 +49,26 @@ it('requires a multi-school user to choose an active school before dashboard acc
         ->assertSessionHas('active_school_id', $schoolB);
 });
 
+it('provides school-scoped principal dashboard data', function () {
+    $user = User::factory()->create(['role' => 'super_admin']);
+    $school = DB::table('schools')->insertGetId(['name' => 'Sekolah Kepala', 'level' => 'smk', 'ownership' => 'swasta', 'created_at' => now(), 'updated_at' => now()]);
+    $otherSchool = DB::table('schools')->insertGetId(['name' => 'Sekolah Lain', 'level' => 'sma', 'ownership' => 'negeri', 'created_at' => now(), 'updated_at' => now()]);
+    DB::table('school_user_roles')->insert(['user_id' => $user->id, 'school_id' => $school, 'role' => 'kepsek', 'created_at' => now(), 'updated_at' => now()]);
+    DB::table('teachers')->insert([
+        ['school_id' => $school, 'name' => 'Guru Sekolah', 'role_type' => 'Guru', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+        ['school_id' => $school, 'name' => 'Tendik Sekolah', 'role_type' => 'Staf TU', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+        ['school_id' => $otherSchool, 'name' => 'Guru Lain', 'role_type' => 'Guru', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    $this->actingAs($user)->withSession(['active_school_id' => $school])->get('/dashboard')
+        ->assertOk()
+        ->assertViewHas('totalTeachers', 2)
+        ->assertViewHas('totalStaff', 1)
+        ->assertViewHas('departmentCount', 0)
+        ->assertViewHas('attendanceSeries', fn ($series) => count($series['months']) === 6)
+        ->assertViewHas('financeSeries', fn ($series) => count($series['months']) === 6);
+});
+
 it('authorizes protected modules from the active school role instead of the flat user role', function () {
     $user = User::factory()->create(['role' => 'staf_tu']);
     $school = DB::table('schools')->insertGetId(['name' => 'Sekolah Role', 'level' => 'sma', 'ownership' => 'swasta', 'created_at' => now(), 'updated_at' => now()]);

@@ -24,6 +24,8 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'registration_type',
+        'onboarding_status',
     ];
 
     /**
@@ -106,6 +108,11 @@ class User extends Authenticatable
         return $this->belongsToMany(School::class, 'school_user_roles')
             ->withPivot(['role', 'is_active'])
             ->withTimestamps();
+    }
+
+    public function guardianStudents(): HasMany
+    {
+        return $this->hasMany(Student::class, 'guardian_user_id');
     }
 
     public function legacyHasRole(string|array $roles): bool

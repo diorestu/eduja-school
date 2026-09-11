@@ -122,13 +122,15 @@
     {{-- preloader end --}}
 
     <div class="min-h-screen xl:flex">
-        @include('layouts.backdrop')
-        @include('layouts.sidebar')
+        @if(!request()->routeIs('yayasan.*'))
+            @include('layouts.backdrop')
+            @include('layouts.sidebar')
+        @endif
 
         <div class="flex-1 transition-all duration-300 ease-in-out"
             :class="{
-                'xl:ml-[290px]': $store.sidebar.isExpanded || $store.sidebar.isHovered,
-                'xl:ml-[90px]': !$store.sidebar.isExpanded && !$store.sidebar.isHovered,
+                'xl:ml-[290px]': !{{ request()->routeIs('yayasan.*') ? 'true' : 'false' }} && ($store.sidebar.isExpanded || $store.sidebar.isHovered),
+                'xl:ml-[90px]': !{{ request()->routeIs('yayasan.*') ? 'true' : 'false' }} && !$store.sidebar.isExpanded && !$store.sidebar.isHovered,
                 'ml-0': $store.sidebar.isMobileOpen
             }">
             <!-- app header start -->

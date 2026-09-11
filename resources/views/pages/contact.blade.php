@@ -37,7 +37,7 @@
                             </div>
                             <div>
                                 <span class="text-[10px] text-gray-400 uppercase tracking-wider font-bold block mb-0.5">WhatsApp — Respons Cepat</span>
-                                <a href="https://wa.me/628123456789" target="_blank" rel="noopener noreferrer"
+                                <a href="https://wa.me/628179792288" target="_blank" rel="noopener noreferrer"
                                    class="text-sm font-bold text-gray-800 dark:text-white hover:text-brand-500 dark:hover:text-brand-400 transition-colors">
                                     +62 812-3456-789
                                 </a>
