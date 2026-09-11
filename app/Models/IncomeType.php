@@ -10,4 +10,9 @@ class IncomeType extends Model
     use HasFactory;
 
     protected $guarded = [];
+
+    protected $casts = [
+        'uses_allocation' => 'boolean',
+        'requires_approval' => 'boolean',
+    ];
 }

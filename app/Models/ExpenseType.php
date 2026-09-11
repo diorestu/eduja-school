@@ -10,4 +10,8 @@ class ExpenseType extends Model
     use HasFactory;
 
     protected $guarded = [];
+
+    protected $casts = [
+        'requires_approval' => 'boolean',
+    ];
 }

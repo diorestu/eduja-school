@@ -13,6 +13,8 @@ class BookClosing extends Model
 
     protected $casts = [
         'snapshot' => 'array',
+        'validation_results' => 'array',
+        'audit_metadata' => 'array',
         'closed_at' => 'datetime',
     ];
 }

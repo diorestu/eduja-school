@@ -10,4 +10,9 @@ class BudgetPlan extends Model
     use HasFactory;
 
     protected $guarded = [];
+
+    protected $casts = [
+        'amount' => 'decimal:2',
+        'approved_at' => 'datetime',
+    ];
 }

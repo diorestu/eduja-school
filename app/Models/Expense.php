@@ -13,6 +13,7 @@ class Expense extends Model
     protected $fillable = [
         'budget_category_id',
         'school_id',
+        'account_id',
         'academic_year_id',
         'expense_name',
         'amount',
@@ -27,6 +28,8 @@ class Expense extends Model
         'status',
         'reviewed_by',
         'reviewed_at',
+        'posted_at',
+        'posted_by',
     ];
 
     protected $casts = [
@@ -35,7 +38,8 @@ class Expense extends Model
         'amount' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'reviewed_at' => 'datetime',
-    ];
+        'posted_at' => 'datetime',
+        ];
 
     public function budgetCategory(): BelongsTo
     {

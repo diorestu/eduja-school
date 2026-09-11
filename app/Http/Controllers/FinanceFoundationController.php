@@ -12,6 +12,7 @@ use App\Models\IncomeType;
 use App\Models\PaymentSubmission;
 use App\Models\SchoolAccount;
 use App\Services\FinanceLedgerService;
+use App\Services\FinanceService;
 use App\Services\SchoolContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,7 +43,7 @@ class FinanceFoundationController extends Controller
         ]);
     }
 
-    public function storeAccount(Request $request, SchoolContext $schoolContext): RedirectResponse
+    public function storeAccount(Request $request, SchoolContext $schoolContext, FinanceService $finance): RedirectResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:120'],
@@ -50,11 +51,9 @@ class FinanceFoundationController extends Controller
             'bank_name' => ['nullable', 'string', 'max:80'],
         ]);
 
-        SchoolAccount::create([
-            ...$validated,
-            'school_id' => $schoolContext->activeSchoolId(),
-            'type' => $validated['type'] ?: 'Tunai',
-        ]);
+        $schoolId = $schoolContext->activeSchoolId();
+        abort_unless($schoolId, 403);
+        $finance->createAccount($schoolId, $validated);
 
         return back()->with('success', 'Rekening sekolah berhasil ditambahkan.');
     }

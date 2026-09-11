@@ -12,6 +12,8 @@ class PaymentSubmission extends Model
     protected $guarded = [];
 
     protected $casts = [
+        'amount' => 'decimal:2',
         'payment_date' => 'date',
+        'posted_at' => 'datetime',
     ];
 }

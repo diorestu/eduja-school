@@ -7,7 +7,9 @@ use App\Models\AttendanceRequest;
 use App\Models\BudgetPlan;
 use App\Models\Expense;
 use App\Models\PaymentSubmission;
+use App\Models\BudgetPlanRevision;
 use App\Services\SchoolContext;
+use App\Services\FinanceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -17,6 +19,7 @@ class ApprovalController extends Controller
     private const APPROVABLE_TYPES = [
         AttendanceRequest::class,
         BudgetPlan::class,
+        BudgetPlanRevision::class,
         Expense::class,
         PaymentSubmission::class,
     ];
@@ -53,6 +56,14 @@ class ApprovalController extends Controller
 
         $approvable = $this->approvable($approval);
 
+        if ($approvable) {
+            try {
+                app(FinanceService::class)->assertApprovalScope($approval->school_id, $approvable);
+            } catch (\InvalidArgumentException) {
+                abort(403);
+            }
+        }
+
         if ($approvable && Schema::hasColumn($approvable->getTable(), 'status')) {
             $payload = ['status' => $status];
 
@@ -65,6 +76,10 @@ class ApprovalController extends Controller
             }
 
             $approvable->forceFill($payload)->save();
+        }
+
+        if ($approvable) {
+            app(FinanceService::class)->applyApproval($approval, $approvable, $status, $request->user()->id);
         }
 
         return back()->with('success', $message);

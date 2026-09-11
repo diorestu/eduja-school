@@ -12,16 +12,20 @@ class Transaction extends Model
 
     protected $fillable = [
         'invoice_id',
+        'school_id',
+        'account_id',
         'amount_paid',
         'payment_date',
         'payment_method',
         'receipt_number',
         'recipient_name',
+        'status',
     ];
 
     protected $casts = [
         'payment_date' => 'date',
         'amount_paid' => 'decimal:2',
+        'status' => 'string',
     ];
 
     /**
