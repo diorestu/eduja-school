@@ -137,12 +137,38 @@ Route::middleware('auth')->group(function () {
                 Route::get('/accounts', [FinanceFoundationController::class, 'accounts'])->name('accounts');
                 Route::post('/accounts', [FinanceFoundationController::class, 'storeAccount'])->name('accounts.store');
             });
-            Route::middleware('permission:finance.income_types,super_admin,bendahara')->get('/income-types', [FinanceFoundationController::class, 'incomeTypes'])->name('income-types');
-            Route::middleware('permission:finance.expense_types,super_admin,bendahara')->get('/expense-types', [FinanceFoundationController::class, 'expenseTypes'])->name('expense-types');
-            Route::middleware('permission:finance.budgets,super_admin,bendahara')->get('/budgets', [FinanceFoundationController::class, 'budgets'])->name('budgets');
+            Route::middleware('permission:finance.income_types,super_admin,bendahara')->group(function () {
+                Route::get('/income-types', [FinanceFoundationController::class, 'incomeTypes'])->name('income-types');
+                Route::post('/income-types', [FinanceFoundationController::class, 'storeIncomeType'])->name('income-types.store');
+            });
+            Route::middleware('permission:finance.expense_types,super_admin,bendahara')->group(function () {
+                Route::get('/expense-types', [FinanceFoundationController::class, 'expenseTypes'])->name('expense-types');
+                Route::post('/expense-types', [FinanceFoundationController::class, 'storeExpenseType'])->name('expense-types.store');
+            });
+            Route::middleware('permission:finance.allocations,super_admin,bendahara')->group(function () {
+                Route::get('/allocations', [FinanceFoundationController::class, 'allocations'])->name('allocations');
+                Route::post('/allocations', [FinanceFoundationController::class, 'storeAllocation'])->name('allocations.store');
+            });
+            Route::middleware('permission:finance.budget_years,super_admin,bendahara')->group(function () {
+                Route::get('/budget-years', [FinanceFoundationController::class, 'budgetYears'])->name('budget-years');
+                Route::post('/budget-years', [FinanceFoundationController::class, 'storeBudgetYear'])->name('budget-years.store');
+            });
+            Route::middleware('permission:finance.budgets,super_admin,bendahara')->group(function () {
+                Route::get('/budgets', [FinanceFoundationController::class, 'budgets'])->name('budgets');
+                Route::post('/budgets', [FinanceFoundationController::class, 'storeBudget'])->name('budgets.store');
+                Route::post('/budgets/{budgetPlan}/revisions', [FinanceFoundationController::class, 'storeBudgetRevision'])->name('budgets.revisions.store');
+            });
             Route::middleware('permission:finance.approvals,super_admin,bendahara')->get('/approvals', [FinanceFoundationController::class, 'approvals'])->name('approvals');
-            Route::middleware('permission:finance.billing,super_admin,bendahara')->get('/billing', [FinanceFoundationController::class, 'billing'])->name('billing');
-            Route::middleware('permission:finance.closing,super_admin,bendahara')->get('/closing', [FinanceFoundationController::class, 'closing'])->name('closing');
+            Route::middleware('permission:finance.billing,super_admin,bendahara')->group(function () {
+                Route::get('/billing', [FinanceFoundationController::class, 'billing'])->name('billing');
+                Route::post('/billing', [FinanceFoundationController::class, 'storeBilling'])->name('billing.store');
+            });
+            Route::middleware('permission:finance.closing,super_admin,bendahara')->group(function () {
+                Route::get('/closing', [FinanceFoundationController::class, 'closing'])->name('closing');
+                Route::post('/closing', [FinanceFoundationController::class, 'storeClosing'])->name('closing.store');
+            });
+            Route::middleware('permission:finance.ledger,super_admin,bendahara')->get('/ledger', [FinanceFoundationController::class, 'ledger'])->name('ledger');
+            Route::middleware('permission:finance.reports,super_admin,bendahara')->get('/reports', [FinanceFoundationController::class, 'reports'])->name('reports');
         });
 
         Route::middleware('permission:portal.teacher,super_admin,guru,wali_kelas,kepsek')->get('/portal/guru', [PortalFoundationController::class, 'guru'])->name('portal.guru');
