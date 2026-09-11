@@ -1,3 +1,4 @@
+@php($headerSchools = auth()->check() ? app(\App\Services\SchoolContext::class)->availableSchools(auth()->user()) : collect())
 <header
     class="sticky top-0 flex w-full bg-white border-gray-200 z-99999 dark:border-gray-800 dark:bg-gray-900 xl:border-b"
     x-data="{
@@ -94,6 +95,18 @@
         <div :class="isApplicationMenuOpen ? 'flex' : 'hidden'"
             class="items-center justify-between w-full gap-4 px-5 py-4 xl:flex shadow-theme-md xl:justify-end xl:px-0 xl:shadow-none">
             <div class="flex items-center gap-2 2xsm:gap-3">
+                @if($headerSchools->count() > 1)
+                    <div x-data="{ open: false }" class="relative hidden lg:block">
+                        <button type="button" @click="open = !open" :aria-expanded="open.toString()" class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-left text-xs font-semibold text-gray-700 shadow-theme-xs hover:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300" aria-label="Ganti sekolah aktif">
+                            <i class="bx bx-buildings text-base text-brand-500" aria-hidden="true"></i><span>Ganti sekolah</span><i class="bx bx-chevron-down text-base" aria-hidden="true"></i>
+                        </button>
+                        <div x-show="open" x-transition.opacity.duration.150ms @click.outside="open = false" class="absolute right-0 z-50 mt-2 w-72 rounded-xl border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-800 dark:bg-gray-900" style="display:none">
+                            @foreach($headerSchools as $headerSchool)
+                                <form action="{{ route('school.switch') }}" method="POST">@csrf<input type="hidden" name="school_id" value="{{ $headerSchool->id }}"><button type="submit" class="flex min-h-11 w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs hover:bg-gray-50 focus:bg-gray-50 focus:outline-hidden dark:hover:bg-white/[0.05] dark:focus:bg-white/[0.05]"><span><strong class="block text-gray-800 dark:text-white/90">{{ $headerSchool->name }}</strong><small class="text-gray-500">{{ $headerSchool->city ?? 'Lokasi belum diisi' }}</small></span><i class="bx bx-right-arrow-alt text-lg text-brand-500" aria-hidden="true"></i></button></form>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
                 <!-- Theme Toggle Button -->
                 <button
                     class="relative flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-dark-900 h-11 w-11 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"

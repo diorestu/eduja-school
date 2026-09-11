@@ -150,14 +150,8 @@
 
                     {{-- Wali Kelas Row --}}
                     <div class="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex justify-between items-center">
-                        <div>
-                            <span class="text-[9px] text-zinc-400 font-bold uppercase tracking-wider block">Wali Kelas</span>
-                            <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">{{ $homeroomTeacher->name }}</span>
-                        </div>
-                        <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $homeroomTeacher->phone ?? '081234567890') }}" target="_blank"
-                            class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 hover:bg-emerald-500/25 transition">
-                            <i class="bx bxl-whatsapp text-lg"></i>
-                        </a>
+                        <div><span class="text-[9px] text-zinc-400 font-bold uppercase tracking-wider block">Wali Kelas</span>@if($homeroomTeacher)<span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">{{ $homeroomTeacher->name }}</span>@else<span class="text-xs text-zinc-500">Belum terhubung</span>@endif</div>
+                        @if($homeroomTeacher?->phone)<a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $homeroomTeacher->phone) }}" target="_blank" rel="noopener noreferrer" aria-label="Hubungi wali kelas" class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 hover:bg-emerald-500/25 transition"><i class="bx bxl-whatsapp text-lg" aria-hidden="true"></i></a>@endif
                     </div>
 
                     {{-- Recent Attendance History --}}

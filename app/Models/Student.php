@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Student extends Model
 {
@@ -15,6 +16,7 @@ class Student extends Model
         'nis',
         'school_id',
         'guardian_user_id',
+        'user_id',
         'nisn',
         'name',
         'gender',
@@ -38,6 +40,11 @@ class Student extends Model
     public function classStudents(): HasMany
     {
         return $this->hasMany(ClassStudent::class, 'student_id');
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     /**

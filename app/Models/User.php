@@ -22,6 +22,8 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'phone',
+        'phone_normalized',
         'password',
         'role',
         'registration_type',
@@ -113,6 +115,16 @@ class User extends Authenticatable
     public function guardianStudents(): HasMany
     {
         return $this->hasMany(Student::class, 'guardian_user_id');
+    }
+
+    public function students(): HasMany
+    {
+        return $this->hasMany(Student::class);
+    }
+
+    public function teachers(): HasMany
+    {
+        return $this->hasMany(Teacher::class);
     }
 
     public function legacyHasRole(string|array $roles): bool

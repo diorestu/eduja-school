@@ -31,12 +31,7 @@ class SchoolSelectionController extends Controller
             'school_id' => ['required', 'integer'],
         ]);
 
-        $school = $schoolContext->availableSchools($request->user())
-            ->firstWhere('id', (int) $validated['school_id']);
-
-        abort_unless($school, 403);
-
-        $request->session()->put('active_school_id', $school->id);
+        $schoolContext->setActiveSchool($request->user(), (int) $validated['school_id']);
 
         return redirect()->intended(route('dashboard'))->with('success', 'Konteks sekolah aktif diperbarui.');
     }

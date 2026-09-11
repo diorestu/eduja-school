@@ -23,11 +23,24 @@ class SchoolContext
     public function availableSchools(User $user): Collection
     {
         return School::query()
+            ->where('is_active', true)
+            ->where('status', 'active')
             ->whereHas('roles', fn ($query) => $query
                 ->where('user_id', $user->id)
-                ->where('is_active', true))
+                ->where('is_active', true)
+                ->where('membership_status', 'active'))
+            ->with(['roles' => fn ($query) => $query->where('user_id', $user->id)->where('is_active', true)->where('membership_status', 'active')])
             ->orderBy('name')
             ->get();
+    }
+
+    public function setActiveSchool(User $user, int $schoolId): School
+    {
+        $school = $this->availableSchools($user)->firstWhere('id', $schoolId);
+        abort_unless($school, 403);
+        session(['active_school_id' => $school->id]);
+
+        return $school;
     }
 
     public function ensureDefaultSchool(User $user): ?School

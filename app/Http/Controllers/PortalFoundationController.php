@@ -8,6 +8,7 @@ use App\Models\PaymentSubmission;
 use App\Models\Student;
 use App\Models\StudentAttendance;
 use App\Services\SchoolContext;
+use App\Services\IdentityResolver;
 use Illuminate\View\View;
 
 class PortalFoundationController extends Controller
@@ -20,53 +21,24 @@ class PortalFoundationController extends Controller
         ]);
     }
 
-    public function siswa(SchoolContext $schoolContext): View
+    public function siswa(SchoolContext $schoolContext, IdentityResolver $identityResolver): View
     {
         $schoolId = $schoolContext->activeSchoolId();
         
         $user = auth()->user();
-        $student = Student::where('school_id', $schoolId)
-            ->where(function ($query) use ($user) {
-                $query->where('name', 'like', '%' . $user->name . '%')
-                      ->orWhere('id', '>', 0);
-            })->first();
+        $student = $identityResolver->studentFor($user, $schoolId);
+        if (! $student) return view('pages.portal.empty-identity', ['title' => 'Portal Siswa', 'message' => 'Akun ini belum terhubung ke data siswa di sekolah aktif.', 'action' => 'Hubungi admin sekolah untuk menghubungkan akun siswa.']);
 
-        if (!$student) {
-            $student = Student::first() ?? new Student([
-                'id' => 1,
-                'school_id' => $schoolId,
-                'nis' => '10001',
-                'nisn' => '0091234501',
-                'name' => 'Aditya Pratama',
-                'gender' => 'L',
-                'phone' => '08991234567',
-                'parent_name' => 'Slamet Pratama',
-                'is_active' => true,
-                'status' => 'active',
-            ]);
-        }
-
-        $classStudent = \App\Models\ClassStudent::where('student_id', $student->id)->first();
+        $classStudent = \App\Models\ClassStudent::where('student_id', $student->id)->whereHas('schoolClass', fn ($query) => $query->where('school_id', $schoolId))->first();
         $class = $classStudent ? \App\Models\SchoolClass::find($classStudent->school_class_id) : null;
-        $className = $class ? $class->name : 'Kelas X-A';
+        $className = $class ? $class->name : 'Kelas belum terhubung';
 
-        $classLocation = 'Gedung A, Ruang 102';
+        $classLocation = null;
         if ($class) {
-            if (str_contains($class->name, 'XI')) {
-                $classLocation = 'Gedung B, Ruang 204';
-            } elseif (str_contains($class->name, 'XII')) {
-                $classLocation = 'Gedung C, Ruang 301';
-            }
+            $classLocation = $class->location;
         }
 
         $homeroomTeacher = $class ? $class->teacher : null;
-        if (!$homeroomTeacher) {
-            $homeroomTeacher = \App\Models\Teacher::where('school_id', $schoolId)->first() ?? new \App\Models\Teacher([
-                'name' => 'Budi Santoso, S.Pd.',
-                'nip' => '198001012010011001',
-                'phone' => '081234567890',
-            ]);
-        }
 
         $todayStr = today()->toDateString();
         $todayAttendance = StudentAttendance::where('student_id', $student->id)
@@ -110,21 +82,12 @@ class PortalFoundationController extends Controller
         ]);
     }
 
-    public function storeAttendance(SchoolContext $schoolContext, \Illuminate\Http\Request $request)
+    public function storeAttendance(SchoolContext $schoolContext, \Illuminate\Http\Request $request, IdentityResolver $identityResolver)
     {
         $schoolId = $schoolContext->activeSchoolId();
         $user = auth()->user();
 
-        $studentId = $request->input('student_id');
-        if ($studentId) {
-            $student = Student::where('school_id', $schoolId)->find($studentId);
-        } else {
-            $student = Student::where('school_id', $schoolId)
-                ->where(function ($query) use ($user) {
-                    $query->where('name', 'like', '%' . $user->name . '%')
-                          ->orWhere('id', '>', 0);
-                })->first();
-        }
+        $student = $identityResolver->studentFor($user, $schoolId);
 
         if (!$student) {
             return back()->with('error', 'Siswa tidak ditemukan.');
@@ -181,21 +144,12 @@ class PortalFoundationController extends Controller
         return back()->with('error', 'Aksi tidak valid.');
     }
 
-    public function storePermission(SchoolContext $schoolContext, \Illuminate\Http\Request $request)
+    public function storePermission(SchoolContext $schoolContext, \Illuminate\Http\Request $request, IdentityResolver $identityResolver)
     {
         $schoolId = $schoolContext->activeSchoolId();
         $user = auth()->user();
 
-        $studentId = $request->input('student_id');
-        if ($studentId) {
-            $student = Student::where('school_id', $schoolId)->find($studentId);
-        } else {
-            $student = Student::where('school_id', $schoolId)
-                ->where(function ($query) use ($user) {
-                    $query->where('name', 'like', '%' . $user->name . '%')
-                          ->orWhere('id', '>', 0);
-                })->first();
-        }
+        $student = $identityResolver->studentFor($user, $schoolId);
 
         if (!$student) {
             return back()->with('error', 'Siswa tidak ditemukan.');
@@ -235,76 +189,35 @@ class PortalFoundationController extends Controller
         $schoolId = $schoolContext->activeSchoolId();
         $user = auth()->user();
 
-        // 1. Find children (students mapped to this parent name or fallback)
-        $students = Student::where('school_id', $schoolId)
-            ->where(function ($query) use ($user) {
-                $query->where('parent_name', 'like', '%' . $user->name . '%')
-                      ->orWhere('name', 'like', '%' . $user->name . '%');
-            })->get();
+        $students = Student::where('school_id', $schoolId)->where('guardian_user_id', $user->id)->where('is_active', true)->get();
+        if ($students->isEmpty()) return view('pages.portal.empty-identity', ['title' => 'Portal Orang Tua', 'message' => 'Belum ada data siswa yang terhubung ke akun ini.', 'action' => 'Minta admin sekolah menghubungkan data siswa ke akun wali murid.']);
 
-        // Fallback: if no student is associated with parent, get first few students
-        if ($students->isEmpty()) {
-            $students = Student::where('school_id', $schoolId)->limit(3)->get();
-        }
-
-        // 2. Select active child
         $selectedStudentId = $request->query('student_id', $students->first()?->id);
         $student = $students->firstWhere('id', $selectedStudentId) ?? $students->first();
 
-        if (!$student) {
-            // Absolute fallback
-            $student = Student::first() ?? new Student([
-                'id' => 1,
-                'school_id' => $schoolId,
-                'nis' => '10001',
-                'nisn' => '0091234501',
-                'name' => 'Aditya Pratama',
-                'gender' => 'L',
-                'phone' => '08991234567',
-                'parent_name' => 'Slamet Pratama',
-                'is_active' => true,
-                'status' => 'active',
-            ]);
-            $students = collect([$student]);
-        }
+        if (! $student) return view('pages.portal.empty-identity', ['title' => 'Portal Orang Tua', 'message' => 'Siswa yang dipilih tidak terhubung ke akun ini.', 'action' => 'Pilih siswa lain atau hubungi admin sekolah.']);
 
-        // 3. Find class and location
-        $classStudent = \App\Models\ClassStudent::where('student_id', $student->id)->first();
+        $classStudent = \App\Models\ClassStudent::where('student_id', $student->id)->whereHas('schoolClass', fn ($query) => $query->where('school_id', $schoolId))->first();
         $class = $classStudent ? \App\Models\SchoolClass::find($classStudent->school_class_id) : null;
-        $className = $class ? $class->name : 'Kelas X-A';
+        $className = $class ? $class->name : 'Kelas belum terhubung';
 
-        $classLocation = 'Gedung A, Ruang 102';
+        $classLocation = null;
         if ($class) {
-            if (str_contains($class->name, 'XI')) {
-                $classLocation = 'Gedung B, Ruang 204';
-            } elseif (str_contains($class->name, 'XII')) {
-                $classLocation = 'Gedung C, Ruang 301';
-            }
+            $classLocation = $class->location;
         }
 
-        // 4. Find homeroom teacher (wali kelas)
         $homeroomTeacher = $class ? $class->teacher : null;
-        if (!$homeroomTeacher) {
-            $homeroomTeacher = \App\Models\Teacher::where('school_id', $schoolId)->first() ?? new \App\Models\Teacher([
-                'name' => 'Budi Santoso, S.Pd.',
-                'nip' => '198001012010011001',
-                'phone' => '081234567890',
-            ]);
-        }
 
-        // 5. Today's attendance
         $todayStr = today()->toDateString();
         $todayAttendance = StudentAttendance::where('student_id', $student->id)
             ->whereDate('attendance_date', $todayStr)
             ->first();
 
-        // 6. Attendance History
         $attendanceHistory = StudentAttendance::where('student_id', $student->id)
             ->orderBy('attendance_date', 'desc')
             ->limit(7)
             ->get();
 
-        // 7. Attendance stats
         $totalHadir = StudentAttendance::where('student_id', $student->id)->where('status', 'H')->count();
         $totalSakit = StudentAttendance::where('student_id', $student->id)->where('status', 'S')->count();
         $totalIzin = StudentAttendance::where('student_id', $student->id)->where('status', 'I')->count();
@@ -312,18 +225,15 @@ class PortalFoundationController extends Controller
         $totalDays = $totalHadir + $totalSakit + $totalIzin + $totalAlpa;
         $attendanceRate = $totalDays > 0 ? round(($totalHadir / $totalDays) * 100) : 100;
 
-        // 8. Invoices / Billing
         $invoices = \App\Models\Invoice::where('student_id', $student->id)
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // 9. Permission requests
         $permissionRequests = AttendanceRequest::where('student_id', $student->id)
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
 
-        // 10. Student Savings
         $savings = \App\Models\StudentSaving::where('student_id', $student->id)
             ->orderBy('created_at', 'desc')
             ->get();

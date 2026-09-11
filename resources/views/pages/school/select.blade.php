@@ -20,13 +20,12 @@
                     <div class="min-h-24">
                         <h2 class="text-base font-semibold text-gray-900 dark:text-white/90">{{ $school->name }}</h2>
                         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ $school->npsn ?? 'NPSN belum diisi' }}</p>
-                        <p class="mt-3 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                            {{ $school->level }} · {{ $school->city ?? 'Kota belum diisi' }}
-                        </p>
+                        <p class="mt-3 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $school->level }} · {{ $school->city ?? 'Kota belum diisi' }}</p>
+                        <div class="mt-3 flex flex-wrap gap-1.5">@foreach($school->roles as $membership)<span class="rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">{{ str_replace('_', ' ', ucfirst($membership->role)) }}</span>@endforeach</div>
                     </div>
                     <button type="submit"
                         class="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-brand-500 px-4 text-sm font-semibold text-white transition hover:bg-brand-600 focus:outline-hidden focus:ring-3 focus:ring-brand-500/20 active:bg-brand-700">
-                        Aktifkan
+                        Masuk ke sekolah
                     </button>
                 </form>
             @empty
