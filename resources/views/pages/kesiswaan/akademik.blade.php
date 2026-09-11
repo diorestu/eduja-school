@@ -46,6 +46,15 @@
                     </div>
 
                     <div class="flex items-center gap-2">
+                        <label class="sr-only" for="start_date">Tanggal mulai</label>
+                        <input type="date" name="start_date" id="start_date" required
+                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />
+                        <label class="sr-only" for="end_date">Tanggal berakhir</label>
+                        <input type="date" name="end_date" id="end_date" required
+                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />
+                    </div>
+
+                    <div class="flex items-center gap-2">
                         <input type="checkbox" name="is_active" id="is_active" value="1"
                             class="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:focus:ring-offset-gray-900" />
                         <label for="is_active" class="text-sm font-medium text-gray-700 dark:text-gray-400">

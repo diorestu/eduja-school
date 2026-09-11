@@ -134,6 +134,9 @@
                                     <th class="px-5 py-3 text-left">
                                         <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Orang Tua / Wali</p>
                                     </th>
+                                    <th class="px-5 py-3 text-left">
+                                        <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Status</p>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
@@ -168,6 +171,29 @@
                                         <td class="px-5 py-4">
                                             <span class="block text-gray-800 text-theme-sm dark:text-white/90">{{ $student->parent_name ?? '-' }}</span>
                                             <span class="block text-xs text-gray-400">{{ $student->parent_phone ?? '-' }}</span>
+                                        </td>
+                                        <td class="px-5 py-4">
+                                            <form action="{{ route('siswa.store') }}" method="POST" class="min-w-48 space-y-1.5">
+                                                @csrf
+                                                <input type="hidden" name="action" value="status">
+                                                <input type="hidden" name="student_id" value="{{ $student->id }}">
+                                                <label class="sr-only" for="student-status-{{ $student->id }}">Status {{ $student->name }}</label>
+                                                <select id="student-status-{{ $student->id }}" name="status" required
+                                                    class="h-8 w-full rounded-md border border-gray-300 bg-transparent px-2 text-xs text-gray-700 focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                                    @foreach(['active' => 'Aktif', 'graduated' => 'Lulus', 'transferred' => 'Pindah Sekolah', 'dropped_out' => 'Berhenti', 'deceased' => 'Meninggal'] as $status => $label)
+                                                        <option value="{{ $status }}" @selected($student->status === $status)>{{ $label }}</option>
+                                                    @endforeach
+                                                </select>
+                                                <input type="date" name="status_date" value="{{ optional($student->status_date)->format('Y-m-d') ?? now()->toDateString() }}" required
+                                                    class="h-8 w-full rounded-md border border-gray-300 bg-transparent px-2 text-xs text-gray-700 focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                                <input type="text" name="status_note" value="{{ $student->status_note }}" placeholder="Alasan/catatan"
+                                                    class="h-8 w-full rounded-md border border-gray-300 bg-transparent px-2 text-xs text-gray-700 focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                                <input type="text" name="transfer_destination" placeholder="Sekolah tujuan jika pindah"
+                                                    class="h-8 w-full rounded-md border border-gray-300 bg-transparent px-2 text-xs text-gray-700 focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                                <button type="submit" class="inline-flex h-8 items-center rounded-md bg-brand-500 px-2.5 text-xs font-semibold text-white hover:bg-brand-600 focus:outline-hidden focus:ring-2 focus:ring-brand-500/30">
+                                                    Simpan status
+                                                </button>
+                                            </form>
                                         </td>
                                     </tr>
                                 @endforeach

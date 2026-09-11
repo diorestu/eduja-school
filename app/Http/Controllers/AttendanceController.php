@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Student;
-use App\Models\Teacher;
 use App\Models\SchoolClass;
-use App\Models\ClassStudent;
+use App\Models\Student;
 use App\Models\StudentAttendance;
+use App\Models\Teacher;
 use App\Models\TeacherAttendance;
+use App\Services\SchoolContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -17,10 +17,12 @@ class AttendanceController extends Controller
     /**
      * Display student attendance entry grid.
      */
-    public function siswa(Request $request)
+    public function siswa(Request $request, SchoolContext $schoolContext)
     {
-        $classes = SchoolClass::orderBy('name')->get();
-        
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        abort_unless($schoolId, 403);
+        $classes = SchoolClass::where('school_id', $schoolId)->orderBy('name')->get();
+
         $selectedClassId = $request->query('school_class_id');
         $selectedDate = $request->query('attendance_date', Carbon::today()->toDateString());
 
@@ -29,15 +31,17 @@ class AttendanceController extends Controller
 
         if ($selectedClassId) {
             // Get all students enrolled in this class
-            $students = Student::where('is_active', true)
-                ->whereHas('schoolClasses', function($q) use ($selectedClassId) {
-                    $q->where('school_classes.id', $selectedClassId);
+            $students = Student::where('school_id', $schoolId)->where('status', 'active')->where('is_active', true)
+                ->whereHas('schoolClasses', function ($q) use ($selectedClassId) {
+                    $q->where('school_classes.id', $selectedClassId)
+                        ->where('school_classes.school_id', session('active_school_id'));
                 })
                 ->orderBy('name')
                 ->get();
 
             // Fetch existing attendances for this date and class
-            $existingAttendances = StudentAttendance::where('school_class_id', $selectedClassId)
+            $existingAttendances = StudentAttendance::where('school_id', $schoolId)
+                ->where('school_class_id', $selectedClassId)
                 ->whereDate('attendance_date', $selectedDate)
                 ->get()
                 ->keyBy('student_id');
@@ -49,14 +53,14 @@ class AttendanceController extends Controller
             'selectedClassId' => $selectedClassId,
             'selectedDate' => $selectedDate,
             'students' => $students,
-            'existingAttendances' => $existingAttendances
+            'existingAttendances' => $existingAttendances,
         ]);
     }
 
     /**
      * Store student attendance logs.
      */
-    public function storeSiswa(Request $request)
+    public function storeSiswa(Request $request, SchoolContext $schoolContext)
     {
         $validated = $request->validate([
             'school_class_id' => 'required|exists:school_classes,id',
@@ -69,8 +73,13 @@ class AttendanceController extends Controller
 
         $classId = $validated['school_class_id'];
         $date = $validated['attendance_date'];
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        abort_unless($schoolId, 403);
+        abort_unless(SchoolClass::where('school_id', $schoolId)->whereKey($classId)->exists(), 404);
         $submittedStudentIds = array_map('strval', array_keys($validated['attendances']));
-        $validStudentIds = Student::whereIn('id', $submittedStudentIds)
+        $validStudentIds = Student::where('school_id', $schoolId)
+            ->whereIn('id', $submittedStudentIds)
+            ->where('status', 'active')
             ->where('is_active', true)
             ->whereHas('schoolClasses', function ($query) use ($classId) {
                 $query->where('school_classes.id', $classId);
@@ -91,12 +100,13 @@ class AttendanceController extends Controller
             StudentAttendance::updateOrCreate(
                 [
                     'student_id' => $studentId,
-                    'attendance_date' => $date
+                    'attendance_date' => $date,
                 ],
                 [
                     'school_class_id' => $classId,
+                    'school_id' => $schoolId,
                     'status' => $status,
-                    'note' => $note
+                    'note' => $note,
                 ]
             );
         }
@@ -107,15 +117,16 @@ class AttendanceController extends Controller
     /**
      * Display teacher/staff attendance entry grid.
      */
-    public function gtk(Request $request)
+    public function gtk(Request $request, SchoolContext $schoolContext)
     {
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        abort_unless($schoolId, 403);
         $selectedDate = $request->query('attendance_date', Carbon::today()->toDateString());
 
-        // Get all active GTK (Principal, Teachers, Treasurer, TU Staff)
-        $teachers = Teacher::where('is_active', true)->orderBy('name')->get();
+        $teachers = Teacher::where('school_id', $schoolId)->where('status', 'active')->where('is_active', true)->orderBy('name')->get();
 
-        // Fetch existing teacher attendances for this date
-        $existingAttendances = TeacherAttendance::whereDate('attendance_date', $selectedDate)
+        $existingAttendances = TeacherAttendance::where('school_id', $schoolId)
+            ->whereDate('attendance_date', $selectedDate)
             ->get()
             ->keyBy('teacher_id');
 
@@ -123,14 +134,14 @@ class AttendanceController extends Controller
             'title' => 'Presensi Harian GTK (Guru & Tenaga Kependidikan)',
             'selectedDate' => $selectedDate,
             'teachers' => $teachers,
-            'existingAttendances' => $existingAttendances
+            'existingAttendances' => $existingAttendances,
         ]);
     }
 
     /**
      * Store teacher/staff attendance logs.
      */
-    public function storeGtk(Request $request)
+    public function storeGtk(Request $request, SchoolContext $schoolContext)
     {
         $validated = $request->validate([
             'attendance_date' => 'required|date',
@@ -141,8 +152,12 @@ class AttendanceController extends Controller
         ]);
 
         $date = $validated['attendance_date'];
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        abort_unless($schoolId, 403);
         $submittedTeacherIds = array_map('strval', array_keys($validated['attendances']));
-        $validTeacherIds = Teacher::whereIn('id', $submittedTeacherIds)
+        $validTeacherIds = Teacher::where('school_id', $schoolId)
+            ->whereIn('id', $submittedTeacherIds)
+            ->where('status', 'active')
             ->where('is_active', true)
             ->pluck('id')
             ->map(fn ($id) => (string) $id)
@@ -160,11 +175,12 @@ class AttendanceController extends Controller
             TeacherAttendance::updateOrCreate(
                 [
                     'teacher_id' => $teacherId,
-                    'attendance_date' => $date
+                    'school_id' => $schoolId,
+                    'attendance_date' => $date,
                 ],
                 [
                     'status' => $status,
-                    'note' => $note
+                    'note' => $note,
                 ]
             );
         }

@@ -20,6 +20,16 @@ class SchoolContext
         return session('active_school_id');
     }
 
+    public function activeSchoolIdFor(?User $user = null): int
+    {
+        $user ??= auth()->user();
+        $schoolId = $this->activeSchoolId();
+        abort_unless($user && $schoolId, 403);
+        abort_unless($this->availableSchools($user)->contains('id', $schoolId), 403);
+
+        return (int) $schoolId;
+    }
+
     public function availableSchools(User $user): Collection
     {
         return School::query()

@@ -4,13 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Student extends Model
 {
     use HasFactory;
+
+    public const STATUSES = ['active', 'graduated', 'transferred', 'dropped_out', 'deceased'];
 
     protected $fillable = [
         'nis',
@@ -54,5 +56,10 @@ class Student extends Model
     {
         return $this->belongsToMany(SchoolClass::class, 'class_students', 'student_id', 'school_class_id')
             ->withTimestamps();
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active')->where('is_active', true);
     }
 }

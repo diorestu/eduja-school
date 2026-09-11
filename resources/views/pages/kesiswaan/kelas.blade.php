@@ -23,7 +23,7 @@
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                             Nama Kelas
                         </label>
-                        <input type="text" name="name" placeholder="Contoh: Kelas X-A, Kelas XI-IPA" required
+                        <input type="text" name="name" placeholder="Opsional jika rombel dibuat otomatis"
                             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" />
                     </div>
 
@@ -34,6 +34,29 @@
                         <input type="number" name="grade" placeholder="Contoh: 10, 11, 12" required
                             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" />
                     </div>
+
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                            Jumlah Rombel
+                        </label>
+                        <input type="number" name="rombel_count" min="1" max="50" value="1" required
+                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />
+                    </div>
+
+                    @if(in_array($schoolLevel, ['smk', 'mak'], true))
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                                Jurusan
+                            </label>
+                            <select name="department_id" required
+                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 text-sm text-gray-800 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
+                                <option value="">Pilih Jurusan</option>
+                                @foreach($departments as $department)
+                                    <option value="{{ $department->id }}">{{ $department->code }} · {{ $department->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
 
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
@@ -106,6 +129,9 @@
                                         <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Wali Kelas</p>
                                     </th>
                                     <th class="px-5 py-3 text-left">
+                                        <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Jurusan</p>
+                                    </th>
+                                    <th class="px-5 py-3 text-left">
                                         <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Tahun Akademik</p>
                                     </th>
                                 </tr>
@@ -122,6 +148,11 @@
                                         <td class="px-5 py-4">
                                             <span class="text-gray-800 font-medium text-theme-sm dark:text-white/90">
                                                 {{ $class->teacher ? $class->teacher->name : 'Belum Ditentukan' }}
+                                            </span>
+                                        </td>
+                                        <td class="px-5 py-4">
+                                            <span class="text-gray-500 text-theme-sm dark:text-gray-400">
+                                                {{ $class->department?->code ?? '-' }}
                                             </span>
                                         </td>
                                         <td class="px-5 py-4">

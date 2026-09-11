@@ -3,52 +3,46 @@
 namespace App\Http\Controllers;
 
 use App\Models\AcademicYear;
+use App\Services\AcademicLifecycleService;
+use App\Services\SchoolContext;
 use Illuminate\Http\Request;
 
 class AcademicYearController extends Controller
 {
-    public function index()
+    public function index(SchoolContext $schoolContext)
     {
-        $academicYears = AcademicYear::orderBy('year', 'desc')->get();
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        abort_unless($schoolId, 403);
+        $academicYears = AcademicYear::where('school_id', $schoolId)->orderByDesc('year')->orderByDesc('semester')->get();
+
         return view('pages.kesiswaan.akademik', [
             'title' => 'Tahun Akademik',
-            'academicYears' => $academicYears
+            'academicYears' => $academicYears,
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, SchoolContext $schoolContext, AcademicLifecycleService $service)
     {
-        $request->validate([
-            'year' => 'required|string',
-            'semester' => 'required|in:Ganjil,Genap',
-            'is_active' => 'nullable|boolean'
+        $validated = $request->validate([
+            'year' => ['required', 'string', 'max:20'],
+            'semester' => ['required', 'in:Ganjil,Genap'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after:start_date'],
+            'is_active' => ['nullable', 'boolean'],
         ]);
 
-        $is_active = $request->has('is_active') ? (bool)$request->is_active : false;
-
-        if ($is_active) {
-            // Deactivate all others first
-            AcademicYear::query()->update(['is_active' => false]);
-        }
-
-        AcademicYear::create([
-            'year' => $request->year,
-            'semester' => $request->semester,
-            'is_active' => $is_active,
-        ]);
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        abort_unless($schoolId, 403);
+        $service->createAcademicYear($schoolId, $validated);
 
         return redirect()->route('akademik.index')->with('success', 'Tahun Akademik berhasil ditambahkan.');
     }
 
-    public function toggleActive($id)
+    public function toggleActive(int $id, SchoolContext $schoolContext, AcademicLifecycleService $service)
     {
-        $academicYear = AcademicYear::findOrFail($id);
-        
-        // Deactivate all others
-        AcademicYear::query()->update(['is_active' => false]);
-
-        // Activate this one
-        $academicYear->update(['is_active' => true]);
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        abort_unless($schoolId, 403);
+        $service->activateAcademicYear($schoolId, $id);
 
         return redirect()->route('akademik.index')->with('success', 'Tahun Akademik aktif berhasil diubah.');
     }

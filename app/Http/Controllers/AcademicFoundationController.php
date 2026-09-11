@@ -2,23 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\OutstandingStudentBills;
 use App\Models\Alumni;
-use App\Models\ClassStudent;
 use App\Models\Department;
-use App\Models\Invoice;
 use App\Models\SchoolClass;
 use App\Models\Student;
+use App\Services\AcademicLifecycleService;
 use App\Services\SchoolContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class AcademicFoundationController extends Controller
 {
     public function departments(SchoolContext $schoolContext): View
     {
-        $schoolId = $schoolContext->activeSchoolId();
+        $schoolId = $schoolContext->activeSchoolIdFor();
 
         return view('pages.foundation.index', [
             'title' => 'Jurusan & Program Keahlian',
@@ -42,15 +41,20 @@ class AcademicFoundationController extends Controller
         ]);
     }
 
-    public function storeDepartment(Request $request, SchoolContext $schoolContext): RedirectResponse
+    public function storeDepartment(Request $request, SchoolContext $schoolContext, AcademicLifecycleService $service): RedirectResponse
     {
         $validated = $request->validate([
             'code' => ['required', 'string', 'max:20'],
             'name' => ['required', 'string', 'max:120'],
         ]);
 
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        abort_unless($schoolId, 403);
+        if (! in_array(optional($schoolContext->activeSchool())->level, ['smk', 'mak'], true)) {
+            return back()->withErrors(['code' => 'Jurusan hanya tersedia untuk SMK/MAK.'])->withInput();
+        }
         Department::updateOrCreate(
-            ['school_id' => $schoolContext->activeSchoolId(), 'code' => strtoupper($validated['code'])],
+            ['school_id' => $schoolId, 'code' => strtoupper($validated['code'])],
             ['name' => $validated['name'], 'is_active' => true],
         );
 
@@ -59,7 +63,7 @@ class AcademicFoundationController extends Controller
 
     public function promotion(SchoolContext $schoolContext): View
     {
-        $schoolId = $schoolContext->activeSchoolId();
+        $schoolId = $schoolContext->activeSchoolIdFor();
 
         return view('pages.foundation.index', [
             'title' => 'Kenaikan Kelas',
@@ -98,45 +102,29 @@ class AcademicFoundationController extends Controller
         ]);
     }
 
-    public function promote(Request $request, SchoolContext $schoolContext): RedirectResponse
+    public function promote(Request $request, SchoolContext $schoolContext, AcademicLifecycleService $service): RedirectResponse
     {
-        $schoolId = $schoolContext->activeSchoolId();
+        $schoolId = $schoolContext->activeSchoolIdFor();
         $validated = $request->validate([
             'student_ids' => ['required', 'array', 'min:1'],
             'student_ids.*' => ['integer'],
             'target_class_id' => ['required', 'integer'],
         ]);
 
-        $targetClass = SchoolClass::where('school_id', $schoolId)->findOrFail($validated['target_class_id']);
-        $studentIds = Student::where('school_id', $schoolId)
-            ->where('status', 'active')
-            ->whereIn('id', $validated['student_ids'])
-            ->pluck('id')
-            ->all();
+        $count = $service->promote($schoolId, $validated['student_ids'], $validated['target_class_id'], $request->user()?->id);
 
-        if ($studentIds === []) {
+        if ($count === 0) {
             return back()->with('error', 'Tidak ada siswa aktif yang valid untuk diproses.');
         }
 
-        DB::transaction(function () use ($studentIds, $targetClass) {
-            ClassStudent::whereIn('student_id', $studentIds)
-                ->whereHas('schoolClass', fn ($query) => $query->where('academic_year_id', $targetClass->academic_year_id))
-                ->delete();
+        $targetClass = SchoolClass::where('school_id', $schoolId)->findOrFail($validated['target_class_id']);
 
-            foreach ($studentIds as $studentId) {
-                ClassStudent::updateOrCreate([
-                    'student_id' => $studentId,
-                    'school_class_id' => $targetClass->id,
-                ]);
-            }
-        });
-
-        return back()->with('success', count($studentIds).' siswa berhasil dipindahkan ke '.$targetClass->name.'.');
+        return back()->with('success', $count.' siswa berhasil dipindahkan ke '.$targetClass->name.'.');
     }
 
     public function graduation(SchoolContext $schoolContext): View
     {
-        $schoolId = $schoolContext->activeSchoolId();
+        $schoolId = $schoolContext->activeSchoolIdFor();
 
         return view('pages.foundation.index', [
             'title' => 'Kelulusan',
@@ -169,9 +157,9 @@ class AcademicFoundationController extends Controller
         ]);
     }
 
-    public function graduate(Request $request, SchoolContext $schoolContext): RedirectResponse
+    public function graduate(Request $request, SchoolContext $schoolContext, AcademicLifecycleService $service): RedirectResponse
     {
-        $schoolId = $schoolContext->activeSchoolId();
+        $schoolId = $schoolContext->activeSchoolIdFor();
         $validated = $request->validate([
             'student_ids' => ['required', 'array', 'min:1'],
             'student_ids.*' => ['integer'],
@@ -179,54 +167,23 @@ class AcademicFoundationController extends Controller
             'graduation_year' => ['required', 'integer', 'min:1900', 'max:2100'],
         ]);
 
-        $students = Student::where('school_id', $schoolId)
-            ->where('status', 'active')
-            ->whereIn('id', $validated['student_ids'])
-            ->get();
+        try {
+            $count = $service->graduate(
+                $schoolId,
+                $validated['student_ids'],
+                $validated['graduation_date'],
+                $validated['graduation_year'],
+                $request->user()?->id,
+            );
+        } catch (OutstandingStudentBills $exception) {
+            return back()->with('error', 'Kelulusan dibatalkan. Siswa masih memiliki tunggakan: '.implode(', ', $exception->studentNames).'.');
+        }
 
-        if ($students->isEmpty()) {
+        if ($count === 0) {
             return back()->with('error', 'Tidak ada siswa aktif yang valid untuk diproses.');
         }
 
-        $blockedNames = Invoice::where('school_id', $schoolId)
-            ->whereIn('student_id', $students->pluck('id'))
-            ->where('status', '!=', 'Lunas')
-            ->with('student:id,name')
-            ->get()
-            ->pluck('student.name')
-            ->filter()
-            ->unique()
-            ->values();
-
-        if ($blockedNames->isNotEmpty()) {
-            return back()->with('error', 'Kelulusan dibatalkan. Siswa masih memiliki tunggakan: '.$blockedNames->join(', ').'.');
-        }
-
-        DB::transaction(function () use ($students, $schoolId, $validated) {
-            foreach ($students as $student) {
-                $student->update([
-                    'status' => 'graduated',
-                    'is_active' => false,
-                    'status_date' => $validated['graduation_date'],
-                    'status_note' => 'Lulus tahun '.$validated['graduation_year'],
-                ]);
-
-                Alumni::updateOrCreate(
-                    ['school_id' => $schoolId, 'student_id' => $student->id],
-                    [
-                        'name' => $student->name,
-                        'nisn' => $student->nisn,
-                        'graduation_year' => $validated['graduation_year'],
-                        'phone' => $student->phone,
-                        'current_status' => 'Lulus',
-                    ],
-                );
-            }
-
-            ClassStudent::whereIn('student_id', $students->pluck('id'))->delete();
-        });
-
-        return back()->with('success', $students->count().' siswa berhasil diluluskan dan dipindahkan ke alumni.');
+        return back()->with('success', $count.' siswa berhasil diluluskan dan dipindahkan ke alumni.');
     }
 
     public function alumni(SchoolContext $schoolContext): View
@@ -236,9 +193,9 @@ class AcademicFoundationController extends Controller
             'eyebrow' => 'Tracer Study',
             'description' => 'Profil alumni, pendidikan lanjutan, pekerjaan, dan pembaruan tracer study.',
             'metrics' => [
-                ['label' => 'Total Alumni', 'value' => Alumni::where('school_id', $schoolContext->activeSchoolId())->count()],
+                ['label' => 'Total Alumni', 'value' => Alumni::where('school_id', $schoolContext->activeSchoolIdFor())->count()],
             ],
-            'rows' => Alumni::where('school_id', $schoolContext->activeSchoolId())->latest()->get(['name', 'graduation_year', 'current_status', 'current_job']),
+            'rows' => Alumni::where('school_id', $schoolContext->activeSchoolIdFor())->latest()->get(['name', 'graduation_year', 'current_status', 'current_job']),
             'columns' => ['name' => 'Nama', 'graduation_year' => 'Angkatan', 'current_status' => 'Status', 'current_job' => 'Pekerjaan'],
         ]);
     }

@@ -123,6 +123,9 @@
                                     <th class="px-5 py-3 text-left">
                                         <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Tipe Kepegawaian</p>
                                     </th>
+                                    <th class="px-5 py-3 text-left">
+                                        <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Status</p>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
@@ -145,6 +148,27 @@
                                             <span class="text-gray-500 text-theme-sm dark:text-gray-400">
                                                 {{ $teacher->staff_type }}
                                             </span>
+                                        </td>
+                                        <td class="px-5 py-4">
+                                            <form action="{{ route('guru.store') }}" method="POST" class="min-w-48 space-y-1.5">
+                                                @csrf
+                                                <input type="hidden" name="action" value="status">
+                                                <input type="hidden" name="teacher_id" value="{{ $teacher->id }}">
+                                                <label class="sr-only" for="teacher-status-{{ $teacher->id }}">Status {{ $teacher->name }}</label>
+                                                <select id="teacher-status-{{ $teacher->id }}" name="status" required
+                                                    class="h-8 w-full rounded-md border border-gray-300 bg-transparent px-2 text-xs text-gray-700 focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                                    @foreach(['active' => 'Aktif', 'resigned' => 'Resign', 'retired' => 'Pensiun', 'contract_ended' => 'Kontrak Selesai', 'deceased' => 'Meninggal'] as $status => $label)
+                                                        <option value="{{ $status }}" @selected($teacher->status === $status)>{{ $label }}</option>
+                                                    @endforeach
+                                                </select>
+                                                <input type="date" name="status_date" value="{{ optional($teacher->status_date)->format('Y-m-d') ?? now()->toDateString() }}" required
+                                                    class="h-8 w-full rounded-md border border-gray-300 bg-transparent px-2 text-xs text-gray-700 focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                                <input type="text" name="status_note" value="{{ $teacher->status_note }}" placeholder="Alasan/catatan"
+                                                    class="h-8 w-full rounded-md border border-gray-300 bg-transparent px-2 text-xs text-gray-700 focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                                <button type="submit" class="inline-flex h-8 items-center rounded-md bg-brand-500 px-2.5 text-xs font-semibold text-white hover:bg-brand-600 focus:outline-hidden focus:ring-2 focus:ring-brand-500/30">
+                                                    Simpan status
+                                                </button>
+                                            </form>
                                         </td>
                                     </tr>
                                 @endforeach

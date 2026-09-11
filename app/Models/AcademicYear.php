@@ -32,4 +32,9 @@ class AcademicYear extends Model
     {
         return $this->hasMany(SchoolClass::class, 'academic_year_id');
     }
+
+    public function scopeForSchool($query, int $schoolId)
+    {
+        return $query->where('school_id', $schoolId);
+    }
 }
