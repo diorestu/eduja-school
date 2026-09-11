@@ -90,6 +90,9 @@ class FinanceService
     public function recordBosIncome(int $schoolId, array $attributes): FinanceIncome
     {
         $this->assertActiveSchool($schoolId);
+        if (! empty($attributes['income_type_id']) && ! IncomeType::query()->whereKey($attributes['income_type_id'])->where('school_id', $schoolId)->exists()) {
+            throw new InvalidArgumentException('Jenis pemasukan tidak berada pada sekolah aktif.');
+        }
         $account = isset($attributes['account_id'])
             ? $this->accountForSchool($schoolId, (int) $attributes['account_id'])
             : null;

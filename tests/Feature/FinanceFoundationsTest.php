@@ -116,6 +116,19 @@ it('records approved BOS income and posts it to the selected school account', fu
         ->and((float) $account->fresh()->current_balance)->toBe(12000000.0);
 });
 
+it('rejects an income type that belongs to another school', function () {
+    $schoolId = makeFinanceSchool('Sekolah Income A');
+    $otherSchoolId = makeFinanceSchool('Sekolah Income B');
+    $service = app(FinanceService::class);
+    $account = $service->createAccount($schoolId, ['name' => 'Kas A', 'type' => 'Bank']);
+    $otherType = $service->createIncomeType($otherSchoolId, ['name' => 'BOS B']);
+
+    expect(fn () => $service->recordBosIncome($schoolId, [
+        'income_type_id' => $otherType->id, 'source_funding' => 'BOS', 'amount' => 100,
+        'received_date' => '2026-07-01', 'account_id' => $account->id,
+    ]))->toThrow(InvalidArgumentException::class);
+});
+
 it('creates an expense as pending and does not debit an account before approval', function () {
     $schoolId = makeFinanceSchool('Sekolah Pengeluaran');
     $user = makeFinanceUser($schoolId);

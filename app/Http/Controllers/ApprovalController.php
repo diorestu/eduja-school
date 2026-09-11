@@ -13,6 +13,7 @@ use App\Services\FinanceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 class ApprovalController extends Controller
 {
@@ -47,13 +48,6 @@ class ApprovalController extends Controller
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $approval->update([
-            'status' => $status,
-            'reviewed_by' => $request->user()->id,
-            'reviewed_at' => now(),
-            'note' => $validated['note'] ?? $approval->note,
-        ]);
-
         $approvable = $this->approvable($approval);
 
         if ($approvable) {
@@ -64,23 +58,23 @@ class ApprovalController extends Controller
             }
         }
 
-        if ($approvable && Schema::hasColumn($approvable->getTable(), 'status')) {
-            $payload = ['status' => $status];
+        DB::transaction(function () use ($approval, $approvable, $status, $validated, $request): void {
+            $approval->update([
+                'status' => $status,
+                'reviewed_by' => $request->user()->id,
+                'reviewed_at' => now(),
+                'note' => $validated['note'] ?? $approval->note,
+            ]);
 
-            if (Schema::hasColumn($approvable->getTable(), 'reviewed_by')) {
-                $payload['reviewed_by'] = $request->user()->id;
+            if ($approvable && Schema::hasColumn($approvable->getTable(), 'status')) {
+                $payload = ['status' => $status];
+                if (Schema::hasColumn($approvable->getTable(), 'reviewed_by')) $payload['reviewed_by'] = $request->user()->id;
+                if (Schema::hasColumn($approvable->getTable(), 'reviewed_at')) $payload['reviewed_at'] = now();
+                $approvable->forceFill($payload)->save();
             }
 
-            if (Schema::hasColumn($approvable->getTable(), 'reviewed_at')) {
-                $payload['reviewed_at'] = now();
-            }
-
-            $approvable->forceFill($payload)->save();
-        }
-
-        if ($approvable) {
-            app(FinanceService::class)->applyApproval($approval, $approvable, $status, $request->user()->id);
-        }
+            if ($approvable) app(FinanceService::class)->applyApproval($approval, $approvable, $status, $request->user()->id);
+        });
 
         return back()->with('success', $message);
     }
