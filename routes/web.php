@@ -4,6 +4,7 @@ use App\Http\Controllers\AcademicFoundationController;
 use App\Http\Controllers\AcademicYearController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\AttendanceRequestController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BosController;
 use App\Http\Controllers\DashboardController;
@@ -181,6 +182,10 @@ Route::middleware('auth')->group(function () {
 
         Route::middleware('permission:attendance.requests,super_admin,kepsek,wakasek,tu,staf_tu,guru,wali_kelas')
             ->get('/attendance/requests', [OperationsFoundationController::class, 'attendanceRequests'])->name('attendance.requests');
+        Route::middleware('permission:attendance.requests,super_admin,siswa,orang_tua,wali_murid')
+            ->post('/attendance/requests/student', [AttendanceRequestController::class, 'storeStudent'])->name('attendance.requests.student.store');
+        Route::middleware('permission:attendance.requests,super_admin,guru,tendik,staf_tu,tu,wali_kelas')
+            ->post('/attendance/requests/teacher', [AttendanceRequestController::class, 'storeTeacher'])->name('attendance.requests.teacher.store');
         Route::middleware('permission:attendance.rfid,super_admin,kepsek,wakasek,tu,staf_tu,guru,wali_kelas')
             ->get('/attendance/rfid-sync', [OperationsFoundationController::class, 'rfidSync'])->name('attendance.rfid-sync');
         Route::middleware('permission:announcements.view,super_admin,kepsek,wakasek,tu,staf_tu,guru,wali_kelas')->group(function () {

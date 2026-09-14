@@ -31,6 +31,11 @@ class AttendanceRequest extends Model
         return $this->belongsTo(User::class, 'requester_id');
     }
 
+    public function submittedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'submitted_by');
+    }
+
     public function subject(): MorphTo
     {
         return $this->morphTo();
