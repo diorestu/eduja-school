@@ -8,6 +8,8 @@ use App\Models\StudentAttendance;
 use App\Models\Teacher;
 use App\Models\TeacherAttendance;
 use App\Services\SchoolContext;
+use App\Services\AttendanceCommandService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -60,22 +62,21 @@ class AttendanceController extends Controller
     /**
      * Store student attendance logs.
      */
-    public function storeSiswa(Request $request, SchoolContext $schoolContext)
+    public function storeSiswa(Request $request, SchoolContext $schoolContext, AttendanceCommandService $attendance)
     {
+        $schoolId = $schoolContext->activeSchoolIdFor();
         $validated = $request->validate([
-            'school_class_id' => 'required|exists:school_classes,id',
+            'school_class_id' => ['required', Rule::exists('school_classes', 'id')->where(fn ($query) => $query->where('school_id', $schoolId))],
             'attendance_date' => 'required|date',
             'attendances' => 'required|array',
-            'attendances.*' => ['required', Rule::in(['H', 'S', 'I', 'A'])],
+            'attendances.*' => ['required', Rule::in(StudentAttendance::STATUSES)],
             'notes' => 'nullable|array',
             'notes.*' => 'nullable|string|max:255',
         ]);
 
         $classId = $validated['school_class_id'];
         $date = $validated['attendance_date'];
-        $schoolId = $schoolContext->activeSchoolIdFor();
         abort_unless($schoolId, 403);
-        abort_unless(SchoolClass::where('school_id', $schoolId)->whereKey($classId)->exists(), 404);
         $submittedStudentIds = array_map('strval', array_keys($validated['attendances']));
         $validStudentIds = Student::where('school_id', $schoolId)
             ->whereIn('id', $submittedStudentIds)
@@ -94,22 +95,19 @@ class AttendanceController extends Controller
             ]);
         }
 
-        foreach ($validated['attendances'] as $studentId => $status) {
-            $note = isset($validated['notes'][$studentId]) ? $validated['notes'][$studentId] : null;
-
-            StudentAttendance::updateOrCreate(
-                [
-                    'student_id' => $studentId,
-                    'attendance_date' => $date,
-                ],
-                [
+        DB::transaction(function () use ($validated, $attendance, $schoolId, $classId, $date): void {
+            foreach ($validated['attendances'] as $studentId => $status) {
+                $attributes = [
                     'school_class_id' => $classId,
-                    'school_id' => $schoolId,
+                    'attendance_date' => $date,
                     'status' => $status,
-                    'note' => $note,
-                ]
-            );
-        }
+                ];
+                if (array_key_exists($studentId, $validated['notes'] ?? [])) {
+                    $attributes['note'] = $validated['notes'][$studentId];
+                }
+                $attendance->recordStudent($schoolId, (int) $studentId, $attributes);
+            }
+        });
 
         return redirect()->back()->with('success', 'Presensi siswa berhasil disimpan!');
     }
@@ -141,18 +139,18 @@ class AttendanceController extends Controller
     /**
      * Store teacher/staff attendance logs.
      */
-    public function storeGtk(Request $request, SchoolContext $schoolContext)
+    public function storeGtk(Request $request, SchoolContext $schoolContext, AttendanceCommandService $attendance)
     {
+        $schoolId = $schoolContext->activeSchoolIdFor();
         $validated = $request->validate([
             'attendance_date' => 'required|date',
             'attendances' => 'required|array',
-            'attendances.*' => ['required', Rule::in(['H', 'S', 'I', 'A', 'DL'])],
+            'attendances.*' => ['required', Rule::in(TeacherAttendance::STATUSES)],
             'notes' => 'nullable|array',
             'notes.*' => 'nullable|string|max:255',
         ]);
 
         $date = $validated['attendance_date'];
-        $schoolId = $schoolContext->activeSchoolIdFor();
         abort_unless($schoolId, 403);
         $submittedTeacherIds = array_map('strval', array_keys($validated['attendances']));
         $validTeacherIds = Teacher::where('school_id', $schoolId)
@@ -169,21 +167,18 @@ class AttendanceController extends Controller
             ]);
         }
 
-        foreach ($validated['attendances'] as $teacherId => $status) {
-            $note = isset($validated['notes'][$teacherId]) ? $validated['notes'][$teacherId] : null;
-
-            TeacherAttendance::updateOrCreate(
-                [
-                    'teacher_id' => $teacherId,
-                    'school_id' => $schoolId,
+        DB::transaction(function () use ($validated, $attendance, $schoolId, $date): void {
+            foreach ($validated['attendances'] as $teacherId => $status) {
+                $attributes = [
                     'attendance_date' => $date,
-                ],
-                [
                     'status' => $status,
-                    'note' => $note,
-                ]
-            );
-        }
+                ];
+                if (array_key_exists($teacherId, $validated['notes'] ?? [])) {
+                    $attributes['note'] = $validated['notes'][$teacherId];
+                }
+                $attendance->recordTeacher($schoolId, (int) $teacherId, $attributes);
+            }
+        });
 
         return redirect()->back()->with('success', 'Presensi GTK berhasil disimpan!');
     }
