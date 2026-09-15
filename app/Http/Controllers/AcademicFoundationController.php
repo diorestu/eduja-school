@@ -188,15 +188,41 @@ class AcademicFoundationController extends Controller
 
     public function alumni(SchoolContext $schoolContext): View
     {
-        return view('pages.foundation.index', [
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        $isAlumni = request()->user()->hasRole(['alumni']);
+        $alumni = Alumni::where('school_id', $schoolId)
+            ->when($isAlumni, fn ($q) => $q->where('user_id', request()->user()->id))->latest()->get();
+
+        return view('pages.foundation.alumni', [
             'title' => 'Alumni',
             'eyebrow' => 'Tracer Study',
             'description' => 'Profil alumni, pendidikan lanjutan, pekerjaan, dan pembaruan tracer study.',
-            'metrics' => [
-                ['label' => 'Total Alumni', 'value' => Alumni::where('school_id', $schoolContext->activeSchoolIdFor())->count()],
-            ],
-            'rows' => Alumni::where('school_id', $schoolContext->activeSchoolIdFor())->latest()->get(['name', 'graduation_year', 'current_status', 'current_job']),
-            'columns' => ['name' => 'Nama', 'graduation_year' => 'Angkatan', 'current_status' => 'Status', 'current_job' => 'Pekerjaan'],
+            'alumni' => $alumni,
+            'isAlumni' => $isAlumni,
+            'editableAlumni' => $isAlumni ? $alumni->firstWhere('user_id', request()->user()->id) : null,
         ]);
+    }
+
+    public function updateAlumni(Request $request, Alumni $alumni, SchoolContext $schoolContext): RedirectResponse
+    {
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        abort_unless($alumni->school_id === $schoolId, 404);
+
+        if ($request->user()->hasRole(['alumni'])) {
+            abort_unless($alumni->user_id === $request->user()->id, 403);
+        }
+
+        $validated = $request->validate([
+            'phone' => ['nullable', 'string', 'max:30'],
+            'email' => ['nullable', 'email', 'max:160'],
+            'address' => ['nullable', 'string', 'max:1000'],
+            'current_status' => ['required', 'string', 'max:60'],
+            'education_history' => ['nullable', 'string', 'max:2000'],
+            'current_job' => ['nullable', 'string', 'max:160'],
+        ]);
+
+        $alumni->update($validated);
+
+        return back()->with('success', 'Profil alumni berhasil diperbarui.');
     }
 }

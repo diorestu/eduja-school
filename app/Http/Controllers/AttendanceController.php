@@ -24,6 +24,11 @@ class AttendanceController extends Controller
         $schoolId = $schoolContext->activeSchoolIdFor();
         abort_unless($schoolId, 403);
         $classes = SchoolClass::where('school_id', $schoolId)->orderBy('name')->get();
+        $request->validate([
+            'attendance_date' => ['nullable', 'date_format:Y-m-d'],
+            'school_class_id' => ['nullable', Rule::exists('school_classes', 'id')->where('school_id', $schoolId)],
+            'period' => ['nullable', 'in:day,week,month,semester'],
+        ]);
 
         $selectedClassId = $request->query('school_class_id');
         $selectedDate = $request->query('attendance_date', Carbon::today()->toDateString());
@@ -56,6 +61,7 @@ class AttendanceController extends Controller
             'selectedDate' => $selectedDate,
             'students' => $students,
             'existingAttendances' => $existingAttendances,
+            ...$this->historyData($request, $schoolId, $selectedDate, $selectedClassId),
         ]);
     }
 
@@ -119,6 +125,10 @@ class AttendanceController extends Controller
     {
         $schoolId = $schoolContext->activeSchoolIdFor();
         abort_unless($schoolId, 403);
+        $request->validate([
+            'attendance_date' => ['nullable', 'date_format:Y-m-d'],
+            'period' => ['nullable', 'in:day,week,month,semester'],
+        ]);
         $selectedDate = $request->query('attendance_date', Carbon::today()->toDateString());
 
         $teachers = Teacher::where('school_id', $schoolId)->where('status', 'active')->where('is_active', true)->orderBy('name')->get();
@@ -133,6 +143,7 @@ class AttendanceController extends Controller
             'selectedDate' => $selectedDate,
             'teachers' => $teachers,
             'existingAttendances' => $existingAttendances,
+            ...$this->historyData($request, $schoolId, $selectedDate, null, true),
         ]);
     }
 
@@ -181,5 +192,33 @@ class AttendanceController extends Controller
         });
 
         return redirect()->back()->with('success', 'Presensi GTK berhasil disimpan!');
+    }
+
+    private function historyData(Request $request, int $schoolId, string $date, $classId = null, bool $gtk = false): array
+    {
+        $period = $request->query('period', 'day');
+        $anchor = Carbon::parse($date);
+        [$start, $end] = match ($period) {
+            'week' => [$anchor->copy()->startOfWeek(), $anchor->copy()->endOfWeek()],
+            'month' => [$anchor->copy()->startOfMonth(), $anchor->copy()->endOfMonth()],
+            'semester' => [
+                $anchor->copy()->month($anchor->month <= 6 ? 1 : 7)->startOfMonth(),
+                $anchor->copy()->month($anchor->month <= 6 ? 6 : 12)->endOfMonth(),
+            ],
+            default => [$anchor->copy()->startOfDay(), $anchor->copy()->endOfDay()],
+        };
+        $query = ($gtk ? TeacherAttendance::query()->with('teacher') : StudentAttendance::query()->with('student', 'schoolClass'))
+            ->where('school_id', $schoolId)
+            ->whereBetween('attendance_date', [$start->toDateString(), $end->toDateString()])
+            ->when(! $gtk && $classId, fn ($q) => $q->where('school_class_id', $classId));
+        $totals = (clone $query)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+
+        return [
+            'period' => $period,
+            'periodStart' => $start,
+            'periodEnd' => $end,
+            'totals' => $totals,
+            'history' => $query->orderByDesc('attendance_date')->orderByDesc('id')->paginate(25)->withQueryString(),
+        ];
     }
 }

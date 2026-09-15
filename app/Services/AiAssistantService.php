@@ -4,12 +4,19 @@ namespace App\Services;
 
 class AiAssistantService
 {
-    public function ask(string $prompt): string
+    /** @return array{enabled: bool, answer: string} */
+    public function ask(string $prompt): array
     {
         if (! config('services.ai.enabled', false)) {
-            return 'AI belum diaktifkan. Prompt tersimpan sebagai draft dan bisa diproses setelah provider dikonfigurasi.';
+            return [
+                'enabled' => false,
+                'answer' => 'AI belum diaktifkan. Prompt tersimpan sebagai draft dan bisa diproses setelah provider dikonfigurasi.',
+            ];
         }
 
-        return 'Provider AI belum dikonfigurasi untuk environment ini.';
+        return [
+            'enabled' => false,
+            'answer' => 'Provider AI belum dikonfigurasi untuk environment ini.',
+        ];
     }
 }

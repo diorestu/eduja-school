@@ -15,7 +15,7 @@
                        class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white flex items-center justify-center transition-colors">
                         <i class="bx bxl-whatsapp text-lg"></i>
                     </a>
-                    <a href="mailto:info@eduja.sch.id" aria-label="Email Eduja"
+                    <a href="mailto:info@eduja.id" aria-label="Email Eduja"
                        class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white flex items-center justify-center transition-colors">
                         <i class="bx bx-envelope text-lg"></i>
                     </a>

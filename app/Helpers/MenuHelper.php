@@ -83,9 +83,9 @@ class MenuHelper
                 'icon' => 'calendar',
                 'name' => 'Absensi & Komunikasi',
                 'subItems' => [
-                    ['name' => 'Permohonan Izin', 'path' => '/attendance/requests', 'permission' => 'attendance.requests', 'roles' => ['super_admin', 'kepsek', 'wakasek', 'tu', 'staf_tu', 'guru', 'wali_kelas'], 'pro' => false],
-                    ['name' => 'RFID Sync', 'path' => '/attendance/rfid-sync', 'permission' => 'attendance.rfid', 'roles' => ['super_admin', 'kepsek', 'wakasek', 'tu', 'staf_tu', 'guru', 'wali_kelas'], 'pro' => false],
-                    ['name' => 'Pengumuman', 'path' => '/announcements', 'permission' => 'announcements.view', 'roles' => ['super_admin', 'kepsek', 'wakasek', 'tu', 'staf_tu', 'guru', 'wali_kelas'], 'pro' => false],
+                    ['name' => 'Permohonan Izin', 'path' => '/attendance/requests', 'permission' => 'attendance.requests', 'roles' => ['super_admin', 'kepsek', 'wakasek', 'tu', 'staf_tu', 'guru', 'wali_kelas', 'tendik', 'siswa', 'orang_tua', 'wali_murid'], 'pro' => false],
+                    ['name' => 'RFID Sync', 'path' => '/attendance/rfid-sync', 'permission' => 'attendance.rfid', 'roles' => ['super_admin', 'kepsek', 'pic_sekolah', 'wakasek', 'tu', 'staf_tu', 'guru', 'wali_kelas'], 'pro' => false],
+                    ['name' => 'Pengumuman', 'path' => '/announcements', 'permission' => 'announcements.view', 'roles' => ['super_admin', 'kepsek', 'wakasek', 'tu', 'staf_tu', 'guru', 'wali_kelas', 'tendik', 'siswa', 'orang_tua', 'wali_murid', 'alumni'], 'pro' => false],
                     ['name' => 'AI Assistant', 'path' => '/ai', 'permission' => 'ai.use', 'roles' => ['super_admin', 'kepsek', 'wakasek', 'tu', 'staf_tu', 'guru', 'wali_kelas'], 'pro' => false],
                 ],
             ],

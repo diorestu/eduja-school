@@ -180,16 +180,19 @@ Route::middleware('auth')->group(function () {
         });
         Route::middleware('permission:portal.parent,super_admin,orang_tua')->get('/portal/orang-tua', [PortalFoundationController::class, 'orangTua'])->name('portal.orang-tua');
 
-        Route::middleware('permission:attendance.requests,super_admin,kepsek,wakasek,tu,staf_tu,guru,wali_kelas')
+        Route::middleware('permission:attendance.requests,super_admin,kepsek,wakasek,tu,staf_tu,guru,wali_kelas,tendik,siswa,orang_tua,wali_murid')
             ->get('/attendance/requests', [OperationsFoundationController::class, 'attendanceRequests'])->name('attendance.requests');
         Route::middleware('permission:attendance.requests,super_admin,siswa,orang_tua,wali_murid')
             ->post('/attendance/requests/student', [AttendanceRequestController::class, 'storeStudent'])->name('attendance.requests.student.store');
+        Route::get('/attendance/requests/{absence}/document', [AttendanceRequestController::class, 'document'])->name('attendance.requests.document');
         Route::middleware('permission:attendance.requests,super_admin,guru,tendik,staf_tu,tu,wali_kelas')
             ->post('/attendance/requests/teacher', [AttendanceRequestController::class, 'storeTeacher'])->name('attendance.requests.teacher.store');
         Route::middleware('permission:attendance.rfid,super_admin,kepsek,wakasek,tu,staf_tu,guru,wali_kelas')
             ->get('/attendance/rfid-sync', [OperationsFoundationController::class, 'rfidSync'])->name('attendance.rfid-sync');
-        Route::middleware('permission:announcements.view,super_admin,kepsek,wakasek,tu,staf_tu,guru,wali_kelas')->group(function () {
+        Route::middleware('permission:announcements.view,super_admin,kepsek,wakasek,tu,staf_tu,guru,wali_kelas,tendik,siswa,orang_tua,wali_murid,alumni')->group(function () {
             Route::get('/announcements', [OperationsFoundationController::class, 'announcements'])->name('announcements.index');
+            Route::get('/announcements/{announcement}', [OperationsFoundationController::class, 'showAnnouncement'])->name('announcements.show');
+            Route::post('/announcements/{announcement}/read', [OperationsFoundationController::class, 'markAnnouncementRead'])->name('announcements.read');
             Route::post('/announcements', [OperationsFoundationController::class, 'storeAnnouncement'])->name('announcements.store');
         });
 
@@ -197,7 +200,10 @@ Route::middleware('auth')->group(function () {
             Route::get('/ai', [OperationsFoundationController::class, 'ai'])->name('ai.index');
             Route::post('/ai', [OperationsFoundationController::class, 'storeAi'])->name('ai.store');
         });
-        Route::middleware('permission:academic.alumni,super_admin,kepsek,wakasek,tu,staf_tu,alumni')->get('/alumni', [AcademicFoundationController::class, 'alumni'])->name('alumni.index');
+        Route::middleware('permission:academic.alumni,super_admin,kepsek,wakasek,tu,staf_tu,alumni')->group(function () {
+            Route::get('/alumni', [AcademicFoundationController::class, 'alumni'])->name('alumni.index');
+            Route::put('/alumni/{alumni}', [AcademicFoundationController::class, 'updateAlumni'])->name('alumni.update');
+        });
 
         // --- KESISWAAN & OPERASIONAL SEKOLAH (FASE 2) ---
         Route::middleware('permission:academic_years.view,super_admin,kepsek,staf_tu')->prefix('akademik')->name('akademik.')->group(function () {
@@ -271,11 +277,11 @@ Route::middleware('auth')->group(function () {
 
         // --- ABSENSI / PRESENSI ---
         Route::prefix('presensi')->name('presensi.')->group(function () {
-            Route::middleware('permission:student_attendance.view,super_admin,staf_tu')->group(function () {
+            Route::middleware('permission:student_attendance.view,super_admin,kepsek,pic_sekolah,wakasek,tu,staf_tu,guru,wali_kelas')->group(function () {
                 Route::get('/siswa', [AttendanceController::class, 'siswa'])->name('siswa');
                 Route::post('/siswa', [AttendanceController::class, 'storeSiswa'])->name('siswa.store');
             });
-            Route::middleware('permission:teacher_attendance.view,super_admin,staf_tu')->group(function () {
+            Route::middleware('permission:teacher_attendance.view,super_admin,kepsek,pic_sekolah,wakasek,tu,staf_tu,guru,wali_kelas')->group(function () {
                 Route::get('/gtk', [AttendanceController::class, 'gtk'])->name('gtk');
                 Route::post('/gtk', [AttendanceController::class, 'storeGtk'])->name('gtk.store');
             });

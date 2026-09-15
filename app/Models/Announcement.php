@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Announcement extends Model
 {
@@ -14,4 +15,9 @@ class Announcement extends Model
     protected $casts = [
         'published_at' => 'datetime',
     ];
+
+    public function reads(): HasMany
+    {
+        return $this->hasMany(AnnouncementRead::class);
+    }
 }

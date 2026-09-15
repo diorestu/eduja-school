@@ -39,7 +39,7 @@
                                 <span class="text-[10px] text-gray-400 uppercase tracking-wider font-bold block mb-0.5">WhatsApp — Respons Cepat</span>
                                 <a href="https://wa.me/628179792288" target="_blank" rel="noopener noreferrer"
                                    class="text-sm font-bold text-gray-800 dark:text-white hover:text-brand-500 dark:hover:text-brand-400 transition-colors">
-                                    +62 812-3456-789
+                                    0817 9792 288
                                 </a>
                                 <span class="text-[10px] text-gray-400 block mt-0.5">Senin–Jumat, 08.00–17.00 WIB</span>
                             </div>

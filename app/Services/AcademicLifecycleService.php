@@ -158,6 +158,7 @@ class AcademicLifecycleService
                     ['school_id' => $schoolId, 'student_id' => $student->id],
                     [
                         'name' => $student->name,
+                        'user_id' => $student->user_id,
                         'nisn' => $student->nisn,
                         'graduation_year' => $graduationYear,
                         'department_name' => $class?->department?->name,

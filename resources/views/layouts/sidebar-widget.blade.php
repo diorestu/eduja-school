@@ -22,7 +22,7 @@
         </span>
     </p>
     
-    <a href="mailto:support@eduja.sch.id?subject=Bantuan%20Sistem%20Eduja"
+    <a href="mailto:info@eduja.id?subject=Bantuan%20Sistem%20Eduja"
         class="flex items-center justify-center py-1.5 px-3 font-semibold text-white rounded-md bg-brand-500 hover:bg-brand-600 text-[11px] transition-colors gap-1">
         <i class="bx bx-envelope text-xs"></i>
         Hubungi Support
