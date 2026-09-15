@@ -143,37 +143,33 @@
             </div>
 
             {{-- Premium Plan --}}
-            <div class="glass-card rounded-3xl p-8 flex flex-col justify-between ring-2 ring-brand-500/30 dark:ring-brand-500/50 relative overflow-hidden">
-                {{-- Best Value Badge --}}
-                <div class="absolute top-5 right-5">
-                    <span class="bg-brand-500 text-white text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-md">⭐ Terpopuler</span>
-                </div>
+            <div class="rounded-3xl border border-brand-700 bg-brand-900 p-8 text-white shadow-xl shadow-brand-900/20 dark:border-brand-800 dark:bg-brand-950 flex flex-col justify-between">
 
                 <div>
-                    <div class="flex justify-between items-start mb-6 pr-20">
+                    <div class="flex justify-between items-start mb-6">
                         <div>
-                            <h2 class="text-2xl font-extrabold text-gray-900 dark:text-white">Paket Partner</h2>
-                            <p class="text-xs text-brand-500 dark:text-brand-400 uppercase tracking-wider font-semibold mt-1">Lengkap & Komprehensif</p>
+                            <h2 class="text-2xl font-extrabold text-white">Paket Partner</h2>
+                            <p class="text-xs text-brand-100 uppercase tracking-wider font-semibold mt-1">Lengkap & Komprehensif</p>
                         </div>
                         <div class="text-right">
-                            <span class="text-2xl font-extrabold text-brand-500" x-text="billingCycle === 'monthly' ? 'Rp 25.000' : 'Rp 20.000'"></span>
-                            <span class="text-[10px] text-gray-500 block mt-0.5">/ siswa / bulan</span>
+                            <span class="text-2xl font-extrabold text-white" x-text="billingCycle === 'monthly' ? 'Rp 25.000' : 'Rp 20.000'"></span>
+                            <span class="text-[10px] text-brand-100 block mt-0.5">/ siswa / bulan</span>
                         </div>
                     </div>
 
-                    <div class="bg-brand-500/8 dark:bg-brand-500/15 rounded-2xl p-5 mb-7 border border-brand-500/15">
-                        <span class="text-xs text-brand-500 dark:text-brand-400 block mb-1">Estimasi biaya untuk sekolah Anda:</span>
-                        <span class="text-2xl font-extrabold text-gray-900 dark:text-white"
+                    <div class="rounded-2xl border border-white/15 bg-white/10 p-5 mb-7">
+                        <span class="text-xs text-brand-100 block mb-1">Estimasi biaya untuk sekolah Anda:</span>
+                        <span class="text-2xl font-extrabold text-white"
                               x-text="new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(studentCount * (billingCycle === 'monthly' ? 25000 : 20000))">
                         </span>
-                        <span class="text-xs text-gray-500" x-text="billingCycle === 'monthly' ? '/ bulan' : '/ bulan (tagih tahunan)'"></span>
+                        <span class="text-xs text-brand-100" x-text="billingCycle === 'monthly' ? '/ bulan' : '/ bulan (tagih tahunan)'"></span>
                     </div>
 
-                    <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-5">
+                    <p class="text-xs text-brand-50/85 leading-relaxed mb-5">
                         Solusi terlengkap untuk sekolah yang ingin transformasi digital menyeluruh — dari keuangan, operasional, hingga komunikasi berbasis AI.
                     </p>
 
-                    <ul class="space-y-3.5 text-sm text-gray-600 dark:text-gray-300">
+                    <ul class="space-y-3.5 text-sm text-white/90">
                         @foreach([
                             'Semua Modul Paket Starter',
                             'Buku Pembantu Kas, Bank & Pajak (Sub-Ledger)',
@@ -186,14 +182,14 @@
                             'Update Fitur Terbaru Secara Berkala',
                         ] as $f)
                         <li class="flex items-center gap-3">
-                            <i class="bx bx-check text-brand-500 text-base shrink-0"></i>
+                            <i class="bx bx-check text-brand-200 text-base shrink-0"></i>
                             {{ $f }}
                         </li>
                         @endforeach
                     </ul>
                 </div>
                 <div class="mt-8">
-                    <a href="/contact" id="btn-premium-plan" class="block w-full text-center rounded-full bg-brand-500 text-white py-3.5 text-sm font-bold hover:bg-brand-600 transition-all shadow-lg shadow-brand-500/25">
+                    <a href="/contact" id="btn-premium-plan" class="block w-full text-center rounded-full bg-white text-brand-800 py-3.5 text-sm font-bold hover:bg-brand-50 transition-all shadow-lg shadow-black/15">
                         Mulai dengan Paket Partner
                     </a>
                 </div>
