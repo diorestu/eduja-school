@@ -125,7 +125,7 @@
                             ['check', 'Dasbor Kepala Sekolah'],
                             ['x', 'Buku Pembantu Kas, Bank & Pajak', true],
                             ['x', 'Tabungan Siswa Terintegrasi', true],
-                            ['x', 'Presensi Digital Siswa', true],
+                            ['check', 'Presensi Digital Siswa'],
                             ['x', 'Asisten AI Tenaga Pendidik', true],
                         ] as $f)
                         <li class="flex items-center gap-3 {{ isset($f[2]) ? 'opacity-40' : '' }}">
@@ -152,7 +152,7 @@
                 <div>
                     <div class="flex justify-between items-start mb-6 pr-20">
                         <div>
-                            <h2 class="text-2xl font-extrabold text-gray-900 dark:text-white">Paket School Partner</h2>
+                            <h2 class="text-2xl font-extrabold text-gray-900 dark:text-white">Paket Partner</h2>
                             <p class="text-xs text-brand-500 dark:text-brand-400 uppercase tracking-wider font-semibold mt-1">Lengkap & Komprehensif</p>
                         </div>
                         <div class="text-right">
@@ -177,7 +177,6 @@
                         @foreach([
                             'Semua Modul Paket Starter',
                             'Buku Pembantu Kas, Bank & Pajak (Sub-Ledger)',
-                            'Presensi Harian Digital Siswa',
                             'Tabungan Siswa Terintegrasi + Portal Orang Tua',
                             'Asisten AI untuk Tenaga Pendidik',
                             'Bagan Organisasi Sekolah Visual & Dinamis',
@@ -195,7 +194,7 @@
                 </div>
                 <div class="mt-8">
                     <a href="/contact" id="btn-premium-plan" class="block w-full text-center rounded-full bg-brand-500 text-white py-3.5 text-sm font-bold hover:bg-brand-600 transition-all shadow-lg shadow-brand-500/25">
-                        Mulai dengan Paket School Partner
+                        Mulai dengan Paket Partner
                     </a>
                 </div>
             </div>
@@ -217,7 +216,7 @@
                     ['Apakah data sekolah kami aman?', 'Keamanan data adalah prioritas utama kami. Seluruh data disimpan di server terenkripsi dengan backup harian. Akses dikontrol ketat dengan sistem role-based yang dapat disesuaikan.'],
                     ['Berapa lama proses implementasi?', 'Rata-rata sekolah bisa beroperasi penuh dalam 3-5 hari kerja. Tim kami mendampingi proses migrasi data, pelatihan pengguna, dan pengaturan awal.'],
                     ['Apakah tersedia trial/demo sebelum berlangganan?', 'Ya! Kami menyediakan demo gratis selama 14 hari tanpa memerlukan kartu kredit. Tim kami akan mendampingi proses demo agar Anda bisa merasakan manfaat nyata platform ini.'],
-                    ['Bagaimana cara menghubungi dukungan teknis?', 'Pengguna Paket School Partner mendapatkan prioritas dukungan via WhatsApp dan email. Paket Starter mendapatkan dukungan email standar.'],
+                    ['Bagaimana cara menghubungi dukungan teknis?', 'Pengguna Paket Partner mendapatkan prioritas dukungan via WhatsApp dan email. Paket Starter mendapatkan dukungan email standar.'],
                 ] as $i => $faq)
                 <div class="glass-card rounded-2xl overflow-hidden">
                     <button @click="open === {{ $i }} ? open = null : open = {{ $i }}"
