@@ -63,6 +63,21 @@ Route::get('/syarat-ketentuan', function () {
     ]);
 })->name('terms-of-service');
 
+Route::get('/sitemap.xml', function () {
+    $urls = [
+        ['loc' => route('landing'), 'priority' => '1.0'],
+        ['loc' => route('layanan'), 'priority' => '0.9'],
+        ['loc' => route('pricing'), 'priority' => '0.9'],
+        ['loc' => route('blog'), 'priority' => '0.8'],
+        ['loc' => route('contact'), 'priority' => '0.8'],
+        ['loc' => route('privacy-policy'), 'priority' => '0.3'],
+        ['loc' => route('terms-of-service'), 'priority' => '0.3'],
+    ];
+
+    return response()->view('sitemap', compact('urls'))
+        ->header('Content-Type', 'application/xml');
+})->name('sitemap');
+
 Route::post('/contact', function (\Illuminate\Http\Request $request) {
     $request->validate([
         'name' => 'required|string|max:100',
@@ -193,6 +208,8 @@ Route::middleware('auth')->group(function () {
             Route::get('/announcements', [OperationsFoundationController::class, 'announcements'])->name('announcements.index');
             Route::get('/announcements/{announcement}', [OperationsFoundationController::class, 'showAnnouncement'])->name('announcements.show');
             Route::post('/announcements/{announcement}/read', [OperationsFoundationController::class, 'markAnnouncementRead'])->name('announcements.read');
+            Route::post('/announcements/{announcement}/bookmark', [OperationsFoundationController::class, 'bookmarkAnnouncement'])->name('announcements.bookmark');
+            Route::get('/announcements/{announcement}/attachment', [OperationsFoundationController::class, 'announcementAttachment'])->name('announcements.attachment');
             Route::post('/announcements', [OperationsFoundationController::class, 'storeAnnouncement'])->name('announcements.store');
         });
 
@@ -203,6 +220,7 @@ Route::middleware('auth')->group(function () {
         Route::middleware('permission:academic.alumni,super_admin,kepsek,wakasek,tu,staf_tu,alumni')->group(function () {
             Route::get('/alumni', [AcademicFoundationController::class, 'alumni'])->name('alumni.index');
             Route::put('/alumni/{alumni}', [AcademicFoundationController::class, 'updateAlumni'])->name('alumni.update');
+            Route::post('/alumni/{alumni}/link', [AcademicFoundationController::class, 'linkAlumni'])->name('alumni.link');
         });
 
         // --- KESISWAAN & OPERASIONAL SEKOLAH (FASE 2) ---

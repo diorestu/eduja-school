@@ -180,3 +180,61 @@ it('shows only owned requests to a guardian and supports private document upload
     $stranger = phaseFiveMember($school, 'orang_tua');
     $this->actingAs($stranger)->get('/attendance/requests/'.$own->id.'/document')->assertForbidden();
 });
+
+it('keeps principals read only while TU can write attendance', function () {
+    $school = phaseFiveSchool();
+    $principal = phaseFiveMember($school, 'kepsek', ['role'=>'super_admin']);
+    $this->actingAs($principal)->withSession(['active_school_id'=>$school]);
+    $this->get('/presensi/gtk')->assertOk()->assertViewHas('canEdit', false);
+    $this->post('/presensi/gtk', [])->assertForbidden();
+    $this->post('/presensi/siswa', [])->assertForbidden();
+    $tu = phaseFiveMember($school, 'staf_tu');
+    $this->actingAs($tu)->get('/presensi/gtk')->assertOk()->assertViewHas('canEdit', true);
+});
+
+it('limits targeted announcement attachments and bookmarks to recipients', function () {
+    \Illuminate\Support\Facades\Storage::fake('local');
+    $school = phaseFiveSchool();
+    $writer = phaseFiveMember($school, 'staf_tu');
+    $recipient = phaseFiveMember($school, 'guru');
+    $other = phaseFiveMember($school, 'guru');
+    $this->actingAs($writer)->withSession(['active_school_id'=>$school]);
+    $this->post('/announcements', ['title'=>'Surat khusus', 'body'=>'Isi khusus', 'target_type'=>'person', 'target_id'=>$recipient->id,
+        'attachment'=>\Illuminate\Http\UploadedFile::fake()->create('surat.pdf', 10, 'application/pdf')])->assertSessionHasNoErrors();
+    $announcement = Announcement::where('title','Surat khusus')->firstOrFail();
+    $this->actingAs($recipient)->get('/announcements/'.$announcement->id)->assertOk();
+    $this->get('/announcements/'.$announcement->id.'/attachment')->assertOk();
+    $this->post('/announcements/'.$announcement->id.'/bookmark', ['saved'=>1])->assertRedirect();
+    $this->post('/announcements/'.$announcement->id.'/bookmark', ['saved'=>1])->assertRedirect();
+    expect(DB::table('announcement_bookmarks')->count())->toBe(1);
+    $this->actingAs($other)->get('/announcements/'.$announcement->id)->assertForbidden();
+    $this->get('/announcements/'.$announcement->id.'/attachment')->assertForbidden();
+    $this->post('/announcements/'.$announcement->id.'/bookmark',['saved'=>1])->assertForbidden();
+});
+
+it('rejects foreign school targets and limits notification feed', function () {
+    $school = phaseFiveSchool();
+    $otherSchool = phaseFiveSchool();
+    $writer = phaseFiveMember($school, 'staf_tu');
+    $outsider = phaseFiveMember($otherSchool, 'guru');
+    $this->actingAs($writer)->withSession(['active_school_id'=>$school]);
+    $this->post('/announcements', ['title'=>'Invalid', 'body'=>'Body', 'target_type'=>'person', 'target_id'=>$outsider->id])->assertSessionHasErrors('target_id');
+    Announcement::create(['school_id'=>$otherSchool,'title'=>'Foreign','body'=>'Body','target_type'=>'school','published_at'=>now()]);
+    Announcement::create(['school_id'=>$school,'title'=>'Draft','body'=>'Body','target_type'=>'school']);
+    expect(app(\App\Services\SchoolNotificationFeed::class)->forUser($writer))->toHaveCount(0);
+    Announcement::create(['school_id'=>$school,'title'=>'Local','body'=>'Body','target_type'=>'school','published_at'=>now()]);
+    expect(app(\App\Services\SchoolNotificationFeed::class)->forUser($writer)->pluck('title')->all())->toBe(['Local']);
+});
+
+it('links old alumni only to an active alumni account in the same school', function () {
+    $school = phaseFiveSchool();
+    $admin = phaseFiveMember($school, 'staf_tu');
+    $account = phaseFiveMember($school, 'alumni');
+    $other = phaseFiveMember(phaseFiveSchool(), 'alumni');
+    $profile = Alumni::create(['school_id'=>$school,'name'=>'Alumni lama']);
+    $this->actingAs($admin)->withSession(['active_school_id'=>$school]);
+    $this->post('/alumni/'.$profile->id.'/link',['user_id'=>$other->id])->assertSessionHasErrors('user_id');
+    $this->post('/alumni/'.$profile->id.'/link',['user_id'=>$account->id])->assertSessionHasNoErrors();
+    expect($profile->fresh()->user_id)->toBe($account->id);
+    $this->actingAs($account)->get('/dashboard')->assertRedirect('/alumni');
+});

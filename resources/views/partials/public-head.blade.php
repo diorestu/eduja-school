@@ -3,17 +3,69 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="/favicon.png">
-<title>{{ $title ?? 'Eduja - Sekolah Makin Seru' }}</title>
+@php
+    $seoTitle = $title ?? 'EDUJA — Platform Manajemen Sekolah Indonesia';
+    $seoDescription = $description ?? 'EDUJA membantu sekolah mengelola akademik, keuangan, presensi, dan komunikasi dalam satu platform manajemen sekolah Indonesia.';
+    $seoKeywords = $keywords ?? 'aplikasi manajemen sekolah, sistem informasi sekolah, aplikasi sekolah Indonesia, manajemen SPP sekolah, manajemen dana BOS, presensi digital siswa';
+    $seoUrl = url()->current();
+    $seoImage = asset('images/seo/eduja-og.svg');
+@endphp
+<title>{{ $seoTitle }}</title>
+<link rel="canonical" href="{{ $seoUrl }}">
 
 {{-- Meta SEO --}}
-<meta name="description" content="{{ $description ?? 'Eduja adalah platform digital terpadu manajemen sekolah Indonesia. SPP otomatis, BKU Dana BOS, presensi harian, dan tabungan siswa dalam satu dasbor.' }}">
-<meta name="keywords" content="sistem manajemen sekolah, aplikasi spp sekolah, dana bos, bku sekolah, rkas, absensi siswa, tabungan siswa, kepala sekolah, yayasan pendidikan">
+<meta name="description" content="{{ $seoDescription }}">
+<meta name="keywords" content="{{ $seoKeywords }}">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="author" content="EDUJA">
 
 {{-- Open Graph --}}
-<meta property="og:title" content="{{ $title ?? 'Eduja - Sekolah Makin Seru' }}">
-<meta property="og:description" content="{{ $description ?? 'Platform digital terpadu manajemen sekolah Indonesia.' }}">
-<meta property="og:image" content="/images/logo/logo-wide.png">
+<meta property="og:locale" content="id_ID">
+<meta property="og:site_name" content="EDUJA">
+<meta property="og:url" content="{{ $seoUrl }}">
+<meta property="og:title" content="{{ $seoTitle }}">
+<meta property="og:description" content="{{ $seoDescription }}">
+<meta property="og:image" content="{{ $seoImage }}">
+<meta property="og:image:secure_url" content="{{ $seoImage }}">
+<meta property="og:image:type" content="image/svg+xml">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="EDUJA — Platform Manajemen Sekolah Indonesia">
 <meta property="og:type" content="website">
+
+{{-- X / Twitter Card --}}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ $seoTitle }}">
+<meta name="twitter:description" content="{{ $seoDescription }}">
+<meta name="twitter:image" content="{{ $seoImage }}">
+<meta name="twitter:image:alt" content="EDUJA — Platform Manajemen Sekolah Indonesia">
+
+{{-- Structured data for brand/entity discovery --}}
+<script type="application/ld+json">
+{!! json_encode([
+    '@context' => 'https://schema.org',
+    '@graph' => [
+        [
+            '@type' => 'Organization',
+            '@id' => url('/').'#organization',
+            'name' => 'EDUJA',
+            'url' => url('/'),
+            'logo' => asset('images/logo/logo-wide.png'),
+            'email' => 'info@eduja.id',
+            'telephone' => '+628179792288',
+            'description' => 'Platform manajemen sekolah Indonesia untuk akademik, keuangan, presensi, dan komunikasi.',
+        ],
+        [
+            '@type' => 'WebSite',
+            '@id' => url('/').'#website',
+            'url' => url('/'),
+            'name' => 'EDUJA',
+            'publisher' => ['@id' => url('/').'#organization'],
+            'inLanguage' => 'id-ID',
+        ],
+    ],
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
+</script>
 
 {{-- Google Fonts & Icons --}}
 <link rel="preconnect" href="https://fonts.googleapis.com">

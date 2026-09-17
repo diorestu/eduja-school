@@ -3,7 +3,8 @@
 <head>
     @include('partials.public-head', [
         'title' => 'Kontak Eduja — Demo untuk SMP & SMK',
-        'description' => 'Hubungi tim Eduja untuk demo dan konsultasi implementasi platform manajemen SMP atau SMK Anda.'
+        'description' => 'Hubungi tim Eduja untuk demo dan konsultasi implementasi platform manajemen SMP atau SMK Anda.',
+        'keywords' => 'demo aplikasi sekolah, konsultasi sistem sekolah, kontak Eduja, implementasi aplikasi sekolah'
     ])
 </head>
 <body class="antialiased">

@@ -3,7 +3,8 @@
 <head>
     @include('partials.public-head', [
         'title' => 'Layanan Eduja — Modul Digital untuk SMP & SMK',
-        'description' => 'Lihat modul Eduja untuk akademik, SPP, BOS, presensi, tabungan siswa, dan dasbor pimpinan SMP dan SMK.'
+        'description' => 'Lihat modul Eduja untuk akademik, SPP, BOS, presensi, tabungan siswa, dan dasbor pimpinan SMP dan SMK.',
+        'keywords' => 'modul manajemen sekolah, aplikasi SPP, aplikasi dana BOS, presensi digital siswa, tabungan siswa'
     ])
 </head>
 <body class="antialiased">

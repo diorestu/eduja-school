@@ -70,6 +70,7 @@ class AttendanceController extends Controller
      */
     public function storeSiswa(Request $request, SchoolContext $schoolContext, AttendanceCommandService $attendance)
     {
+        abort_unless(app(\App\Services\AttendanceAccess::class)->canEdit($request->user()), 403);
         $schoolId = $schoolContext->activeSchoolIdFor();
         $validated = $request->validate([
             'school_class_id' => ['required', Rule::exists('school_classes', 'id')->where(fn ($query) => $query->where('school_id', $schoolId))],
@@ -152,6 +153,7 @@ class AttendanceController extends Controller
      */
     public function storeGtk(Request $request, SchoolContext $schoolContext, AttendanceCommandService $attendance)
     {
+        abort_unless(app(\App\Services\AttendanceAccess::class)->canEdit($request->user()), 403);
         $schoolId = $schoolContext->activeSchoolIdFor();
         $validated = $request->validate([
             'attendance_date' => 'required|date',
@@ -214,6 +216,13 @@ class AttendanceController extends Controller
         $totals = (clone $query)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
 
         return [
+            'canEdit' => app(\App\Services\AttendanceAccess::class)->canEdit($request->user()),
+            'groupTotals' => $gtk ? collect(['Guru' => 'Guru', 'Tendik' => 'Tendik'])->mapWithKeys(function ($label, $group) use ($query) {
+                $records = (clone $query)->whereHas('teacher', fn ($q) => $group === 'Guru'
+                    ? $q->where('role_type', 'Guru')
+                    : $q->where('role_type', '!=', 'Guru'));
+                return [$label => $records->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')];
+            }) : collect(),
             'period' => $period,
             'periodStart' => $start,
             'periodEnd' => $end,

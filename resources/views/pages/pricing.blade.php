@@ -3,7 +3,8 @@
 <head>
     @include('partials.public-head', [
         'title' => 'Harga Eduja — Paket untuk SMP & SMK',
-        'description' => 'Pilih paket Eduja sesuai ukuran dan kebutuhan SMP atau SMK Anda. Transparan, fleksibel, dan siap didampingi tim kami.'
+        'description' => 'Pilih paket Eduja sesuai ukuran dan kebutuhan SMP atau SMK Anda. Transparan, fleksibel, dan siap didampingi tim kami.',
+        'keywords' => 'harga aplikasi sekolah, paket sistem manajemen sekolah, aplikasi SPP sekolah, software sekolah SMP SMK'
     ])
     <style>
         input[type="range"] {

@@ -19,6 +19,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        \Illuminate\Support\Facades\View::composer('components.header.notification-dropdown', function ($view) {
+            $view->with('schoolNotifications', auth()->user()
+                ? app(\App\Services\SchoolNotificationFeed::class)->forUser(auth()->user())
+                : collect());
+        });
     }
 }

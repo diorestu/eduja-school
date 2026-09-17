@@ -17,13 +17,26 @@
             <div class="work-field"><label for="period">Periode riwayat</label><select id="period" name="period">@foreach(['day'=>'Hari','week'=>'Minggu','month'=>'Bulan','semester'=>'Semester kalender (Jan–Jun / Jul–Des)'] as $value=>$label)<option value="{{ $value }}" @selected($period === $value)>{{ $label }}</option>@endforeach</select></div>
             <div class="work-actions"><x-work.submit label="Tampilkan presensi" busy="Memuat…" /></div>
         </form>
-        <dl class="work-summary">@foreach($labels as $code=>$label)<div><dt>{{ $label }}</dt><dd>{{ $totals[$code] ?? 0 }}</dd></div>@endforeach</dl>
+        @if($isGtk)
+            @foreach($groupTotals as $group => $values)
+                <h2 class="mt-6">{{ $group }}</h2>
+                <dl class="work-summary">@foreach($labels as $code=>$label)<div><dt>{{ $label }}</dt><dd>{{ $values[$code] ?? 0 }}</dd></div>@endforeach</dl>
+            @endforeach
+        @else
+            <dl class="work-summary">@foreach($labels as $code=>$label)<div><dt>{{ $label }}</dt><dd>{{ $totals[$code] ?? 0 }}</dd></div>@endforeach</dl>
+        @endif
         <p class="work-muted">Jumlah catatan pada {{ $periodStart->format('d M Y') }} hingga {{ $periodEnd->format('d M Y') }}{{ !$isGtk && !$selectedClassId ? ', seluruh kelas' : '' }}. Belum dicatat tidak dihitung sebagai Alpha.</p>
     </section>
     <section class="work-panel">
         <div class="work-head"><div><h2>Lembar presensi harian</h2><p class="work-muted">{{ \Carbon\Carbon::parse($selectedDate)->translatedFormat('d F Y') }}</p></div></div>
         @if($people->isEmpty())
             <div class="work-empty"><h3>{{ !$isGtk && !$selectedClassId ? 'Pilih kelas untuk melihat daftar siswa' : 'Belum ada peserta aktif' }}</h3><p class="work-muted">{{ $isGtk ? 'Guru dan tendik aktif di sekolah ini akan tampil di sini.' : 'Periksa pilihan kelas dan data siswa aktif di sekolah ini.' }}</p></div>
+        @elseif(! $canEdit)
+            <p class="work-notice">Akses lihat presensi. Pencatatan dilakukan oleh petugas administrasi sekolah.</p>
+            @foreach($people as $person)
+                @php($existing = $existingAttendances->get($person->id))
+                <article class="work-row"><h3>{{ $person->name }}</h3><p>{{ $labels[$existing?->status] ?? 'Belum dicatat' }}</p><p class="work-muted">{{ $existing?->note ?: 'Tidak ada catatan' }}</p></article>
+            @endforeach
         @else
         <form action="{{ route($routeName.'.store') }}" method="POST" class="work-fields" x-data="{ saving:false }" @submit="if(saving) { $event.preventDefault(); } else { saving=true; }" @pageshow.window="saving=false">
             @csrf<input type="hidden" name="attendance_date" value="{{ $selectedDate }}">

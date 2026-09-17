@@ -6,7 +6,7 @@
         toggleApplicationMenu() {
             this.isApplicationMenuOpen = !this.isApplicationMenuOpen;
         }
-    }">
+    }" @keydown.escape.window="isApplicationMenuOpen = false; $store.sidebar.setMobileOpen(false)">
     <div class="flex flex-col items-center justify-between grow xl:flex-row xl:px-6">
         <div
             class="flex items-center justify-between w-full gap-2 px-3 py-3 border-b border-gray-200 dark:border-gray-800 sm:gap-4 xl:justify-normal xl:border-b-0 xl:px-0 lg:py-4">
@@ -32,7 +32,7 @@
 
             <!-- Mobile Menu Toggle Button (visible below xl) -->
             <button
-                class="flex xl:hidden items-center justify-center w-10 h-10 text-gray-500 rounded-lg dark:text-gray-400 lg:h-11 lg:w-11"
+                class="flex xl:hidden items-center justify-center w-11 h-11 text-gray-500 rounded-lg dark:text-gray-400"
                 :class="{ 'bg-gray-100 dark:bg-white/[0.03]': $store.sidebar.isMobileOpen }"
                 @click="$store.sidebar.toggleMobileOpen()" aria-label="Toggle Mobile Menu">
                 <svg x-show="!$store.sidebar.isMobileOpen" width="16" height="12" viewBox="0 0 16 12" fill="none"
@@ -56,8 +56,8 @@
             </a>
 
             <!-- Application Menu Toggle (mobile only) -->
-            <button @click="toggleApplicationMenu()"
-                class="flex items-center justify-center w-10 h-10 text-gray-700 rounded-lg z-99999 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 xl:hidden">
+            <button @click="toggleApplicationMenu()" type="button" aria-label="Menu akun dan tampilan" :aria-expanded="isApplicationMenuOpen.toString()"
+                class="flex items-center justify-center w-11 h-11 text-gray-700 rounded-lg z-99999 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 xl:hidden">
                 <!-- Dots Icon -->
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                     <path fill-rule="evenodd" clip-rule="evenodd"
@@ -110,6 +110,7 @@
                 <!-- Theme Toggle Button -->
                 <button
                     class="relative flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-dark-900 h-11 w-11 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+                    type="button" aria-label="Ganti tema" :aria-pressed="($store.theme.theme === 'dark').toString()"
                     @click="$store.theme.toggle()">
                     <svg class="hidden dark:block" width="20" height="20" viewBox="0 0 20 20" fill="none"
                         xmlns="http://www.w3.org/2000/svg">

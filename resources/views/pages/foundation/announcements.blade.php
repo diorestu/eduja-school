@@ -27,12 +27,23 @@
         @if($canManage)
         <aside class="work-panel">
             <h2>Terbitkan pengumuman</h2><p class="work-muted mt-2">Pilih penerima dan tulis informasi yang perlu mereka ketahui.</p>
-            <form action="{{ route('announcements.store') }}" method="POST" class="work-fields mt-6" x-data="{ saving:false }" @submit="if(saving) { $event.preventDefault(); } else { saving=true; }" @pageshow.window="saving=false">
+            <form action="{{ route('announcements.store') }}" method="POST" enctype="multipart/form-data" class="work-fields mt-6" x-data="{ saving:false, target: @js(old('target_type', 'school')) }" @submit="if(saving) { $event.preventDefault(); } else { saving=true; }" @pageshow.window="saving=false">
                 @csrf
                 <x-work.field name="title" label="Judul pengumuman" required maxlength="160" />
                 <div class="work-field"><label for="category">Kategori</label><select id="category" name="category">@foreach(['umum'=>'Umum','akademik'=>'Akademik','keuangan'=>'Keuangan','kegiatan'=>'Kegiatan'] as $value=>$label)<option value="{{ $value }}" @selected(old('category') === $value)>{{ $label }}</option>@endforeach</select></div>
-                <div class="work-field"><label for="target_type">Penerima</label><select id="target_type" name="target_type" required>@foreach(['school'=>'Seluruh sekolah','teacher'=>'Guru','staff'=>'Tendik','student'=>'Siswa','parent'=>'Wali murid'] as $value=>$label)<option value="{{ $value }}" @selected(old('target_type') === $value)>{{ $label }}</option>@endforeach</select></div>
+                <div class="work-field"><label for="target_type">Penerima</label><select id="target_type" name="target_type" x-model="target" required>@foreach(['school'=>'Seluruh sekolah','teacher'=>'Guru','staff'=>'Tendik','student'=>'Siswa','parent'=>'Wali murid','person'=>'Satu akun','class'=>'Siswa & wali per kelas','department'=>'Siswa & wali per jurusan','grade'=>'Siswa & wali per tingkat'] as $value=>$label)<option value="{{ $value }}" @selected(old('target_type') === $value)>{{ $label }}</option>@endforeach</select></div>
+                @foreach($targetOptions as $kind => $options)
+                    <div class="work-field" x-show="target === '{{ $kind }}'" x-cloak>
+                        <label for="target-{{ $kind }}">Pilih {{ ['person'=>'akun','class'=>'kelas','department'=>'jurusan','grade'=>'tingkat'][$kind] }}</label>
+                        <select id="target-{{ $kind }}" name="target_id" :disabled="target !== '{{ $kind }}'" :required="target === '{{ $kind }}'">
+                            <option value="">Pilih penerima</option>
+                            @foreach($options as $id=>$name)<option value="{{ $id }}" @selected(old('target_id') == $id)>{{ $name }}</option>@endforeach
+                        </select>
+                        @error('target_id')<p class="work-error">{{ $message }}</p>@enderror
+                    </div>
+                @endforeach
                 <x-work.field name="body" label="Isi pengumuman" type="textarea" required rows="8" />
+                <div class="work-field"><label for="attachment">Lampiran (opsional)</label><input id="attachment" name="attachment" type="file" accept=".pdf,.jpg,.jpeg,.png"><p class="work-muted">PDF, JPG, atau PNG. Maksimal 5 MB.</p>@error('attachment')<p class="work-error">{{ $message }}</p>@enderror</div>
                 <p class="work-muted">Pengumuman langsung tersedia di EDUJA setelah diterbitkan.</p>
                 <x-work.submit label="Terbitkan pengumuman" busy="Menerbitkan…" />
             </form>

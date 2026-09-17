@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">EDUJA — Platform Manajemen Sekolah Indonesia</title>
+  <desc id="desc">Satu ruang kerja untuk akademik, keuangan, presensi, dan komunikasi sekolah.</desc>
+  <rect width="1200" height="630" fill="#002f32"/>
+  <circle cx="1040" cy="-10" r="300" fill="#006266" opacity=".72"/>
+  <circle cx="1120" cy="560" r="250" fill="#009b9e" opacity=".18"/>
+  <path d="M0 520C220 430 360 590 610 500s370-60 590 10v120H0Z" fill="#001a1b" opacity=".75"/>
+  <text x="96" y="230" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="92" font-weight="700" letter-spacing="8">EDUJA</text>
+  <rect x="100" y="270" width="110" height="8" rx="4" fill="#26b0b2"/>
+  <text x="96" y="350" fill="#e0f5f5" font-family="Arial, Helvetica, sans-serif" font-size="38" font-weight="700">Platform Manajemen Sekolah</text>
+  <text x="96" y="410" fill="#b3e5e6" font-family="Arial, Helvetica, sans-serif" font-size="25">Akademik · Keuangan · Presensi · Komunikasi</text>
+  <text x="96" y="548" fill="#80d2d3" font-family="Arial, Helvetica, sans-serif" font-size="22">eduja.id</text>
+</svg>

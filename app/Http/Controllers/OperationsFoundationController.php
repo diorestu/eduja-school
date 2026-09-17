@@ -65,6 +65,7 @@ class OperationsFoundationController extends Controller
             'announcements' => $announcements,
             'unreadCount' => $announcements->filter(fn ($item) => ! $item->reads->contains(fn ($read) => $read->read_at !== null))->count(),
             'canManage' => request()->user()->hasRole(['super_admin', 'kepsek', 'pic_sekolah', 'wakasek', 'tu', 'staf_tu', 'guru', 'wali_kelas']),
+            'targetOptions' => $this->targetOptions($schoolId),
         ]);
     }
 
@@ -74,7 +75,8 @@ class OperationsFoundationController extends Controller
         abort_unless($this->canReceiveAnnouncement($announcement, request()->user()), 403);
 
         $readAt = $announcement->reads()->where('user_id', request()->user()->id)->value('read_at');
-        return view('pages.foundation.announcement-show', compact('announcement', 'readAt'));
+        $bookmarked = \Illuminate\Support\Facades\DB::table('announcement_bookmarks')->where('announcement_id', $announcement->id)->where('user_id', request()->user()->id)->exists();
+        return view('pages.foundation.announcement-show', compact('announcement', 'readAt', 'bookmarked'));
     }
 
     public function markAnnouncementRead(Announcement $announcement, SchoolContext $schoolContext): RedirectResponse
@@ -98,19 +100,34 @@ class OperationsFoundationController extends Controller
             'title' => ['required', 'string', 'max:160'],
             'body' => ['required', 'string'],
             'category' => ['nullable', 'string', 'max:40'],
-            'target_type' => ['required', 'in:school,teacher,staff,student,parent'],
-            'target_id' => ['prohibited'],
+            'target_type' => ['required', 'in:school,teacher,staff,student,parent,person,class,department,grade'],
+            'target_id' => ['nullable', 'integer'],
+            'attachment' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
         ]);
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        $targeted = in_array($validated['target_type'], ['person', 'class', 'department', 'grade'], true);
+        if ($targeted && ! array_key_exists($validated['target_id'] ?? 0, $this->targetOptions($schoolId)[$validated['target_type']])) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['target_id' => 'Pilih penerima yang terdaftar di sekolah aktif.']);
+        }
+        unset($validated['attachment']);
+        $path = $request->file('attachment')?->store('announcement-documents/'.$schoolId, 'local');
 
-        Announcement::create([
+        try {
+            Announcement::create([
             ...$validated,
-            'school_id' => $schoolContext->activeSchoolIdFor(),
+            'school_id' => $schoolId,
             'created_by' => $request->user()->id,
             'category' => $validated['category'] ?? 'umum',
             'target_type' => $validated['target_type'],
-            'target_id' => $validated['target_id'] ?? null,
+            'target_id' => $targeted ? $validated['target_id'] : null,
+            'attachment_path' => $path,
+            'attachment_name' => $request->file('attachment')?->getClientOriginalName(),
             'published_at' => now(),
-        ]);
+            ]);
+        } catch (\Throwable $exception) {
+            if ($path) \Illuminate\Support\Facades\Storage::disk('local')->delete($path);
+            throw $exception;
+        }
 
         return back()->with('success', 'Pengumuman berhasil diterbitkan.');
     }
@@ -159,20 +176,43 @@ class OperationsFoundationController extends Controller
 
     private function canReceiveAnnouncement(Announcement $announcement, \App\Models\User $user): bool
     {
-        if (! $announcement->published_at || $announcement->published_at->isFuture()) {
-            return false;
-        }
-        if ($announcement->target_type === 'school' || $user->isSuperAdmin()) {
-            return true;
-        }
+        return app(\App\Services\AnnouncementAudience::class)->allows($announcement, $user);
+    }
 
-        $roles = [
-            'teacher' => ['guru', 'wali_kelas'],
-            'staff' => ['tendik', 'tu', 'staf_tu', 'bendahara'],
-            'student' => ['siswa'],
-            'parent' => ['orang_tua', 'wali_murid'],
+    private function targetOptions(int $schoolId): array
+    {
+        if (! request()->user()->hasRole(['super_admin', 'kepsek', 'pic_sekolah', 'wakasek', 'tu', 'staf_tu', 'guru', 'wali_kelas'])) {
+            return ['person' => [], 'class' => [], 'department' => [], 'grade' => []];
+        }
+        return [
+            'person' => \App\Models\User::whereHas('schoolRoles', fn ($q) => $q->where('school_id', $schoolId)->where('is_active', true)->where('membership_status', 'active'))->orderBy('name')->pluck('name', 'id')->all(),
+            'class' => \App\Models\SchoolClass::where('school_id', $schoolId)->orderBy('name')->pluck('name', 'id')->all(),
+            'department' => \App\Models\Department::where('school_id', $schoolId)->orderBy('name')->pluck('name', 'id')->all(),
+            'grade' => \App\Models\SchoolClass::where('school_id', $schoolId)->orderBy('grade')->distinct()->pluck('grade', 'grade')->all(),
         ];
+    }
 
-        return $user->hasRole($roles[$announcement->target_type] ?? []);
+    public function bookmarkAnnouncement(Announcement $announcement, Request $request, SchoolContext $context): RedirectResponse
+    {
+        abort_unless((int) $announcement->school_id === $context->activeSchoolIdFor(), 404);
+        abort_unless($this->canReceiveAnnouncement($announcement, $request->user()), 403);
+        $request->validate(['saved' => ['required', 'boolean']]);
+        $key = ['announcement_id' => $announcement->id, 'user_id' => $request->user()->id];
+        if ($request->boolean('saved')) {
+            \Illuminate\Support\Facades\DB::table('announcement_bookmarks')->insertOrIgnore([...$key, 'created_at' => now(), 'updated_at' => now()]);
+        } else {
+            \Illuminate\Support\Facades\DB::table('announcement_bookmarks')->where($key)->delete();
+        }
+        return back()->with('success', $request->boolean('saved') ? 'Pengumuman disimpan ke penanda.' : 'Penanda pengumuman dihapus.');
+    }
+
+    public function announcementAttachment(Announcement $announcement, Request $request, SchoolContext $context)
+    {
+        abort_unless((int) $announcement->school_id === $context->activeSchoolIdFor(), 404);
+        abort_unless($this->canReceiveAnnouncement($announcement, $request->user()), 403);
+        $path = $announcement->attachment_path;
+        abort_unless($path && str_starts_with($path, 'announcement-documents/'.$announcement->school_id.'/')
+            && ! str_contains($path, '..') && \Illuminate\Support\Facades\Storage::disk('local')->exists($path), 404);
+        return \Illuminate\Support\Facades\Storage::disk('local')->download($path, basename($announcement->attachment_name ?: 'lampiran.pdf'));
     }
 }

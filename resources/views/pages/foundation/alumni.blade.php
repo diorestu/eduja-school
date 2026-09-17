@@ -43,7 +43,16 @@
                     @foreach(['phone'=>'WhatsApp','email'=>'Email','address'=>'Domisili','education_history'=>'Pendidikan','current_job'=>'Pekerjaan'] as $field=>$label)
                         <div><dt class="work-muted">{{ $label }}</dt><dd class="work-copy">{{ $person->$field ?: 'Belum diisi' }}</dd></div>
                     @endforeach
-                    </dl></details>
+                    </dl>
+                    @if(! $person->user_id && $linkableUsers->isNotEmpty())
+                        <form method="POST" action="{{ route('alumni.link', $person) }}" class="work-fields mt-4" x-data="{ saving:false }" @submit="saving=true">
+                            @csrf
+                            <div class="work-field"><label for="link-{{ $person->id }}">Hubungkan dengan akun alumni</label><select id="link-{{ $person->id }}" name="user_id" required><option value="">Pilih akun yang identitasnya telah diperiksa</option>@foreach($linkableUsers as $account)<option value="{{ $account->id }}">{{ $account->name }} ({{ $account->email }})</option>@endforeach</select></div>
+                            <p class="work-muted">Pastikan nama dan email sesuai pemilik profil. Akun akan dapat memperbarui profil ini.</p>
+                            <x-work.submit label="Hubungkan akun" />
+                        </form>
+                    @endif
+                    </details>
                 </article>
             @empty
                 <div class="work-empty"><h2>Belum ada alumni</h2><p class="work-muted">Profil akan tersedia setelah sekolah memproses kelulusan siswa.</p></div>

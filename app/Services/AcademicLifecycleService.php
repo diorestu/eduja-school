@@ -167,6 +167,13 @@ class AcademicLifecycleService
                     ],
                 );
 
+                if ($student->user_id) {
+                    DB::table('school_user_roles')->updateOrInsert(
+                        ['school_id' => $schoolId, 'user_id' => $student->user_id, 'role' => 'alumni'],
+                        ['is_active' => true, 'membership_status' => 'active', 'created_at' => now(), 'updated_at' => now()],
+                    );
+                }
+
                 $mappings = ClassStudent::where('student_id', $student->id)
                     ->whereHas('schoolClass', fn ($query) => $query->where('school_id', $schoolId))
                     ->with('schoolClass')

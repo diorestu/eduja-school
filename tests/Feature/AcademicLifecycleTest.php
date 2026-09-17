@@ -244,7 +244,8 @@ it('graduates students, archives alumni, ends class access, history, attendance,
     expect(DB::table('class_students')->where('student_id', $student)->exists())->toBeFalse();
     expect(DB::table('student_class_histories')->where('student_id', $student)->where('action', 'graduated')->exists())->toBeTrue();
     expect(DB::table('lifecycle_histories')->where('subject_type', 'student')->where('subject_id', $student)->where('to_status', 'graduated')->exists())->toBeTrue();
-    expect(DB::table('school_user_roles')->where('user_id', $studentUser->id)->where('school_id', $school)->value('is_active'))->toBe(0);
+    expect(DB::table('school_user_roles')->where('user_id', $studentUser->id)->where('school_id', $school)->where('role', 'siswa')->value('is_active'))->toBe(0);
+    expect(DB::table('school_user_roles')->where('user_id', $studentUser->id)->where('school_id', $school)->where('role', 'alumni')->value('is_active'))->toBe(1);
 });
 
 it('updates student and teacher lifecycle states with immutable history and removes active access', function () {

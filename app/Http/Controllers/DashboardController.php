@@ -21,6 +21,9 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
         if ($user) {
+            if ($user->hasRole('alumni')) {
+                return redirect()->route('alumni.index');
+            }
             if ($user->hasRole('siswa')) {
                 return redirect()->route('portal.siswa');
             }

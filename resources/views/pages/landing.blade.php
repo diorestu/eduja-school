@@ -3,7 +3,8 @@
 <head>
     @include('partials.public-head', [
         'title' => 'Eduja — Operasional Sekolah, Lebih Ringan',
-        'description' => 'Eduja membantu sekolah mengelola akademik, keuangan, presensi, dan komunikasi dalam satu ruang kerja yang mudah digunakan.'
+        'description' => 'Eduja membantu sekolah mengelola akademik, keuangan, presensi, dan komunikasi dalam satu ruang kerja yang mudah digunakan.',
+        'keywords' => 'aplikasi manajemen sekolah, sistem informasi sekolah, aplikasi sekolah Indonesia, operasional sekolah digital'
     ])
     <style>
         :root { --cream:#fbf6ed; --ink:#173b3d; --teal:#087f7a; --teal-dark:#06645f; --mint:#d8f1e7; --peach:#f5c8ad; --yellow:#f6d873; --line:#dce5dc; --shadow-card:0 18px 42px rgba(23,59,61,.10); --ease-out:cubic-bezier(.16,1,.3,1); --dur-fast:160ms; }

@@ -3,7 +3,8 @@
 <head>
     @include('partials.public-head', [
         'title' => 'Blog Eduja — Wawasan & Panduan untuk Pemimpin Pendidikan Indonesia',
-        'description' => 'Artikel, panduan, dan insight terkini seputar manajemen sekolah, teknologi pendidikan, keuangan BOS, dan kepemimpinan pendidikan dari tim Eduja.'
+        'description' => 'Artikel, panduan, dan insight terkini seputar manajemen sekolah, teknologi pendidikan, keuangan BOS, dan kepemimpinan pendidikan dari tim Eduja.',
+        'keywords' => 'blog manajemen sekolah, panduan dana BOS, teknologi pendidikan Indonesia, kepemimpinan sekolah'
     ])
 </head>
 <body class="antialiased">

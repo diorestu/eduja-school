@@ -200,6 +200,9 @@ class AcademicFoundationController extends Controller
             'alumni' => $alumni,
             'isAlumni' => $isAlumni,
             'editableAlumni' => $isAlumni ? $alumni->firstWhere('user_id', request()->user()->id) : null,
+            'linkableUsers' => ! $isAlumni && request()->user()->hasRole(['super_admin', 'kepsek', 'pic_sekolah', 'tu', 'staf_tu'])
+                ? \App\Models\User::whereHas('schoolRoles', fn ($q) => $q->where('school_id', $schoolId)->where('role', 'alumni')->where('is_active', true)->where('membership_status', 'active'))->orderBy('name')->get(['id', 'name', 'email'])
+                : collect(),
         ]);
     }
 
@@ -224,5 +227,28 @@ class AcademicFoundationController extends Controller
         $alumni->update($validated);
 
         return back()->with('success', 'Profil alumni berhasil diperbarui.');
+    }
+
+    public function linkAlumni(Request $request, Alumni $alumni, SchoolContext $context): RedirectResponse
+    {
+        $schoolId = $context->activeSchoolIdFor();
+        abort_unless((int) $alumni->school_id === $schoolId, 404);
+        abort_unless($request->user()->hasRole(['super_admin', 'kepsek', 'pic_sekolah', 'tu', 'staf_tu'])
+            && ! $request->user()->hasRole('alumni'), 403);
+        $data = $request->validate(['user_id' => ['required', 'integer']]);
+        $account = \App\Models\User::whereKey($data['user_id'])
+            ->whereHas('schoolRoles', fn ($q) => $q->where('school_id', $schoolId)->where('role', 'alumni')->where('is_active', true)->where('membership_status', 'active'))->first();
+        if (! $account) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['user_id' => 'Pilih akun alumni aktif pada sekolah ini.']);
+        }
+        \Illuminate\Support\Facades\DB::transaction(function () use ($account, $alumni, $schoolId) {
+            \App\Models\User::whereKey($account->id)->lockForUpdate()->firstOrFail();
+            $record = Alumni::whereKey($alumni->id)->lockForUpdate()->firstOrFail();
+            if ($record->user_id || Alumni::where('school_id', $schoolId)->where('user_id', $account->id)->exists()) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['user_id' => 'Profil atau akun sudah terhubung. Periksa data sebelum mencoba kembali.']);
+            }
+            $record->update(['user_id' => $account->id]);
+        });
+        return back()->with('success', 'Akun alumni berhasil dihubungkan.');
     }
 }
