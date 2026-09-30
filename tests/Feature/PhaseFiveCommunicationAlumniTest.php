@@ -238,3 +238,14 @@ it('links old alumni only to an active alumni account in the same school', funct
     expect($profile->fresh()->user_id)->toBe($account->id);
     $this->actingAs($account)->get('/dashboard')->assertRedirect('/alumni');
 });
+
+it('keeps principal attendance access read only while exposing the matching menu entries', function () {
+    $school = phaseFiveSchool();
+    $principal = phaseFiveMember($school, 'kepsek', ['role' => 'super_admin']);
+    $this->actingAs($principal)->withSession(['active_school_id' => $school])
+        ->get('/presensi/siswa')
+        ->assertOk()
+        ->assertViewHas('canEdit', false)
+        ->assertSee('Presensi Siswa')
+        ->assertSee('Presensi GTK');
+});

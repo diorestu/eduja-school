@@ -35,4 +35,15 @@ return [
         ],
     ],
 
+    'mapbox' => [
+        'public_token' => env('MAPBOX_PUBLIC_TOKEN'),
+        'style' => env('MAPBOX_STYLE', 'mapbox://styles/mapbox/streets-v12'),
+    ],
+
+    'attendance' => [
+        'gps' => [
+            'schools' => json_decode(env('ATTENDANCE_GPS_SCHOOLS', '{}'), true) ?: [],
+        ],
+    ],
+
 ];

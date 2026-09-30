@@ -191,8 +191,9 @@ Route::middleware('auth')->group(function () {
         Route::middleware('permission:portal.student,super_admin,siswa')->group(function () {
             Route::get('/portal/siswa', [PortalFoundationController::class, 'siswa'])->name('portal.siswa');
             Route::post('/portal/siswa/attendance', [PortalFoundationController::class, 'storeAttendance'])->name('portal.siswa.attendance');
-            Route::post('/portal/siswa/permission', [PortalFoundationController::class, 'storePermission'])->name('portal.siswa.permission');
         });
+        Route::middleware('permission:portal.permission,super_admin,siswa,orang_tua,wali_murid')
+            ->post('/portal/siswa/permission', [PortalFoundationController::class, 'storePermission'])->name('portal.siswa.permission');
         Route::middleware('permission:portal.parent,super_admin,orang_tua')->get('/portal/orang-tua', [PortalFoundationController::class, 'orangTua'])->name('portal.orang-tua');
 
         Route::middleware('permission:attendance.requests,super_admin,kepsek,wakasek,tu,staf_tu,guru,wali_kelas,tendik,siswa,orang_tua,wali_murid')
@@ -295,11 +296,11 @@ Route::middleware('auth')->group(function () {
 
         // --- ABSENSI / PRESENSI ---
         Route::prefix('presensi')->name('presensi.')->group(function () {
-            Route::middleware('permission:student_attendance.view,super_admin,kepsek,pic_sekolah,wakasek,tu,staf_tu,guru,wali_kelas')->group(function () {
+            Route::middleware('permission:student_attendance.view,super_admin,kepsek,pic_sekolah,wakasek,tu,staf_tu')->group(function () {
                 Route::get('/siswa', [AttendanceController::class, 'siswa'])->name('siswa');
                 Route::post('/siswa', [AttendanceController::class, 'storeSiswa'])->name('siswa.store');
             });
-            Route::middleware('permission:teacher_attendance.view,super_admin,kepsek,pic_sekolah,wakasek,tu,staf_tu,guru,wali_kelas')->group(function () {
+            Route::middleware('permission:teacher_attendance.view,super_admin,kepsek,pic_sekolah,wakasek,tu,staf_tu')->group(function () {
                 Route::get('/gtk', [AttendanceController::class, 'gtk'])->name('gtk');
                 Route::post('/gtk', [AttendanceController::class, 'storeGtk'])->name('gtk.store');
             });

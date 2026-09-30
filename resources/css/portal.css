@@ -1,0 +1,30 @@
+/* EDUJA portal: the map confirms attendance context; lists keep family information scannable. */
+.portal-shell { min-height: 100dvh; background: var(--color-work-soft); color: var(--color-work-ink); }
+.portal-main { width: min(100% - 2rem, 58rem); margin-inline: auto; padding: 1.25rem 0 6rem; }
+.portal-header { position: sticky; top: 0; z-index: 30; border-bottom: 1px solid var(--color-work-rule); background: var(--color-work-paper); }
+.portal-header__inner { width: min(100% - 2rem, 58rem); min-height: 4.5rem; margin-inline: auto; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.portal-brand { font-weight: 800; letter-spacing: -.02em; }
+.portal-grid { display: grid; gap: 1rem; }
+.portal-card { border: 1px solid var(--color-work-rule); border-radius: .75rem; background: var(--color-work-paper); padding: 1.25rem; }
+.portal-card h2 { font-size: 1rem; font-weight: 800; }
+.portal-muted { color: var(--color-work-muted); font-size: .875rem; line-height: 1.55; }
+.portal-map { min-height: 15rem; margin-top: 1rem; border-radius: .5rem; overflow: hidden; background: var(--color-work-soft); }
+.portal-list { margin-top: 1rem; border-top: 1px solid var(--color-work-rule); }
+.portal-list > * { padding: .875rem 0; border-bottom: 1px solid var(--color-work-rule); }
+.portal-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; font-size: .875rem; }
+.portal-status { display: inline-flex; width: fit-content; padding: .2rem .5rem; border-radius: .35rem; background: var(--color-work-soft); font-size: .75rem; font-weight: 700; }
+.portal-figure { font-size: 1.75rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.portal-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.portal-form { display: grid; gap: 1rem; margin-top: 1rem; }
+.portal-field { display: grid; gap: .375rem; }
+.portal-field label { font-size: .875rem; font-weight: 700; }
+.portal-field :is(input, select, textarea) { min-height: 44px; border: 1px solid var(--color-work-rule); border-radius: .5rem; padding: .625rem .75rem; background: var(--color-work-paper); color: var(--color-work-ink); font: inherit; }
+.portal-field textarea { min-height: 7rem; resize: vertical; }
+.portal-field :is(input,select,textarea):focus-visible, .portal-action:focus-visible { outline: 3px solid var(--color-work-accent); outline-offset: 3px; }
+.portal-action { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--color-work-rule); border-radius: .5rem; padding: .625rem .875rem; background: var(--color-work-paper); color: var(--color-work-ink); font-weight: 700; font-size: .875rem; }
+.portal-action--primary { background: var(--color-work-accent); border-color: var(--color-work-accent); color: var(--color-work-accent-ink); }
+.portal-action[disabled] { opacity: .5; cursor: not-allowed; }
+.portal-feedback { display: none; margin-top: .75rem; color: var(--color-work-error); font-size: .875rem; }
+.portal-feedback.is-visible { display: block; }
+@media (min-width: 48rem) { .portal-grid--two { grid-template-columns: minmax(0, 1.15fr) minmax(18rem, .85fr); } .portal-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { .mapboxgl-canvas { transition: none !important; } }

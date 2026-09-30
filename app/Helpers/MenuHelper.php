@@ -21,8 +21,8 @@ class MenuHelper
                     ['name' => 'Data Siswa', 'path' => '/siswa', 'permission' => 'students.view', 'roles' => ['super_admin', 'staf_tu'], 'pro' => false],
                     ['name' => 'Data GTK (Guru/Staf)', 'path' => '/guru', 'permission' => 'teachers.view', 'roles' => ['super_admin', 'staf_tu'], 'pro' => false],
                     ['name' => 'Struktur Organisasi', 'path' => '/struktur', 'permission' => 'organization.view', 'roles' => ['super_admin', 'staf_tu'], 'pro' => false],
-                    ['name' => 'Presensi Siswa', 'path' => '/presensi/siswa', 'permission' => 'student_attendance.view', 'roles' => ['super_admin', 'staf_tu'], 'pro' => false],
-                    ['name' => 'Presensi GTK', 'path' => '/presensi/gtk', 'permission' => 'teacher_attendance.view', 'roles' => ['super_admin', 'staf_tu'], 'pro' => false],
+                    ['name' => 'Presensi Siswa', 'path' => '/presensi/siswa', 'permission' => 'student_attendance.view', 'roles' => ['super_admin', 'kepsek', 'pic_sekolah', 'wakasek', 'tu', 'staf_tu'], 'pro' => false],
+                    ['name' => 'Presensi GTK', 'path' => '/presensi/gtk', 'permission' => 'teacher_attendance.view', 'roles' => ['super_admin', 'kepsek', 'pic_sekolah', 'wakasek', 'tu', 'staf_tu'], 'pro' => false],
                 ],
             ],
             [
