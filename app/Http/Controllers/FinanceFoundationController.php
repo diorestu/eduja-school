@@ -27,8 +27,9 @@ class FinanceFoundationController extends Controller
     {
         $schoolId = $schoolContext->activeSchoolIdFor();
 
-        return view('pages.foundation.index', [
+        return view('pages.keuangan.accounts', [
             'title' => 'Rekening & Wallet Sekolah',
+            'accounts' => SchoolAccount::where('school_id', $schoolId)->latest()->get(),
             'eyebrow' => 'Finance Master',
             'description' => 'Daftar rekening kas, bank, dan wallet virtual sebagai sumber saldo ledger.',
             'metrics' => $this->financeMetrics($ledger, $schoolId),
@@ -51,15 +52,15 @@ class FinanceFoundationController extends Controller
         $schoolId = $this->activeSchoolId($request, $schoolContext);
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:120'],
-            'type' => ['nullable', 'string', 'max:50'],
-            'bank_name' => ['nullable', 'string', 'max:80'],
-            'account_number' => ['nullable', 'string', 'max:100'],
-            'opening_balance' => ['nullable', 'numeric', 'min:0'],
+            'type' => ['required', Rule::in(['Tunai', 'Bank'])],
+            'bank_name' => ['exclude_unless:type,Bank', 'required', 'string', 'max:80'],
+            'account_number' => ['exclude_unless:type,Bank', 'required', 'string', 'max:100'],
+            'opening_balance' => ['required', 'numeric', 'min:0', 'max:9999999999999.99', 'decimal:0,2'],
         ]);
 
         $finance->createAccount($schoolId, $validated);
 
-        return back()->with('success', 'Rekening sekolah berhasil ditambahkan.');
+        return redirect()->route('finance.accounts')->with('success', 'Rekening Sekolah disimpan');
     }
 
     public function incomeTypes(SchoolContext $schoolContext): View

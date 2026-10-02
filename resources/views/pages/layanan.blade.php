@@ -2,9 +2,9 @@
 <html lang="id" class="scroll-smooth" x-data>
 <head>
     @include('partials.public-head', [
-        'title' => 'Layanan Eduja — Modul Digital untuk SMP & SMK',
-        'description' => 'Lihat modul Eduja untuk akademik, SPP, BOS, presensi, tabungan siswa, dan dasbor pimpinan SMP dan SMK.',
-        'keywords' => 'modul manajemen sekolah, aplikasi SPP, aplikasi dana BOS, presensi digital siswa, tabungan siswa'
+        'title' => 'Layanan EDUJA Sistem Operasi Digital Sekolah',
+        'description' => 'EDUJA menyatukan manajemen sekolah, keuangan, akademik, komunikasi, dan pembelajaran dalam satu ekosistem digital.',
+        'keywords' => 'sistem operasi digital sekolah, manajemen sekolah, keuangan sekolah, akademik sekolah, komunikasi sekolah, e-learning'
     ])
 </head>
 <body class="antialiased">
@@ -15,13 +15,13 @@
     <section class="relative pt-28 pb-16 px-6 text-center overflow-hidden">
         <div class="hero-orb hero-orb-1" style="opacity: 0.6;"></div>
         <div class="max-w-4xl mx-auto relative z-10">
-            <div class="section-tag mb-6 inline-flex"><i class="bx bx-grid-alt"></i> Platform Lengkap</div>
+            <div class="section-tag mb-6 inline-flex"><i class="bx bx-grid-alt"></i> Sistem Operasi Digital Sekolah</div>
             <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight leading-tight mb-6">
-                <span class="gradient-text">Semua Urusan Sekolah</span><br>
-                <span class="text-gray-900 dark:text-white">Punya Ruang yang Rapi.</span>
+                <span class="gradient-text">Satu Sekolah.</span><br>
+                <span class="text-gray-900 dark:text-white">Satu Ekosistem. Satu Sistem.</span>
             </h1>
             <p class="text-base sm:text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
-                Dari administrasi SMP sampai operasional SMK, setiap modul dirancang untuk membuat kerja harian lebih ringan, data lebih jelas, dan keputusan lebih cepat.
+                EDUJA membantu sekolah menyederhanakan pekerjaan administratif, menghubungkan proses harian, dan memberi tim lebih banyak ruang untuk mendidik.
             </p>
         </div>
     </section>
@@ -32,12 +32,12 @@
     <section id="spp" class="py-20 px-6 section-divider scroll-reveal">
         <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
-                <span class="section-tag mb-5 inline-flex"><i class="bx bx-receipt"></i> Modul 01 — Keuangan SPP</span>
+                <span class="section-tag mb-5 inline-flex"><i class="bx bx-receipt"></i> School Finance</span>
                 <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight mb-5">
-                    Tagihan SPP ribuan siswa,<br>selesai dalam satu klik.
+                    Keuangan sekolah dalam<br>satu alur kerja.
                 </h2>
                 <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 leading-relaxed mb-6">
-                    Tidak ada lagi lembar tagihan manual yang hilang atau rekap tunggakan yang memakan waktu berjam-jam. Kasir SPP Eduja mengotomatiskan seluruh siklus penagihan — dari pembuatan tagihan, penerimaan pembayaran, hingga cetak kuitansi digital.
+                    EDUJA membantu bendahara mengelola tagihan, pembayaran, pemasukan, pengeluaran, alokasi dana, dan laporan dalam satu sistem yang lebih tertata.
                 </p>
                 <ul class="space-y-3 mb-8">
                     @foreach([
@@ -91,7 +91,7 @@
         </div>
     </section>
 
-    {{-- 2: BOS --}}
+    {{-- School Finance: BOS dan BKU --}}
     <section id="bos" class="py-20 px-6 section-divider scroll-reveal">
         <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div class="order-2 lg:order-1 glass-card rounded-2xl p-6">
@@ -115,7 +115,7 @@
                 </div>
             </div>
             <div class="order-1 lg:order-2">
-                <span class="section-tag mb-5 inline-flex"><i class="bx bx-book-content"></i> Modul 02 — Dana BOS</span>
+                <span class="section-tag mb-5 inline-flex"><i class="bx bx-book-content"></i> School Finance · BOS dan BKU</span>
                 <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight mb-5">
                     BKU Dana BOS selesai<br>tanpa lembur.
                 </h2>
@@ -367,15 +367,45 @@
         </div>
     </section>
 
+    {{-- School Management, Academic, Communication, dan E-Learning --}}
+    <section class="py-20 px-6 section-divider scroll-reveal">
+        <div class="max-w-7xl mx-auto">
+            <div class="max-w-3xl">
+                <span class="section-tag mb-5 inline-flex"><i class="bx bx-network-chart"></i> Ekosistem Sekolah</span>
+                <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight">Operasional sekolah saling terhubung.</h2>
+                <p class="mt-5 text-sm sm:text-base text-gray-500 dark:text-gray-400 leading-relaxed">EDUJA dirancang untuk menghubungkan data sekolah, kegiatan akademik, komunikasi, dan pembelajaran. Setiap peran bekerja dari informasi yang sesuai tanpa memisahkan proses ke banyak aplikasi.</p>
+            </div>
+            <div class="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                @foreach([
+                    ['icon' => 'bx-buildings', 'title' => 'School Management', 'copy' => 'Data siswa, guru, staf, kelas, dan tahun ajaran dikelola dalam konteks sekolah yang sama.'],
+                    ['icon' => 'bx-book-open', 'title' => 'Academic', 'copy' => 'Kelas, jadwal, materi, tugas, dan aktivitas akademik menjadi satu alur kerja yang mudah diikuti.'],
+                    ['icon' => 'bx-message-rounded-dots', 'title' => 'Communication', 'copy' => 'Pengumuman dan informasi sekolah dapat disampaikan kepada warga sekolah dan orang tua secara terarah.'],
+                    ['icon' => 'bx-laptop', 'title' => 'E-Learning', 'copy' => 'Materi dan pembelajaran digital memberi ruang belajar yang lebih terhubung bagi murid dan guru.'],
+                ] as $module)
+                    <article class="glass-card rounded-2xl p-6">
+                        <div class="w-11 h-11 rounded-xl bg-brand-500/10 text-brand-500 flex items-center justify-center text-xl"><i class="bx {{ $module['icon'] }}"></i></div>
+                        <h3 class="mt-5 text-base font-extrabold text-gray-900 dark:text-white">{{ $module['title'] }}</h3>
+                        <p class="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">{{ $module['copy'] }}</p>
+                    </article>
+                @endforeach
+            </div>
+            <div class="mt-12 grid gap-4 border-t border-gray-200 pt-8 text-sm sm:grid-cols-3 dark:border-white/10">
+                <div><p class="font-bold text-gray-900 dark:text-white">Terintegrasi</p><p class="mt-1 leading-6 text-gray-500 dark:text-gray-400">Aktivitas sekolah menggunakan data yang saling terhubung.</p></div>
+                <div><p class="font-bold text-gray-900 dark:text-white">Sederhana</p><p class="mt-1 leading-6 text-gray-500 dark:text-gray-400">Teknologi membantu pekerjaan sekolah lebih mudah dijalankan.</p></div>
+                <div><p class="font-bold text-gray-900 dark:text-white">Berdaya guna</p><p class="mt-1 leading-6 text-gray-500 dark:text-gray-400">Informasi yang tertata membantu setiap peran mengambil langkah berikutnya.</p></div>
+            </div>
+        </div>
+    </section>
+
     {{-- CTA --}}
     <section class="py-24 px-6 text-center relative overflow-hidden section-divider">
         <div class="hero-orb hero-orb-1" style="opacity: 0.5;"></div>
         <div class="max-w-2xl mx-auto relative z-10">
-            <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-4">Tertarik dengan layanan kami?</h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-8 leading-relaxed">Jadwalkan demo gratis bersama tim Eduja. Kami akan tunjukkan cara terbaik mengimplementasikan platform ini untuk sekolah Anda.</p>
+            <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-4">Mari pahami kebutuhan sekolah Anda.</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-8 leading-relaxed">Jadwalkan konsultasi bersama tim EDUJA untuk membahas alur kerja sekolah yang ingin Anda rapikan.</p>
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <a href="/contact" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-brand-500 px-8 py-4 text-sm font-bold text-white hover:bg-brand-600 transition-all shadow-lg">
-                    Jadwalkan Demo <i class="bx bx-right-arrow-alt"></i>
+                    Jadwalkan Konsultasi <i class="bx bx-right-arrow-alt"></i>
                 </a>
                 <a href="/pricing" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-gray-300 dark:border-white/15 px-8 py-4 text-sm font-semibold text-gray-800 dark:text-white hover:bg-gray-50 dark:hover:bg-white/5 transition-all">
                     Lihat Harga

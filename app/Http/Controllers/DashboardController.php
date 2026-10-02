@@ -2,22 +2,23 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Announcement;
+use App\Models\Department;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\SchoolClass;
 use App\Models\Student;
-use App\Models\Teacher;
 use App\Models\StudentAttendance;
+use App\Models\Teacher;
 use App\Models\TeacherAttendance;
-use App\Models\Department;
-use App\Models\Announcement;
 use App\Models\Transaction;
+use App\Services\FinanceHealthService;
 use App\Services\SchoolContext;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
-    public function index(SchoolContext $schoolContext)
+    public function index(SchoolContext $schoolContext, FinanceHealthService $financeHealthService)
     {
         $user = auth()->user();
         if ($user) {
@@ -46,6 +47,7 @@ class DashboardController extends Controller
         $totalOutstanding = (float) ($scope(Invoice::query())->sum('total_amount') - $totalCollected); // Outstanding SPP
 
         $netBalance = $totalCollected - $totalExpenses; // Current cash balance
+        $financeHealth = $financeHealthService->forSchool($schoolId);
 
         // 3. Gender demographics
         $genderL = $scope(Student::query())->where('is_active', true)->where('gender', 'L')->count();
@@ -85,6 +87,7 @@ class DashboardController extends Controller
             'totalExpenses' => $totalExpenses,
             'totalOutstanding' => $totalOutstanding,
             'netBalance' => $netBalance,
+            'financeHealth' => $financeHealth,
             'genderL' => $genderL,
             'genderP' => $genderP,
             'classesWithCounts' => $classesWithCounts,
