@@ -162,6 +162,12 @@ class MenuHelper
                 ));
 
                 if (! empty($item['subItems'])) {
+                    if ($user->hasRole('bendahara') && count($item['subItems']) === 1) {
+                        $onlySubItem = $item['subItems'][0];
+                        $item['path'] = $onlySubItem['path'];
+                        unset($item['subItems']);
+                    }
+
                     $visibleItems[] = $item;
                 }
 

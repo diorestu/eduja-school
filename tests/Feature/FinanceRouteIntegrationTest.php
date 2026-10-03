@@ -88,6 +88,21 @@ it('organizes the bendahara navigation around the requested finance workflow', f
         ->toEqual(['Rekening Sekolah', 'Jenis Pemasukan', 'BOS', 'Jenis Pengeluaran']);
     expect(collect($items->firstWhere('name', 'Perencanaan Anggaran')['subItems'])->pluck('name')->all())
         ->toEqual(['Tahun Anggaran', 'Susun Anggaran', 'Revisi Anggaran']);
+
+    foreach ([
+        'Tagihan' => '/finance/billing',
+        'Pemasukan' => '/spp/transaksi',
+        'Pengeluaran' => '/bos/belanja',
+        'Approval' => '/finance/approvals',
+        'Dompet Virtual' => '/finance/accounts',
+        'Laporan' => '/finance/reports',
+        'Tutup Buku' => '/finance/closing',
+    ] as $name => $path) {
+        $item = $items->firstWhere('name', $name);
+
+        expect($item)->toHaveKey('path', $path)
+            ->and($item)->not->toHaveKey('subItems');
+    }
 });
 
 it('runs finance master and budget workflows with active-school foreign keys', function () {
@@ -298,5 +313,7 @@ it('classifies finance collection and arrears health at the specified boundaries
     $this->actingAs($user)->withSession(['active_school_id' => $schoolId]);
 
     $this->get('/dashboard')->assertOk()
+        ->assertDontSee('Ringkasan Operasional Sekolah')
+        ->assertSee('Kesehatan Penagihan SPP')
         ->assertViewHas('financeHealth', fn (array $data) => $data['collection']['label'] === 'Lancar');
 });
