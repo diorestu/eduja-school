@@ -138,19 +138,19 @@
     <div class="grid grid-cols-2 gap-3 lg:grid-cols-4 mb-2">
         <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
             <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total Belanja</p>
-            <p class="mt-1 text-xl font-bold tracking-tight text-gray-900 dark:text-white">Rp {{ number_format($totalBelanja, 0, ',', '.') }}</p>
+            <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-gray-900 dark:text-white">Rp {{ number_format($totalBelanja, 0, ',', '.') }}</p>
         </div>
         <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
             <p class="text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">Belanja Bulan Ini</p>
-            <p class="mt-1 text-xl font-bold tracking-tight text-rose-600 dark:text-rose-400">Rp {{ number_format($currentMonthBelanja, 0, ',', '.') }}</p>
+            <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-rose-600 dark:text-rose-400">Rp {{ number_format($currentMonthBelanja, 0, ',', '.') }}</p>
         </div>
         <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
             <p class="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Pajak Terpotong</p>
-            <p class="mt-1 text-xl font-bold tracking-tight text-amber-600 dark:text-amber-400">Rp {{ number_format($totalPajak, 0, ',', '.') }}</p>
+            <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-amber-600 dark:text-amber-400">Rp {{ number_format($totalPajak, 0, ',', '.') }}</p>
         </div>
         <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
             <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Buku Pengeluaran</p>
-            <p class="mt-1 text-xl font-bold tracking-tight text-gray-900 dark:text-white">{{ $expenses->count() }} transaksi</p>
+            <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-gray-900 dark:text-white">{{ $expenses->count() }} transaksi</p>
         </div>
     </div>
 

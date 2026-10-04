@@ -69,7 +69,7 @@
             @foreach($metrics as $metric)
                 <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
                     <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ $metric['label'] }}</p>
-                    <p class="mt-1 text-xl font-bold tracking-tight text-gray-900 dark:text-white">{{ $metric['value'] }}</p>
+                    <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-gray-900 dark:text-white">{{ $metric['value'] }}</p>
                 </div>
             @endforeach
         </div>

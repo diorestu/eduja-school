@@ -220,19 +220,20 @@
 .data-table th {
     padding: 0.875rem 1rem;
     background: #ffffff;
-    color: #344054;
+    color: #475467;
     font-weight: 600;
-    font-size: 0.8125rem;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
     border-bottom: 1px solid #f2f4f7;
     text-align: start;
     vertical-align: middle;
     white-space: nowrap;
-    letter-spacing: -0.005em;
 }
 
 :is(.dark) .data-table th {
     background: #111827;
-    color: #e5e7eb;
+    color: #9ca3af;
     border-color: #1f2937;
 }
 

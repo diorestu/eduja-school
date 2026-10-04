@@ -159,14 +159,14 @@
                                         <span class="data-table-empty-dash">-</span>
                                     </template>
                                     <template x-if="format(row[@js($column['key'])], @js($column)) !== '-'">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border tracking-wide"
                                             :class="{
-                                                'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60': ['aktif', 'active', 'approved', 'disetujui', 'sukses', 'success', 'lunas'].includes(String(row[@js($column['key'])]).toLowerCase()),
+                                                'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60': ['aktif', 'active', 'approved', 'disetujui', 'sukses', 'success', 'lunas', 'terkunci'].includes(String(row[@js($column['key'])]).toLowerCase()),
                                                 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60': ['pending', 'menunggu', 'komite', 'cicilan'].includes(String(row[@js($column['key'])]).toLowerCase()),
                                                 'bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/60': String(row[@js($column['key'])]).toLowerCase() === 'bos',
                                                 'bg-indigo-50 text-indigo-800 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/60': String(row[@js($column['key'])]).toLowerCase() === 'yayasan',
                                                 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60': ['hibah', 'rejected', 'ditolak', 'batal', 'belum lunas'].includes(String(row[@js($column['key'])]).toLowerCase()),
-                                                'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700': !['aktif', 'active', 'approved', 'disetujui', 'sukses', 'success', 'lunas', 'pending', 'menunggu', 'komite', 'cicilan', 'bos', 'yayasan', 'hibah', 'rejected', 'ditolak', 'batal', 'belum lunas'].includes(String(row[@js($column['key'])]).toLowerCase())
+                                                'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700': !['aktif', 'active', 'approved', 'disetujui', 'sukses', 'success', 'lunas', 'terkunci', 'pending', 'menunggu', 'komite', 'cicilan', 'bos', 'yayasan', 'hibah', 'rejected', 'ditolak', 'batal', 'belum lunas'].includes(String(row[@js($column['key'])]).toLowerCase())
                                             }"
                                             x-text="format(row[@js($column['key'])], @js($column))">
                                         </span>
@@ -178,7 +178,7 @@
                                         <span class="data-table-empty-dash">-</span>
                                     </template>
                                     <template x-if="format(row[@js($column['key'])], @js($column)) !== '-'">
-                                        <span :class="{'font-semibold text-gray-900 dark:text-white': @js(!empty($column['bold'])), 'text-gray-700 dark:text-gray-300': !@js(!empty($column['bold']))}" class="text-[13px]" x-text="format(row[@js($column['key'])], @js($column))"></span>
+                                        <span :class="{'font-semibold text-gray-900 dark:text-white': @js(!empty($column['bold'])), 'text-gray-700 dark:text-gray-300': !@js(!empty($column['bold'])), 'tabular-nums font-mono text-[12.5px]': @js(in_array($column['type'] ?? '', ['number', 'currency']))}" class="text-[13px]" x-text="format(row[@js($column['key'])], @js($column))"></span>
                                     </template>
                                 </td>
                             @endif

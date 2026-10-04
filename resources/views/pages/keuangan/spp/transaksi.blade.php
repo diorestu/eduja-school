@@ -80,19 +80,19 @@
     <div class="grid grid-cols-2 gap-3 lg:grid-cols-4 mb-2">
         <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
             <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total Ditagihkan</p>
-            <p class="mt-1 text-xl font-bold tracking-tight text-gray-900 dark:text-white">Rp {{ number_format($totalTagihan, 0, ',', '.') }}</p>
+            <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-gray-900 dark:text-white">Rp {{ number_format($totalTagihan, 0, ',', '.') }}</p>
         </div>
         <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
             <p class="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Total Diterima</p>
-            <p class="mt-1 text-xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">Rp {{ number_format($totalTerbayar, 0, ',', '.') }}</p>
+            <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-emerald-600 dark:text-emerald-400">Rp {{ number_format($totalTerbayar, 0, ',', '.') }}</p>
         </div>
         <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
             <p class="text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">Sisa Piutang</p>
-            <p class="mt-1 text-xl font-bold tracking-tight text-rose-600 dark:text-rose-400">Rp {{ number_format($totalSisa, 0, ',', '.') }}</p>
+            <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-rose-600 dark:text-rose-400">Rp {{ number_format($totalSisa, 0, ',', '.') }}</p>
         </div>
         <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
             <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Jumlah Tagihan</p>
-            <p class="mt-1 text-xl font-bold tracking-tight text-gray-900 dark:text-white">{{ $invoices->count() }} invoice</p>
+            <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-gray-900 dark:text-white">{{ $invoices->count() }} invoice</p>
         </div>
     </div>
 

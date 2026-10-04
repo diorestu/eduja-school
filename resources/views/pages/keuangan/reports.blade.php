@@ -73,7 +73,7 @@
     {{-- REPORT HEADER & PRINT ACTION --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-1">
         <div>
-            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Laporan Keuangan & Arus Kas</h2>
+            <h2 class="text-base font-bold text-gray-900 dark:text-white">Laporan Keuangan & Arus Kas</h2>
             <p class="text-xs text-gray-500 dark:text-gray-400">Ringkasan transaksi riil yang telah disetujui, realisasi belanja, dan posisi kas rekening.</p>
         </div>
         <div class="no-print flex items-center gap-2">
@@ -89,7 +89,7 @@
         @foreach($metrics as $metric)
             <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
                 <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ $metric['label'] }}</p>
-                <p class="mt-1 text-lg font-bold tracking-tight text-gray-900 dark:text-white">{{ $metric['value'] }}</p>
+                <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-gray-900 dark:text-white">{{ $metric['value'] }}</p>
             </div>
         @endforeach
     </div>

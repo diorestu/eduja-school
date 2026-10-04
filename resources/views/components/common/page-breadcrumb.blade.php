@@ -2,10 +2,10 @@
 
 <div class="mb-4 flex flex-col gap-2 border-b border-gray-200 pb-3 dark:border-gray-800 md:flex-row md:items-end md:justify-between">
     <div>
-        <p class="text-[11px] font-semibold uppercase tracking-wide text-brand-500">
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">
             {{ $label }}
         </p>
-        <h1 class="mt-1 text-lg font-semibold leading-7 text-gray-900 dark:text-white/90">
+        <h1 class="mt-1 text-xl font-bold tracking-tight text-gray-900 dark:text-white">
             {{ $pageTitle }}
         </h1>
     </div>

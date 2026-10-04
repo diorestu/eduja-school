@@ -59,7 +59,7 @@
     @if($foundationSchools ?? false)
         <section class="mb-4 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900 sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <p class="text-xs font-semibold uppercase tracking-wide text-brand-500">Cakupan yayasan</p>
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">Cakupan yayasan</p>
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Dashboard agregat seluruh sekolah yang terafiliasi.</p>
             </div>
             <label class="sr-only" for="foundation-school-select">Buka detail sekolah</label>
@@ -103,7 +103,7 @@
             @foreach($metrics as $metric)
                 <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
                     <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ $metric['label'] }}</p>
-                    <p class="mt-1 text-xl font-bold tracking-tight text-gray-900 dark:text-white">{{ $metric['value'] }}</p>
+                    <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-gray-900 dark:text-white">{{ $metric['value'] }}</p>
                 </div>
             @endforeach
         </div>

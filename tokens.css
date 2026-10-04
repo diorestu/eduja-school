@@ -5,10 +5,21 @@
   --color-work-ink: oklch(24% .025 220);
   --color-work-muted: oklch(43% .025 220);
   --color-work-rule: oklch(83% .015 195);
-  --color-work-accent: var(--color-brand-500);
+  --color-work-accent: var(--color-brand-500, #006266);
   --color-work-accent-ink: oklch(99% .003 195);
   --color-work-error: oklch(43% .17 25);
-  --font-work-body: var(--font-inter);
+  --font-work-body: var(--font-inter, 'Inter', system-ui, -apple-system, sans-serif);
+
+  /* Hallmark Consistent Typography Scale */
+  --text-hallmark-2xs: 0.6875rem;  /* 11px · Eyebrows, Micro tags, Table Header TH, Badge */
+  --text-hallmark-xs: 0.75rem;     /* 12px · Subtexts, Help hints, Secondary captions */
+  --text-hallmark-sm: 0.8125rem;   /* 13px · Dense table data, form labels, controls */
+  --text-hallmark-base: 0.875rem;  /* 14px · Body text, standard inputs, standard buttons */
+  --text-hallmark-md: 1rem;        /* 16px · Subheadings, section titles */
+  --text-hallmark-lg: 1.125rem;    /* 18px · Data table title, card title, dialog title */
+  --text-hallmark-xl: 1.25rem;     /* 20px · Metric figures, sub-hero titles */
+  --text-hallmark-2xl: 1.5rem;     /* 24px · Page hero titles */
+
   --space-work-xs: .5rem;
   --space-work-sm: .75rem;
   --space-work-md: 1rem;
