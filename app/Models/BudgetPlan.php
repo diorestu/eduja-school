@@ -15,4 +15,14 @@ class BudgetPlan extends Model
         'amount' => 'decimal:2',
         'approved_at' => 'datetime',
     ];
+
+    public function budgetYear(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(BudgetYear::class);
+    }
+
+    public function revisions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(BudgetPlanRevision::class);
+    }
 }

@@ -95,7 +95,7 @@ class MenuHelper
                 'subItems' => [
                     ['name' => 'Tahun Anggaran', 'path' => '/finance/budget-years', 'permission' => 'finance.budget_years', 'roles' => ['bendahara'], 'pro' => false],
                     ['name' => 'Susun Anggaran', 'path' => '/finance/budgets', 'permission' => 'finance.budgets', 'roles' => ['bendahara'], 'pro' => false],
-                    ['name' => 'Revisi Anggaran', 'path' => '/finance/budgets', 'permission' => 'finance.budgets', 'roles' => ['bendahara'], 'pro' => false],
+                    ['name' => 'Revisi Anggaran', 'path' => '/finance/budgets/revisions', 'permission' => 'finance.budgets', 'roles' => ['bendahara'], 'pro' => false],
                 ],
             ],
             ['icon' => 'tables', 'name' => 'Tagihan', 'subItems' => [['name' => 'Tagihan', 'path' => '/finance/billing', 'permission' => 'finance.billing', 'roles' => ['bendahara'], 'pro' => false]]],

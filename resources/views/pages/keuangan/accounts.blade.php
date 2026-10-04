@@ -1,70 +1,277 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $accountColumns = [
+        ['key' => 'name', 'label' => 'Nama rekening'],
+        ['key' => 'type', 'label' => 'Jenis'],
+        ['key' => 'bank_name', 'label' => 'Bank'],
+        ['key' => 'account_number', 'label' => 'Nomor rekening'],
+        ['key' => 'current_balance', 'label' => 'Nominal saat ini', 'type' => 'currency', 'minimumFractionDigits' => 2],
+        ['key' => 'is_active', 'label' => 'Status', 'type' => 'boolean', 'trueLabel' => 'Aktif', 'falseLabel' => 'Nonaktif'],
+        ['key' => 'aksi', 'label' => 'Aksi', 'sortable' => false, 'onlyEdit' => true],
+    ];
+    $accountRows = $accounts->map(fn ($account) => [
+        'id' => $account->id,
+        'name' => $account->name,
+        'type' => $account->type,
+        'bank_name' => $account->bank_name,
+        'account_number' => $account->account_number,
+        'current_balance' => $account->current_balance,
+        'is_active' => (bool) $account->is_active,
+        'update_url' => route('finance.accounts.update', $account),
+        'only_edit' => true,
+    ]);
+    $firstError = array_key_first($errors->getMessages());
+@endphp
+@php
+    $bankGroups = [
+        'Bank BUMN / Pemerintah' => [
+            'Bank Rakyat Indonesia (BRI)',
+            'Bank Mandiri',
+            'Bank Negara Indonesia (BNI)',
+            'Bank Tabungan Negara (BTN)',
+        ],
+        'Bank Syariah' => [
+            'Bank Syariah Indonesia (BSI)',
+            'Bank Muamalat Indonesia',
+            'BCA Syariah',
+            'Bank Mega Syariah',
+            'Bank BTPN Syariah',
+        ],
+        'Bank Swasta Nasional' => [
+            'Bank Central Asia (BCA)',
+            'Bank CIMB Niaga',
+            'Bank Danamon',
+            'Bank Permata',
+            'Bank OCBC NISP',
+            'Bank Panin',
+            'Bank Maybank Indonesia',
+            'Bank Mega',
+            'Bank Sinarmas',
+            'Bank BTPN',
+            'Bank Bukopin',
+        ],
+        'Bank Digital' => [
+            'Bank Jago',
+            'SeaBank Indonesia',
+            'Allo Bank',
+            'Blu by BCA Digital',
+            'Bank Neo Commerce (BNC)',
+            'Jenius (BTPN)',
+            'Line Bank (KEB Hana)',
+        ],
+        'Bank Pembangunan Daerah (BPD)' => [
+            'Bank BJB',
+            'Bank DKI',
+            'Bank Jateng',
+            'Bank Jatim',
+            'Bank BPD Bali',
+            'Bank Sumut',
+            'Bank Nagari',
+            'Bank Riau Kepri',
+            'Bank Sumsel Babel',
+            'Bank Lampung',
+            'Bank Kalbar',
+            'Bank Kalsel',
+            'Bank Kalteng',
+            'Bank Kaltimtara',
+            'Bank Sulselbar',
+            'Bank SulutGo',
+            'Bank NTB Syariah',
+            'Bank NTT',
+            'Bank Maluku Malut',
+            'Bank Papua',
+        ],
+        'Lainnya' => [
+            'Bank Lainnya',
+        ],
+    ];
+    $currentBank = old('bank_name');
+    $allBanks = collect($bankGroups)->flatten()->all();
+    $hasCustomBank = !empty($currentBank) && !in_array($currentBank, $allBanks);
+@endphp
 <x-common.page-breadcrumb pageTitle="Rekening Sekolah" label="Master Data Keuangan" />
-<div class="space-y-6 text-gray-900 dark:text-gray-100">
+<div class="work work-stack"
+    x-data="{
+        type: @js(old('type', 'Bank')),
+        saving: false,
+        editingAccount: null,
+        editType: 'Bank',
+        openEdit(row) {
+            this.editingAccount = row;
+            this.editType = row.type || 'Bank';
+            this.$nextTick(() => {
+                this.$refs.editAccountModal.showModal();
+            });
+        }
+    }"
+    @table-edit="openEdit($event.detail)"
+    x-init="@if($errors->any() && !old('_method')) $nextTick(() => $refs.accountModal.showModal()) @endif">
     @if(session('success'))
-        <div role="status" class="rounded-lg border border-success-200 bg-success-50 p-4 text-success-700 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-400">{{ session('success') }}</div>
+        <div role="status" class="work-notice">{{ session('success') }}</div>
     @endif
-    <div>
-        <h1 class="text-2xl font-semibold">Rekening Sekolah</h1>
-        <p class="mt-2 text-gray-600 dark:text-gray-300">Kelola rekening tunai dan bank untuk sekolah yang sedang aktif.</p>
+    <div class="work-head mb-0">
+        <p class="work-muted">Rekening tunai dan bank untuk sekolah yang sedang aktif.</p>
+        <button type="button" class="work-btn work-btn-primary" @click="$refs.accountModal.showModal()">
+            <svg class="w-4 h-4 mr-1.5 -ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Rekening Sekolah
+        </button>
     </div>
-    <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <section class="min-w-0 rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-            <h2 class="text-lg font-semibold">Rekening Sekolah</h2>
-            <div class="mt-4 divide-y divide-gray-200 dark:divide-gray-700">
-                @forelse($accounts as $account)
-                    <article class="py-4 first:pt-0 last:pb-0">
-                        <div class="flex flex-wrap items-start justify-between gap-3">
-                            <div class="min-w-0 break-words">
-                                <h3 class="font-semibold">{{ $account->name }}</h3>
-                                <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{{ $account->type }} · {{ $account->is_active ? 'Aktif' : 'Nonaktif' }}</p>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-600 dark:text-gray-300">Nominal saat ini</p>
-                                <p class="mt-1 break-all text-lg font-semibold tabular-nums">Rp {{ number_format((float) $account->current_balance, 2, ',', '.') }}</p>
-                            </div>
-                        </div>
-                        @if($account->type === 'Bank')
-                            <p class="mt-3 break-all text-sm text-gray-600 dark:text-gray-300">{{ $account->bank_name }} · {{ $account->account_number }}</p>
-                        @endif
-                    </article>
-                @empty
-                    <p class="py-4 text-gray-600 dark:text-gray-300">Belum ada rekening sekolah. Pilih + Rekening Sekolah untuk mencatat rekening pertama.</p>
-                @endforelse
+    <x-common.data-table :rows="$accountRows" :columns="$accountColumns" caption="Daftar rekening sekolah" search-label="Cari rekening" row-label="rekening"
+        subtitle="Rekening pada sekolah aktif" :show-actions="false" :show-avatar="false" :exportable="false"
+        empty-message="Belum ada rekening sekolah." empty-hint="Pilih Rekening Sekolah untuk mencatat rekening pertama." />
+
+    <dialog x-ref="accountModal" class="account-dialog work" aria-labelledby="account-modal-title" aria-describedby="account-modal-help"
+        @close="saving = false" @cancel="if (saving) $event.preventDefault()"
+        @click="const bounds = $el.getBoundingClientRect(); if (!saving && ($event.clientX < bounds.left || $event.clientX > bounds.right || $event.clientY < bounds.top || $event.clientY > bounds.bottom)) $el.close()">
+        <div class="account-dialog-head">
+            <div class="min-w-0">
+                <h2 id="account-modal-title">Tambah Rekening Sekolah</h2>
+                <p id="account-modal-help" class="work-muted mt-1">Catat rekening dan nominal saldo awalnya.</p>
             </div>
-        </section>
-        <details class="min-w-0 self-start rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900" @if($errors->any()) open @endif>
-            <summary class="min-h-11 cursor-pointer rounded-lg py-2 font-semibold text-brand-700 focus-visible:outline-2 focus-visible:outline-brand-500 dark:text-brand-300">+ Rekening Sekolah</summary>
-            <form method="POST" action="{{ route('finance.accounts.store') }}" class="mt-4 space-y-4" x-data="{ type: @js(old('type', 'Tunai')), saving: false }" @submit="saving = true">
-                @csrf
-                @if($errors->any())
-                    <p role="alert" class="text-error-700 dark:text-error-400">Rekening belum disimpan. Periksa kolom yang ditandai di bawah.</p>
-                @endif
-                @foreach(['name' => 'Nama', 'type' => 'Jenis', 'bank_name' => 'Nama Bank', 'account_number' => 'Nomor Rekening', 'opening_balance' => 'Nominal saat ini'] as $field => $label)
-                    <div @if(in_array($field, ['bank_name', 'account_number'])) x-show="type === 'Bank'" @endif>
-                        <label for="account-{{ $field }}" class="mb-2 block text-sm font-medium">{{ $label }} <span aria-hidden="true">*</span></label>
-                        @if($field === 'type')
-                            <select id="account-type" name="type" x-model="type" required class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 focus:outline-2 focus:outline-brand-500 dark:border-gray-600 dark:bg-gray-900">
-                                <option value="Tunai" @selected(old('type', 'Tunai') === 'Tunai')>Tunai</option>
-                                <option value="Bank" @selected(old('type') === 'Bank')>Bank</option>
-                            </select>
-                        @else
-                            <input id="account-{{ $field }}" name="{{ $field }}" value="{{ old($field) }}" type="{{ $field === 'opening_balance' ? 'number' : 'text' }}"
-                                @if($field === 'opening_balance') min="0" max="9999999999999.99" step="0.01" inputmode="decimal" aria-describedby="balance-help{{ $errors->has($field) ? ' error-'.$field : '' }}"
-                                @else maxlength="{{ $field === 'name' ? 120 : ($field === 'bank_name' ? 80 : 100) }}" @endif
-                                @if(in_array($field, ['bank_name', 'account_number'])) :required="type === 'Bank'" :disabled="type !== 'Bank'" @else required @endif
-                                @if($errors->has($field)) aria-invalid="true" @if($field !== 'opening_balance') aria-describedby="error-{{ $field }}" @endif @endif
-                                class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 focus:outline-2 focus:outline-brand-500 dark:border-gray-600 dark:bg-gray-900">
-                        @endif
-                        @if($field === 'opening_balance')<p id="balance-help" class="mt-2 text-sm text-gray-600 dark:text-gray-300">Dalam rupiah. Nominal ini menjadi saldo awal rekening.</p>@endif
-                        @error($field)<p id="error-{{ $field }}" class="mt-2 text-sm text-error-700 dark:text-error-400">{{ $message }}</p>@enderror
-                    </div>
-                @endforeach
-                <button type="submit" :disabled="saving" class="min-h-11 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:opacity-50" x-text="saving ? 'Menyimpan…' : 'Simpan'">Simpan</button>
-            </form>
-        </details>
-    </div>
+            <button type="button" class="work-btn" @click="$refs.accountModal.close()" :disabled="saving" aria-label="Tutup form rekening">Tutup</button>
+        </div>
+        <form method="POST" action="{{ route('finance.accounts.store') }}" @submit="saving = true" :aria-busy="saving">
+            @csrf
+            @if($errors->any())
+                <p role="alert" class="work-notice work-error">Rekening belum disimpan. Periksa kolom yang ditandai di bawah.</p>
+            @endif
+
+            {{-- Nama Rekening --}}
+            <div class="work-field">
+                <label for="account-name">Nama Rekening <span aria-hidden="true">*</span></label>
+                <input id="account-name" name="name" value="{{ old('name') }}" type="text" maxlength="120" required placeholder="Contoh: Operasional Sekolah, Kas SPP"
+                    @if(($firstError && $firstError === 'name') || !$firstError) autofocus @endif
+                    @if($errors->has('name')) aria-invalid="true" aria-describedby="error-name" @endif>
+                @error('name')<p id="error-name" class="work-muted work-error">{{ $message }}</p>@enderror
+            </div>
+
+            {{-- Jenis Rekening --}}
+            <div class="work-field">
+                <label for="account-type">Jenis Rekening <span aria-hidden="true">*</span></label>
+                <select id="account-type" name="type" x-model="type" required @if($firstError === 'type') autofocus @endif @if($errors->has('type')) aria-invalid="true" aria-describedby="error-type" @endif>
+                    <option value="Bank" @selected(old('type', 'Bank') === 'Bank')>Bank</option>
+                    <option value="Tunai" @selected(old('type') === 'Tunai')>Tunai</option>
+                </select>
+                @error('type')<p id="error-type" class="work-muted work-error">{{ $message }}</p>@enderror
+            </div>
+
+            {{-- Nama Bank (Dropdown Bank di Indonesia) --}}
+            <div class="work-field" x-show="type === 'Bank'" x-cloak>
+                <label for="account-bank_name">Nama Bank <span aria-hidden="true">*</span></label>
+                <select id="account-bank_name" name="bank_name" :required="type === 'Bank'" :disabled="type !== 'Bank'"
+                    @if($firstError === 'bank_name') autofocus @endif
+                    @if($errors->has('bank_name')) aria-invalid="true" aria-describedby="error-bank_name" @endif>
+                    <option value="" disabled @selected(!old('bank_name'))>-- Pilih Nama Bank --</option>
+                    @if($hasCustomBank)
+                        <option value="{{ $currentBank }}" selected>{{ $currentBank }}</option>
+                    @endif
+                    @foreach($bankGroups as $groupLabel => $banks)
+                        <optgroup label="{{ $groupLabel }}">
+                            @foreach($banks as $bank)
+                                <option value="{{ $bank }}" @selected(old('bank_name') === $bank)>{{ $bank }}</option>
+                            @endforeach
+                        </optgroup>
+                    @endforeach
+                </select>
+                @error('bank_name')<p id="error-bank_name" class="work-muted work-error">{{ $message }}</p>@enderror
+            </div>
+
+            {{-- Nomor Rekening --}}
+            <div class="work-field" x-show="type === 'Bank'" x-cloak>
+                <label for="account-account_number">Nomor Rekening <span aria-hidden="true">*</span></label>
+                <input id="account-account_number" name="account_number" value="{{ old('account_number') }}" type="text" maxlength="100" inputmode="numeric" placeholder="Contoh: 1234567890"
+                    :required="type === 'Bank'" :disabled="type !== 'Bank'"
+                    @if($firstError === 'account_number') autofocus @endif
+                    @if($errors->has('account_number')) aria-invalid="true" aria-describedby="error-account_number" @endif>
+                @error('account_number')<p id="error-account_number" class="work-muted work-error">{{ $message }}</p>@enderror
+            </div>
+
+            {{-- Nominal Saldo Saat Ini --}}
+            <div class="work-field">
+                <label for="account-opening_balance">Nominal saat ini (Saldo awal) <span aria-hidden="true">*</span></label>
+                <input id="account-opening_balance" name="opening_balance" value="{{ old('opening_balance', '0') }}" type="number" min="0" max="9999999999999.99" step="0.01" inputmode="decimal" required
+                    aria-describedby="balance-help{{ $errors->has('opening_balance') ? ' error-opening_balance' : '' }}"
+                    @if($firstError === 'opening_balance') autofocus @endif
+                    @if($errors->has('opening_balance')) aria-invalid="true" @endif>
+                <p id="balance-help" class="work-muted">Dalam rupiah. Nominal ini menjadi saldo awal rekening.</p>
+                @error('opening_balance')<p id="error-opening_balance" class="work-muted work-error">{{ $message }}</p>@enderror
+            </div>
+
+            <div class="work-actions mt-2 justify-end">
+                <button type="button" class="work-btn" @click="$refs.accountModal.close()" :disabled="saving">Batal</button>
+                <button type="submit" :disabled="saving" class="work-btn work-btn-primary" x-text="saving ? 'Menyimpan…' : 'Simpan rekening'">Simpan rekening</button>
+            </div>
+        </form>
+    </dialog>
+
+    {{-- MODAL UBAH REKENING SEKOLAH --}}
+    <dialog x-ref="editAccountModal" class="account-dialog work" aria-labelledby="edit-account-modal-title"
+        @close="saving = false" @cancel="if (saving) $event.preventDefault()"
+        @click="const bounds = $el.getBoundingClientRect(); if (!saving && ($event.clientX < bounds.left || $event.clientX > bounds.right || $event.clientY < bounds.top || $event.clientY > bounds.bottom)) $el.close()">
+        <div class="account-dialog-head">
+            <div class="min-w-0">
+                <h2 id="edit-account-modal-title">Ubah Rekening Sekolah</h2>
+                <p class="work-muted mt-1">Perbarui data rekening dan informasi bank.</p>
+            </div>
+            <button type="button" class="work-btn" @click="$refs.editAccountModal.close()" :disabled="saving" aria-label="Tutup form ubah rekening">Tutup</button>
+        </div>
+        <form method="POST" :action="editingAccount ? editingAccount.update_url : ''" @submit="saving = true" :aria-busy="saving">
+            @csrf
+            @method('PUT')
+
+            {{-- Nama Rekening --}}
+            <div class="work-field">
+                <label for="edit-account-name">Nama Rekening <span aria-hidden="true">*</span></label>
+                <input id="edit-account-name" name="name" :value="editingAccount ? editingAccount.name : ''" type="text" maxlength="120" required placeholder="Contoh: Operasional Sekolah, Kas SPP">
+            </div>
+
+            {{-- Jenis Rekening --}}
+            <div class="work-field">
+                <label for="edit-account-type">Jenis Rekening <span aria-hidden="true">*</span></label>
+                <select id="edit-account-type" name="type" x-model="editType" required>
+                    <option value="Bank">Bank</option>
+                    <option value="Tunai">Tunai</option>
+                </select>
+            </div>
+
+            {{-- Nama Bank (Dropdown Bank di Indonesia) --}}
+            <div class="work-field" x-show="editType === 'Bank'" x-cloak>
+                <label for="edit-account-bank_name">Nama Bank <span aria-hidden="true">*</span></label>
+                <select id="edit-account-bank_name" name="bank_name" :required="editType === 'Bank'" :disabled="editType !== 'Bank'">
+                    <option value="" disabled>-- Pilih Nama Bank --</option>
+                    @foreach($bankGroups as $groupLabel => $banks)
+                        <optgroup label="{{ $groupLabel }}">
+                            @foreach($banks as $bank)
+                                <option value="{{ $bank }}" :selected="editingAccount && editingAccount.bank_name === '{{ $bank }}'">{{ $bank }}</option>
+                            @endforeach
+                        </optgroup>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- Nomor Rekening --}}
+            <div class="work-field" x-show="editType === 'Bank'" x-cloak>
+                <label for="edit-account-account_number">Nomor Rekening <span aria-hidden="true">*</span></label>
+                <input id="edit-account-account_number" name="account_number" :value="editingAccount ? editingAccount.account_number : ''" type="text" maxlength="100" inputmode="numeric" placeholder="Contoh: 1234567890"
+                    :required="editType === 'Bank'" :disabled="editType !== 'Bank'">
+            </div>
+
+            {{-- Status Rekening --}}
+            <div class="work-field">
+                <label for="edit-account-is_active">Status Rekening <span aria-hidden="true">*</span></label>
+                <select id="edit-account-is_active" name="is_active" required>
+                    <option value="1" :selected="editingAccount && editingAccount.is_active">Aktif</option>
+                    <option value="0" :selected="editingAccount && !editingAccount.is_active">Nonaktif</option>
+                </select>
+            </div>
+
+            <div class="work-actions mt-2 justify-end">
+                <button type="button" class="work-btn" @click="$refs.editAccountModal.close()" :disabled="saving">Batal</button>
+                <button type="submit" :disabled="saving" class="work-btn work-btn-primary" x-text="saving ? 'Menyimpan…' : 'Simpan Perubahan'">Simpan Perubahan</button>
+            </div>
+        </form>
+    </dialog>
 </div>
 @endsection

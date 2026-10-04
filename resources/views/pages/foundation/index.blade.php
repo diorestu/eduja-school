@@ -23,13 +23,41 @@
 
         return filled($value) ? $value : '-';
     };
+
+    $dtColumns = [];
+    foreach ($columns as $k => $v) {
+        if (is_array($v)) {
+            $dtColumns[] = $v;
+        } else {
+            $dtColumns[] = [
+                'key' => (string) $k,
+                'label' => (string) $v,
+                'bold' => empty($dtColumns),
+            ];
+        }
+    }
+
+    $dtRows = collect($rows)->map(function ($row) use ($dtColumns, $renderCell) {
+        $rowArr = [];
+        foreach ($dtColumns as $col) {
+            $key = $col['key'];
+            $val = data_get($row, $key);
+            $rowArr[$key] = $renderCell($val);
+        }
+        if (is_object($row) && isset($row->id)) {
+            $rowArr['id'] = $row->id;
+        } elseif (is_array($row) && isset($row['id'])) {
+            $rowArr['id'] = $row['id'];
+        }
+        return $rowArr;
+    });
 @endphp
 
 @section('content')
     <x-common.page-breadcrumb :pageTitle="$title" :label="$eyebrow ?? 'EDUJA'" />
 
     @if($foundationSchools ?? false)
-        <section class="mb-4 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] sm:flex-row sm:items-center sm:justify-between">
+        <section class="mb-4 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <p class="text-xs font-semibold uppercase tracking-wide text-brand-500">Cakupan yayasan</p>
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Dashboard agregat seluruh sekolah yang terafiliasi.</p>
@@ -45,19 +73,19 @@
     @endif
 
     @if(session('success'))
-        <div class="mb-4 rounded-lg border border-success-200 bg-success-50 px-3 py-2 text-sm font-medium text-success-700 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-400">
+        <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">
             {{ session('success') }}
         </div>
     @endif
 
     @if(session('error'))
-        <div class="mb-4 rounded-lg border border-error-200 bg-error-50 px-3 py-2 text-sm font-medium text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-400">
+        <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
             {{ session('error') }}
         </div>
     @endif
 
     @if(!empty($description) || session('active_school_id'))
-        <section class="mb-4 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-white/[0.03] md:flex-row md:items-center md:justify-between">
+        <section class="mb-4 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-xs dark:border-gray-800 dark:bg-gray-900 md:flex-row md:items-center md:justify-between">
             @if(!empty($description))
                 <p class="max-w-4xl text-sm leading-6 text-gray-600 dark:text-gray-400">{{ $description }}</p>
             @endif
@@ -73,9 +101,9 @@
     @if(count($metrics))
         <div class="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
             @foreach($metrics as $metric)
-                <div class="rounded-lg border border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-white/[0.03]">
-                    <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $metric['label'] }}</p>
-                    <p class="mt-1 text-lg font-semibold leading-7 text-gray-900 dark:text-white/90">{{ $metric['value'] }}</p>
+                <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+                    <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ $metric['label'] }}</p>
+                    <p class="mt-1 text-xl font-bold tracking-tight text-gray-900 dark:text-white">{{ $metric['value'] }}</p>
                 </div>
             @endforeach
         </div>
@@ -84,86 +112,27 @@
     <div class="grid grid-cols-1 gap-4 {{ $form ? 'xl:grid-cols-[minmax(0,1fr)_340px]' : '' }}">
         <div class="space-y-4">
             @if(count($columns))
-                <div x-data="{ q: '' }" class="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-                    <div class="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 dark:border-gray-800 md:flex-row md:items-center md:justify-between">
-                        <div>
-                            <h2 class="text-sm font-semibold text-gray-900 dark:text-white/90">Data Utama</h2>
-                            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ $rows->count() }} item terdaftar</p>
-                        </div>
-                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                            <label class="sr-only" for="foundation-table-search">Filter data</label>
-                            <div class="relative">
-                                <input id="foundation-table-search" x-model="q" type="search" placeholder="Filter data..."
-                                    class="h-9 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 pl-9 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 sm:w-64">
-                                <i class="bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-base text-gray-400"></i>
-                            </div>
-                            <span class="hidden rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-400 sm:inline-flex">
-                                Datatable
-                            </span>
-                        </div>
-                    </div>
-                    <div class="max-w-full overflow-x-auto custom-scrollbar">
-                        <table class="w-full min-w-[560px]">
-                            <thead class="bg-gray-50 dark:bg-gray-800/40">
-                                <tr>
-                                    @foreach($columns as $label)
-                                        <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $label }}</th>
-                                    @endforeach
-                                    @if($approvalActions)
-                                        <th class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Aksi</th>
-                                    @endif
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                                @forelse($rows as $row)
-                                    <tr x-show="!q || $el.textContent.toLowerCase().includes(q.toLowerCase())" class="hover:bg-gray-50/70 dark:hover:bg-gray-800/20">
-                                        @foreach($columns as $key => $label)
-                                            <td class="px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300">
-                                                {{ $renderCell(data_get($row, $key)) }}
-                                            </td>
-                                        @endforeach
-                                        @if($approvalActions)
-                                            <td class="px-4 py-2.5">
-                                                <div class="flex justify-end gap-2">
-                                                    @if(data_get($row, 'status') === 'pending')
-                                                        <form action="{{ route('approvals.approve', data_get($row, 'id')) }}" method="POST">
-                                                            @csrf
-                                                            <button type="submit" class="inline-flex h-8 items-center rounded-lg bg-success-500 px-3 text-xs font-semibold text-white hover:bg-success-600">
-                                                                Approve
-                                                            </button>
-                                                        </form>
-                                                        <form action="{{ route('approvals.reject', data_get($row, 'id')) }}" method="POST">
-                                                            @csrf
-                                                            <button type="submit" class="inline-flex h-8 items-center rounded-lg bg-error-500 px-3 text-xs font-semibold text-white hover:bg-error-600">
-                                                                Reject
-                                                            </button>
-                                                        </form>
-                                                    @else
-                                                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Selesai</span>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                        @endif
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="{{ count($columns) + ($approvalActions ? 1 : 0) }}" class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-                                            Belum ada data pada modul ini.
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                <x-common.data-table
+                    :rows="$dtRows"
+                    :columns="$dtColumns"
+                    :caption="$title"
+                    search-label="Cari data..."
+                    row-label="data"
+                    :subtitle="count($dtRows) . ' item terdaftar pada modul ini'"
+                    :show-actions="false"
+                    :show-avatar="false"
+                    :exportable="true"
+                    export-label="Export Data"
+                    empty-message="Belum ada data pada modul ini."
+                />
             @endif
 
             @foreach($sections as $section)
-                <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
-                    <h2 class="text-sm font-semibold text-gray-900 dark:text-white/90">{{ $section['title'] }}</h2>
+                <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+                    <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ $section['title'] }}</h2>
                     <div class="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
                         @foreach($section['items'] as $item)
-                            <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm leading-5 text-gray-700 dark:border-gray-800 dark:bg-gray-900/40 dark:text-gray-300">
+                            <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm leading-5 text-gray-700 dark:border-gray-800 dark:bg-gray-800/40 dark:text-gray-300">
                                 {{ $item }}
                             </div>
                         @endforeach
@@ -173,8 +142,8 @@
         </div>
 
         @if($form)
-            <aside class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
-                <h2 class="text-sm font-semibold text-gray-900 dark:text-white/90">Input Cepat</h2>
+            <aside class="rounded-xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900 h-fit">
+                <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Input Cepat</h2>
                 <form action="{{ $form['action'] }}" method="POST" class="mt-4 space-y-3">
                     @csrf
                     @foreach($form['fields'] as $field)
@@ -200,7 +169,7 @@
                                     placeholder="{{ $field['placeholder'] ?? '' }}" required>
                             @endif
                             @error($fieldName)
-                                <p class="mt-1 text-xs font-medium text-error-600">{{ $message }}</p>
+                                <p class="mt-1 text-xs font-medium text-rose-600">{{ $message }}</p>
                             @enderror
                         </div>
                     @endforeach

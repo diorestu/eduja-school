@@ -99,6 +99,36 @@ class BosController extends Controller
     }
 
     /**
+     * Update an expense transaction.
+     */
+    public function updateBelanja(Request $request, Expense $expense, SchoolContext $schoolContext)
+    {
+        $schoolId = $schoolContext->activeSchoolId();
+        abort_unless($schoolId && (int) $expense->school_id === (int) $schoolId, 403);
+
+        $validated = $request->validate([
+            'budget_category_id' => 'nullable|exists:budget_categories,id',
+            'expense_name' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0',
+            'transaction_date' => 'required|date',
+            'source_funding' => 'required|string',
+            'payment_method' => 'required|string',
+            'reference_invoice' => 'nullable|string|max:255',
+            'recipient_name' => 'nullable|string|max:255',
+            'tax_type' => 'nullable|string|max:50',
+            'tax_amount' => 'nullable|numeric|min:0',
+            'is_tax_paid' => 'nullable|boolean',
+        ]);
+
+        $validated['tax_amount'] = $request->filled('tax_amount') ? (float) $request->input('tax_amount') : 0.00;
+        $validated['is_tax_paid'] = $request->has('is_tax_paid') ? (bool) $request->input('is_tax_paid') : false;
+
+        $expense->update($validated);
+
+        return redirect()->back()->with('success', 'Transaksi pengeluaran berhasil diperbarui.');
+    }
+
+    /**
      * Display Buku Kas Umum (BKU) ledger.
      */
     public function bku(Request $request, SchoolContext $schoolContext, FinanceLedgerService $ledger)

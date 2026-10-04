@@ -26,7 +26,7 @@ html, body { overflow-x: clip; }
 .work input::placeholder, .work textarea::placeholder { color: var(--color-work-muted); }
 .work :is(input,select,textarea)[aria-invalid=true] { border-color: var(--color-work-error); }
 .work :is(a,button,input,select,textarea,summary):focus-visible { outline: 3px solid var(--color-work-accent); outline-offset: 3px; }
-.work-btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: .5rem; padding: .625rem 1rem; font-size: .875rem; font-weight: 600; border: 1px solid var(--color-work-rule); border-radius: .5rem; background: var(--color-work-paper); color: var(--color-work-ink); white-space: nowrap; transition: transform var(--dur-work) var(--ease-work-out); }
+.work-btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: .5rem; padding: .625rem 1rem; font-size: .875rem; font-weight: 600; border: 1px solid var(--color-work-rule); border-radius: .5rem; background: var(--color-work-paper); color: var(--color-work-ink); white-space: nowrap; text-decoration: none !important; transition: transform var(--dur-work) var(--ease-work-out), background-color var(--dur-work) var(--ease-work-out), border-color var(--dur-work) var(--ease-work-out); }
 .work-btn-primary { background: var(--color-work-accent); color: var(--color-work-accent-ink); border-color: var(--color-work-accent); }
 .work-btn:active { transform: translateY(1px); }
 .work-btn:disabled { opacity: .55; cursor: not-allowed; }
@@ -47,7 +47,11 @@ html, body { overflow-x: clip; }
 .work details summary { cursor: pointer; min-height: 44px; padding: .625rem 0; font-weight: 600; }
 .work details[open] summary { margin-bottom: var(--space-work-sm); }
 .work :is(input[type=checkbox],input[type=radio]) { accent-color: var(--color-work-accent); }
-@media (hover:hover) { .work-btn:hover, .work details summary:hover { text-decoration: underline; text-underline-offset: .2em; } }
+@media (hover:hover) {
+  .work-btn:hover { text-decoration: none !important; background: var(--color-work-soft); }
+  .work-btn-primary:hover { background: var(--color-work-accent); filter: brightness(1.08); text-decoration: none !important; }
+  .work details summary:hover { text-decoration: underline; text-underline-offset: .2em; }
+}
 @media (min-width:768px) { .work-fields-pair { grid-template-columns: repeat(2,minmax(0,1fr)); } .work-person { grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,1.2fr); align-items: start; } }
 @media (min-width:1200px) { .work-split { grid-template-columns: minmax(0,1fr) minmax(280px,360px); } }
 @media (max-width:374px) { .work-panel { padding: var(--space-work-md); } .work-actions .work-btn { width:100%; } }

@@ -47,7 +47,10 @@
             return this.openSubmenus[key] || false;
         },
         isActive(path) {
-            return window.location.pathname === path || '{{ $currentPath }}' === path.replace(/^\//, '');
+            if (!path) return false;
+            const locPath = (window.location.pathname.replace(/\/+$/, '') || '/');
+            const cleanPath = ('/' + path.replace(/^\/+/, '').replace(/\/+$/, '')) || '/';
+            return locPath === cleanPath;
         }
     }"
     :class="{

@@ -1,6 +1,7 @@
 import './bootstrap';
 import Alpine from 'alpinejs';
 import ApexCharts from 'apexcharts';
+import { dataTable } from './components/data-table';
 
 // flatpickr
 import flatpickr from 'flatpickr';
@@ -15,6 +16,7 @@ window.ApexCharts = ApexCharts;
 window.flatpickr = flatpickr;
 window.FullCalendar = Calendar;
 
+Alpine.data('dataTable', dataTable);
 Alpine.start();
 
 // Initialize components on DOM ready

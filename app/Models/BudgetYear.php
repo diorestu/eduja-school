@@ -15,4 +15,9 @@ class BudgetYear extends Model
         'start_date' => 'date',
         'end_date' => 'date',
     ];
+
+    public function budgetPlans(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(BudgetPlan::class);
+    }
 }

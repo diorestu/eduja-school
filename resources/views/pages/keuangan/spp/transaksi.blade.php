@@ -1,242 +1,234 @@
 @extends('layouts.app')
 
 @section('content')
-    <x-common.page-breadcrumb pageTitle="Transaksi Keuangan SPP" />
+@php
+    $invoiceColumns = [
+        ['key' => 'student_name', 'label' => 'Siswa', 'subKey' => 'student_nis', 'avatar' => true],
+        ['key' => 'invoice_number', 'label' => 'No. Tagihan / Deskripsi', 'subKey' => 'item_description'],
+        ['key' => 'total_amount', 'label' => 'Total Tagihan', 'type' => 'currency', 'minimumFractionDigits' => 0],
+        ['key' => 'paid_amount', 'label' => 'Terbayar', 'type' => 'currency', 'minimumFractionDigits' => 0],
+        ['key' => 'remaining_amount', 'label' => 'Sisa Tagihan', 'type' => 'currency', 'minimumFractionDigits' => 0],
+        ['key' => 'status', 'label' => 'Status', 'type' => 'badge'],
+        ['key' => 'aksi', 'label' => 'Aksi', 'sortable' => false, 'onlyEdit' => true],
+    ];
+
+    $totalTagihan = 0;
+    $totalTerbayar = 0;
+    $totalSisa = 0;
+
+    $invoiceRows = $invoices->map(function ($invoice) use (&$totalTagihan, &$totalTerbayar, &$totalSisa) {
+        $total = (float) $invoice->total_amount;
+        $paid = (float) $invoice->paid_amount;
+        $remaining = (float) $invoice->remaining_amount;
+
+        $totalTagihan += $total;
+        $totalTerbayar += $paid;
+        $totalSisa += $remaining;
+
+        return [
+            'id' => $invoice->id,
+            'student_name' => $invoice->student?->name ?? 'Siswa',
+            'student_nis' => 'NIS: ' . ($invoice->student?->nis ?? '-'),
+            'invoice_number' => $invoice->invoice_number,
+            'item_description' => $invoice->invoiceItems->first()?->name ?? 'Detail Biaya Sekolah',
+            'total_amount' => $total,
+            'paid_amount' => $paid,
+            'remaining_amount' => $remaining,
+            'status' => $invoice->status,
+            'can_pay' => $remaining > 0,
+            'only_edit' => true,
+        ];
+    });
+@endphp
+
+<x-common.page-breadcrumb pageTitle="Transaksi Keuangan SPP & Pemasukan" label="Pemasukan" />
+
+<div class="work work-stack"
+    x-data="{
+        saving: false,
+        activeInvoice: { id: '', number: '', name: '', remaining: 0 },
+        payAmount: 0,
+        openPay(row) {
+            this.activeInvoice = {
+                id: row.id,
+                number: row.invoice_number,
+                name: row.student_name,
+                remaining: row.remaining_amount
+            };
+            this.payAmount = row.remaining_amount > 0 ? row.remaining_amount : 0;
+            this.$nextTick(() => {
+                this.$refs.paymentModal.showModal();
+            });
+        },
+        formatRupiah(val) {
+            return 'Rp ' + Number(val || 0).toLocaleString('id-ID');
+        }
+    }"
+    @table-edit="openPay($event.detail)">
 
     @if(session('success'))
-        <div class="mb-6 flex items-center gap-3.5 rounded-lg border border-green-200 bg-green-50 p-4 text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-500">
-            <span class="font-medium text-sm">{{ session('success') }}</span>
-        </div>
+        <div role="status" class="work-notice">{{ session('success') }}</div>
     @endif
 
     @if(session('error'))
-        <div class="mb-6 flex items-center gap-3.5 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-500">
-            <span class="font-medium text-sm">{{ session('error') }}</span>
+        <div role="alert" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
+            {{ session('error') }}
         </div>
     @endif
 
-    <!-- Alpine Wrapper for Payment Modals -->
-    <div x-data="{ 
-        openPayModal: false, 
-        activeInvoice: { id: '', number: '', name: '', remaining: 0 }
-    }">
-
-        <!-- Quick actions: Generate Monthly Invoice & Search -->
-        <div class="grid grid-cols-1 gap-6 mb-6 lg:grid-cols-3">
-            <!-- Generate Invoices Card -->
-            <div class="lg:col-span-1">
-                <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-                    <h4 class="mb-3 font-semibold text-gray-800 text-theme-base dark:text-white/90">
-                        ⚡ Generate Tagihan Bulanan (Massal)
-                    </h4>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                        Membuat tagihan SPP bulanan otomatis untuk seluruh siswa aktif di tahun ajaran saat ini.
-                    </p>
-
-                    <form action="{{ route('spp.transaksi.generate') }}" method="POST" class="space-y-4">
-                        @csrf
-                        <div>
-                            <label class="mb-1.5 block text-xs font-medium text-gray-700 dark:text-gray-400">
-                                Pilih Bulan Penagihan
-                            </label>
-                            <input type="month" name="billing_month" value="{{ date('Y-m') }}" required
-                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-10 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" />
-                        </div>
-                        <button type="submit"
-                            class="w-full rounded-lg bg-brand-500 px-4 py-2 text-center text-xs font-semibold text-white hover:bg-brand-600 focus:outline-hidden">
-                            Proses Penagihan
-                        </button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Search Card -->
-            <div class="lg:col-span-2">
-                <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] h-full flex flex-col justify-between">
-                    <div>
-                        <h4 class="mb-3 font-semibold text-gray-800 text-theme-base dark:text-white/90">
-                            🔍 Cari Tagihan Siswa
-                        </h4>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                            Masukkan Nama atau NIS siswa untuk memfilter data tagihan.
-                        </p>
-                    </div>
-
-                    <form action="{{ route('spp.transaksi.index') }}" method="GET" class="flex gap-3">
-                        <div class="relative w-full">
-                            <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama siswa atau NIS..."
-                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-10 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" />
-                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
-                                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-                            </span>
-                        </div>
-                        <button type="submit"
-                            class="rounded-lg bg-gray-900 px-5 py-2.5 text-center text-sm font-semibold text-white hover:bg-gray-800 dark:bg-brand-500 dark:hover:bg-brand-600 focus:outline-hidden">
-                            Filter
-                        </button>
-                    </form>
-                </div>
-            </div>
+    {{-- METRICS SUMMARY --}}
+    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4 mb-2">
+        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total Ditagihkan</p>
+            <p class="mt-1 text-xl font-bold tracking-tight text-gray-900 dark:text-white">Rp {{ number_format($totalTagihan, 0, ',', '.') }}</p>
         </div>
-
-        <!-- Invoices List -->
-        <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-            <h4 class="mb-5 font-semibold text-gray-800 text-theme-lg dark:text-white/90">
-                Daftar Tagihan Biaya Sekolah
-            </h4>
-
-            <div class="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-                <div class="max-w-full overflow-x-auto custom-scrollbar">
-                    <table class="w-full min-w-[800px]">
-                        <thead>
-                            <tr class="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/20">
-                                <th class="px-5 py-3 text-left">
-                                    <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Siswa / NIS</p>
-                                </th>
-                                <th class="px-5 py-3 text-left">
-                                    <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">No. Tagihan / Deskripsi</p>
-                                </th>
-                                <th class="px-5 py-3 text-left">
-                                    <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Total Nominal</p>
-                                </th>
-                                <th class="px-5 py-3 text-left">
-                                    <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Terbayar</p>
-                                </th>
-                                <th class="px-5 py-3 text-left">
-                                    <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Sisa Tagihan</p>
-                                </th>
-                                <th class="px-5 py-3 text-left">
-                                    <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Status</p>
-                                </th>
-                                <th class="px-5 py-3 text-right">
-                                    <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Aksi</p>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                            @forelse($invoices as $invoice)
-                                <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/10">
-                                    <td class="px-5 py-4">
-                                        <span class="block font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $invoice->student->name }}</span>
-                                        <span class="block text-xs text-gray-400">NIS: {{ $invoice->student->nis }}</span>
-                                    </td>
-                                    <td class="px-5 py-4">
-                                        <span class="block text-gray-800 text-theme-sm dark:text-white/90 font-medium">{{ $invoice->invoice_number }}</span>
-                                        <span class="block text-xs text-gray-400">
-                                            {{ $invoice->invoiceItems->first()?->name ?? 'Detail Biaya' }}
-                                        </span>
-                                    </td>
-                                    <td class="px-5 py-4">
-                                        <span class="text-gray-800 text-theme-sm dark:text-white/90">Rp {{ number_format($invoice->total_amount, 0, ',', '.') }}</span>
-                                    </td>
-                                    <td class="px-5 py-4">
-                                        <span class="text-green-600 text-theme-sm dark:text-green-500 font-medium">
-                                            Rp {{ number_format($invoice->paid_amount, 0, ',', '.') }}
-                                        </span>
-                                    </td>
-                                    <td class="px-5 py-4">
-                                        <span class="text-red-500 text-theme-sm dark:text-red-400 font-semibold">
-                                            Rp {{ number_format($invoice->remaining_amount, 0, ',', '.') }}
-                                        </span>
-                                    </td>
-                                    <td class="px-5 py-4">
-                                        @if($invoice->status == 'Lunas')
-                                            <span class="inline-flex rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-500/15 dark:text-green-500">Lunas</span>
-                                        @elseif($invoice->status == 'Cicilan')
-                                            <span class="inline-flex rounded-full bg-yellow-50 px-2.5 py-0.5 text-xs font-semibold text-yellow-700 dark:bg-yellow-500/15 dark:text-yellow-400">Cicilan</span>
-                                        @else
-                                            <span class="inline-flex rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-500/15 dark:text-red-500">Belum Lunas</span>
-                                        @endif
-                                    </td>
-                                    <td class="px-5 py-4 text-right">
-                                        @if($invoice->status != 'Lunas')
-                                            <button type="button" 
-                                                @click="activeInvoice = { id: '{{ $invoice->id }}', number: '{{ $invoice->invoice_number }}', name: '{{ addslashes($invoice->student->name) }}', remaining: {{ $invoice->remaining_amount }} }; openPayModal = true"
-                                                class="text-xs font-semibold text-brand-500 hover:text-brand-600">
-                                                Bayar
-                                            </button>
-                                        @else
-                                            <span class="text-xs text-gray-400 font-medium">Lunas</span>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="7" class="px-5 py-10 text-center text-gray-400 text-sm">
-                                        Tidak ada data tagihan. Buat tagihan menggunakan menu di kiri atas.
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Total Diterima</p>
+            <p class="mt-1 text-xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">Rp {{ number_format($totalTerbayar, 0, ',', '.') }}</p>
         </div>
-
-        <!-- Alpine Payment Modal -->
-        <div x-show="openPayModal" 
-            class="fixed inset-0 z-99999 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-xs"
-            x-transition>
-            
-            <div class="relative w-full max-w-md p-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xl"
-                @click.away="openPayModal = false">
-                
-                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">
-                    Catat Pembayaran SPP
-                </h3>
-                
-                <!-- Display active invoice detail -->
-                <div class="mb-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/40 text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                    <div>Siswa: <span class="font-semibold text-gray-900 dark:text-white" x-text="activeInvoice.name"></span></div>
-                    <div>Tagihan: <span class="font-mono font-semibold text-gray-900 dark:text-white" x-text="activeInvoice.number"></span></div>
-                    <div>Sisa Tagihan: <span class="font-bold text-red-500 dark:text-red-400" x-text="'Rp ' + new Intl.NumberFormat('id-ID').format(activeInvoice.remaining)"></span></div>
-                </div>
-
-                <form :action="'/spp/transaksi/' + activeInvoice.id + '/bayar'" method="POST" class="space-y-4">
-                    @csrf
-                    <div>
-                        <label class="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-400">
-                            Jumlah Bayar (Rp)
-                        </label>
-                        <input type="number" name="amount_paid" :max="activeInvoice.remaining" required :value="activeInvoice.remaining"
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-10 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />
-                    </div>
-
-                    <div>
-                        <label class="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-400">
-                            Metode Pembayaran
-                        </label>
-                        <select name="payment_method" required
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-10 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
-                            <option value="Tunai">Tunai / Cash</option>
-                            <option value="Transfer Bank">Transfer Bank</option>
-                            <option value="E-Wallet">E-Wallet (Gopay/Ovo)</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-400">
-                            Tanggal Pembayaran
-                        </label>
-                        <input type="date" name="payment_date" value="{{ date('Y-m-d') }}" required
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-10 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />
-                    </div>
-
-                    <div class="flex justify-end gap-3 pt-3">
-                        <button type="button" @click="openPayModal = false"
-                            class="rounded-lg border border-gray-200 dark:border-gray-800 px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/40">
-                            Batal
-                        </button>
-                        <button type="submit"
-                            class="rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600">
-                            Simpan Pembayaran
-                        </button>
-                    </div>
-                </form>
-            </div>
+        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">Sisa Piutang</p>
+            <p class="mt-1 text-xl font-bold tracking-tight text-rose-600 dark:text-rose-400">Rp {{ number_format($totalSisa, 0, ',', '.') }}</p>
         </div>
-
+        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Jumlah Tagihan</p>
+            <p class="mt-1 text-xl font-bold tracking-tight text-gray-900 dark:text-white">{{ $invoices->count() }} invoice</p>
+        </div>
     </div>
+
+    {{-- QUICK ACTIONS --}}
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-3 mb-2">
+        <!-- Generate Invoices Card -->
+        <div class="lg:col-span-1 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 shadow-xs">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </span>
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Generate Tagihan Bulanan</h3>
+            </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Buat tagihan SPP bulanan otomatis untuk seluruh siswa aktif.</p>
+
+            <form action="{{ route('spp.transaksi.generate') }}" method="POST" class="space-y-3">
+                @csrf
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Pilih Bulan Tagihan</label>
+                    <input type="month" name="billing_month" value="{{ date('Y-m') }}" required
+                        class="h-9 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-1.5 text-xs text-gray-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+                </div>
+                <button type="submit" class="work-btn work-btn-primary w-full justify-center">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                    Proses Tagihan
+                </button>
+            </form>
+        </div>
+
+        <!-- Search / Filter Card -->
+        <div class="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 shadow-xs flex flex-col justify-between">
+            <div>
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </span>
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Pencarian Cepat Siswa</h3>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Filter data tagihan berdasarkan Nama atau NIS siswa dari database.</p>
+            </div>
+
+            <form action="{{ route('spp.transaksi.index') }}" method="GET" class="flex gap-2">
+                <div class="relative flex-1">
+                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama siswa atau NIS..."
+                        class="h-9 w-full rounded-lg border border-gray-300 bg-transparent pl-9 pr-3 py-1.5 text-xs text-gray-800 placeholder:text-gray-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+                    <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
+                <button type="submit" class="work-btn work-btn-secondary">
+                    Filter Data
+                </button>
+                @if(request('search'))
+                    <a href="{{ route('spp.transaksi.index') }}" class="work-btn work-btn-secondary text-gray-500">
+                        Reset
+                    </a>
+                @endif
+            </form>
+        </div>
+    </div>
+
+    {{-- DATA TABLE --}}
+    <x-common.data-table
+        :rows="$invoiceRows"
+        :columns="$invoiceColumns"
+        caption="Daftar Tagihan Biaya Sekolah"
+        search-label="Cari nama siswa, NIS, atau nomor tagihan..."
+        row-label="tagihan"
+        subtitle="Data tagihan dan riwayat pembayaran siswa"
+        :show-actions="false"
+        :show-avatar="true"
+        :exportable="true"
+        export-label="Export Tagihan"
+        empty-message="Belum ada data tagihan."
+        empty-hint="Generate tagihan bulanan atau periksa filter pencarian siswa."
+    />
+
+    {{-- MODAL PEMBAYARAN SPP --}}
+    <dialog x-ref="paymentModal" class="account-dialog work" aria-labelledby="payment-modal-title" aria-describedby="payment-modal-help"
+        @close="saving = false" @cancel="if (saving) $event.preventDefault()"
+        @click="const bounds = $el.getBoundingClientRect(); if (!saving && ($event.clientX < bounds.left || $event.clientX > bounds.right || $event.clientY < bounds.top || $event.clientY > bounds.bottom)) $el.close()">
+        <div class="account-dialog-head">
+            <div class="min-w-0">
+                <h2 id="payment-modal-title" class="text-lg font-semibold text-gray-900 dark:text-white">Catat Pembayaran SPP</h2>
+                <p id="payment-modal-help" class="work-muted text-xs mt-0.5">Konfirmasi penerimaan pembayaran dari siswa atau orang tua.</p>
+            </div>
+            <button type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1 rounded-md" @click="$refs.paymentModal.close()" :disabled="saving" aria-label="Tutup form">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <div class="mb-4 rounded-xl border border-gray-200 bg-gray-50/80 p-3.5 text-xs text-gray-600 dark:border-gray-800 dark:bg-gray-800/40 dark:text-gray-300 space-y-1.5">
+            <div class="flex justify-between">
+                <span class="text-gray-500">Nama Siswa:</span>
+                <span class="font-semibold text-gray-900 dark:text-white" x-text="activeInvoice.name"></span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-500">No. Tagihan:</span>
+                <span class="font-mono font-medium text-gray-900 dark:text-white" x-text="activeInvoice.number"></span>
+            </div>
+            <div class="flex justify-between border-t border-gray-200 dark:border-gray-700/60 pt-1.5">
+                <span class="text-gray-500">Sisa Tagihan:</span>
+                <span class="font-bold text-rose-600 dark:text-rose-400" x-text="formatRupiah(activeInvoice.remaining)"></span>
+            </div>
+        </div>
+
+        <form :action="'/spp/transaksi/' + activeInvoice.id + '/bayar'" method="POST" @submit="saving = true" :aria-busy="saving" class="space-y-4">
+            @csrf
+
+            <div class="work-field">
+                <label for="pay-amount">Jumlah Bayar (Rp) <span class="text-red-500">*</span></label>
+                <input id="pay-amount" type="number" name="amount_paid" x-model="payAmount" :max="activeInvoice.remaining" min="1" step="1000" required placeholder="0">
+            </div>
+
+            <div class="work-field">
+                <label for="pay-method">Metode Pembayaran <span class="text-red-500">*</span></label>
+                <select id="pay-method" name="payment_method" required>
+                    <option value="Tunai">Tunai / Cash</option>
+                    <option value="Transfer Bank">Transfer Bank</option>
+                    <option value="E-Wallet">E-Wallet (Gopay/Ovo/Dana)</option>
+                </select>
+            </div>
+
+            <div class="work-field">
+                <label for="pay-date">Tanggal Pembayaran <span class="text-red-500">*</span></label>
+                <input id="pay-date" type="date" name="payment_date" value="{{ date('Y-m-d') }}" required>
+            </div>
+
+            <div class="account-dialog-actions mt-5 pt-3 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" class="work-btn work-btn-secondary" @click="$refs.paymentModal.close()" :disabled="saving">
+                    Batal
+                </button>
+                <button type="submit" class="work-btn work-btn-primary" :disabled="saving || activeInvoice.remaining <= 0">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    Simpan Pembayaran
+                </button>
+            </div>
+        </form>
+    </dialog>
+</div>
 @endsection

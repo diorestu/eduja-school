@@ -6,6 +6,7 @@ use App\Models\ApprovalRequest;
 use App\Models\BillingItem;
 use App\Models\BookClosing;
 use App\Models\BudgetPlan;
+use App\Models\BudgetPlanRevision;
 use App\Models\BudgetYear;
 use App\Models\ExpenseType;
 use App\Models\FundAllocation;
@@ -63,11 +64,61 @@ class FinanceFoundationController extends Controller
         return redirect()->route('finance.accounts')->with('success', 'Rekening Sekolah disimpan');
     }
 
+    public function updateAccount(Request $request, SchoolAccount $account, SchoolContext $schoolContext): RedirectResponse
+    {
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        if ((int) $account->school_id !== (int) $schoolId) {
+            abort(403, 'Aksi tidak diizinkan untuk sekolah ini.');
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'type' => ['required', Rule::in(['Tunai', 'Bank'])],
+            'bank_name' => ['exclude_unless:type,Bank', 'required', 'string', 'max:80'],
+            'account_number' => ['exclude_unless:type,Bank', 'required', 'string', 'max:100'],
+            'is_active' => ['nullable'],
+        ]);
+
+        $account->update([
+            'name' => $validated['name'],
+            'type' => $validated['type'],
+            'bank_name' => $validated['type'] === 'Bank' ? ($validated['bank_name'] ?? null) : null,
+            'account_number' => $validated['type'] === 'Bank' ? ($validated['account_number'] ?? null) : null,
+            'is_active' => filter_var($request->input('is_active', true), FILTER_VALIDATE_BOOLEAN),
+        ]);
+
+        return redirect()->route('finance.accounts')->with('success', 'Rekening Sekolah berhasil diperbarui.');
+    }
+
     public function incomeTypes(SchoolContext $schoolContext): View
     {
         $schoolId = $schoolContext->activeSchoolIdFor();
 
-        return $this->typePage('Jenis Pemasukan', 'income', IncomeType::where('school_id', $schoolId)->latest()->get(['code', 'name', 'category', 'requires_approval']));
+        $incomeTypes = IncomeType::with('fundAllocations.account')
+            ->where('school_id', $schoolId)
+            ->latest()
+            ->get();
+
+        $count = IncomeType::where('school_id', $schoolId)->count();
+        $codeNumber = $count + 1;
+        do {
+            $nextCode = 'JP'.str_pad((string) $codeNumber, 4, '0', STR_PAD_LEFT);
+            $codeNumber++;
+        } while (IncomeType::where('school_id', $schoolId)->where('code', $nextCode)->exists());
+
+        $categories = ['Komite', 'BOS', 'Hibah', 'Lainnya'];
+        $accounts = SchoolAccount::where('school_id', $schoolId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'type', 'bank_name', 'account_number']);
+
+        return view('pages.keuangan.income-types', [
+            'title' => 'Jenis Pemasukan',
+            'incomeTypes' => $incomeTypes,
+            'nextCode' => $nextCode,
+            'categories' => $categories,
+            'accounts' => $accounts,
+        ]);
     }
 
     public function expenseTypes(SchoolContext $schoolContext): View
@@ -81,16 +132,134 @@ class FinanceFoundationController extends Controller
     {
         $schoolId = $this->activeSchoolId($request, $schoolContext);
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
+            'name' => [
+                'required',
+                'string',
+                'max:120',
+                Rule::unique('income_types')->where(fn ($query) => $query->where('school_id', $schoolId)),
+            ],
             'code' => ['nullable', 'string', 'max:40'],
-            'category' => ['nullable', 'string', 'max:50'],
-            'uses_allocation' => ['nullable', 'boolean'],
-            'requires_approval' => ['nullable', 'boolean'],
+            'category' => ['required', 'string', 'max:50'],
+            'uses_allocation' => ['nullable'],
+            'requires_approval' => ['nullable'],
+            'allocations' => ['nullable', 'array'],
+            'allocations.*.name' => ['nullable', 'string', 'max:120'],
+            'allocations.*.method' => ['nullable', 'string', Rule::in(['persentase', 'nominal'])],
+            'allocations.*.amount' => ['nullable', 'numeric', 'min:0'],
+            'allocations.*.account_id' => ['nullable', 'integer', Rule::exists('school_accounts', 'id')->where(fn ($query) => $query->where('school_id', $schoolId))],
+        ], [
+            'name.required' => 'Nama jenis pemasukan wajib diisi.',
+            'name.unique' => 'Jenis pemasukan dengan nama "'.$request->input('name').'" sudah ada.',
+            'category.required' => 'Kategori wajib dipilih.',
         ]);
 
-        $finance->createIncomeType($schoolId, $validated);
+        if (empty($validated['code'])) {
+            $count = IncomeType::where('school_id', $schoolId)->count();
+            $codeNumber = $count + 1;
+            do {
+                $code = 'JP'.str_pad((string) $codeNumber, 4, '0', STR_PAD_LEFT);
+                $codeNumber++;
+            } while (IncomeType::where('school_id', $schoolId)->where('code', $code)->exists());
+            $validated['code'] = $code;
+        }
 
-        return back()->with('success', 'Jenis pemasukan berhasil ditambahkan.');
+        $validated['uses_allocation'] = filter_var($validated['uses_allocation'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $validated['requires_approval'] = filter_var($validated['requires_approval'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        $incomeType = $finance->createIncomeType($schoolId, $validated);
+
+        if ($validated['uses_allocation'] && !empty($request->input('allocations'))) {
+            foreach ($request->input('allocations') as $alloc) {
+                if (!empty($alloc['name']) && !empty($alloc['account_id'])) {
+                    FundAllocation::create([
+                        'school_id' => $schoolId,
+                        'income_type_id' => $incomeType->id,
+                        'account_id' => $alloc['account_id'],
+                        'name' => $alloc['name'],
+                        'method' => $alloc['method'] ?? 'persentase',
+                        'amount' => $alloc['amount'] ?? 0,
+                        'status' => 'active',
+                    ]);
+                }
+            }
+        }
+
+        return redirect()->route('finance.income-types')
+            ->with('success_modal', true)
+            ->with('success', 'Data jenis pemasukan berhasil disimpan ke dalam sistem.');
+    }
+
+    public function updateIncomeType(Request $request, IncomeType $incomeType, SchoolContext $schoolContext): RedirectResponse
+    {
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        if ((int) $incomeType->school_id !== (int) $schoolId) {
+            abort(403, 'Aksi tidak diizinkan untuk sekolah ini.');
+        }
+
+        $validated = $request->validate([
+            'name' => [
+                'required',
+                'string',
+                'max:120',
+                Rule::unique('income_types')->where(fn ($query) => $query->where('school_id', $schoolId))->ignore($incomeType->id),
+            ],
+            'category' => ['required', 'string', 'max:50'],
+            'uses_allocation' => ['nullable'],
+            'requires_approval' => ['nullable'],
+            'allocations' => ['nullable', 'array'],
+            'allocations.*.name' => ['nullable', 'string', 'max:120'],
+            'allocations.*.method' => ['nullable', 'string', Rule::in(['persentase', 'nominal'])],
+            'allocations.*.amount' => ['nullable', 'numeric', 'min:0'],
+            'allocations.*.account_id' => ['nullable', 'integer', Rule::exists('school_accounts', 'id')->where(fn ($query) => $query->where('school_id', $schoolId))],
+        ], [
+            'name.required' => 'Nama jenis pemasukan wajib diisi.',
+            'name.unique' => 'Jenis pemasukan dengan nama "'.$request->input('name').'" sudah ada.',
+            'category.required' => 'Kategori wajib dipilih.',
+        ]);
+
+        $usesAllocation = filter_var($request->input('uses_allocation', false), FILTER_VALIDATE_BOOLEAN);
+        $incomeType->update([
+            'name' => $validated['name'],
+            'category' => $validated['category'],
+            'uses_allocation' => $usesAllocation,
+            'requires_approval' => filter_var($request->input('requires_approval', false), FILTER_VALIDATE_BOOLEAN),
+        ]);
+
+        if ($usesAllocation) {
+            $incomeType->fundAllocations()->delete();
+            if (!empty($request->input('allocations'))) {
+                foreach ($request->input('allocations') as $alloc) {
+                    if (!empty($alloc['name']) && !empty($alloc['account_id'])) {
+                        FundAllocation::create([
+                            'school_id' => $schoolId,
+                            'income_type_id' => $incomeType->id,
+                            'account_id' => $alloc['account_id'],
+                            'name' => $alloc['name'],
+                            'method' => $alloc['method'] ?? 'persentase',
+                            'amount' => $alloc['amount'] ?? 0,
+                            'status' => 'active',
+                        ]);
+                    }
+                }
+            }
+        } else {
+            $incomeType->fundAllocations()->delete();
+        }
+
+        return redirect()->route('finance.income-types')
+            ->with('success', 'Data jenis pemasukan berhasil diperbarui.');
+    }
+
+    public function destroyIncomeType(IncomeType $incomeType, SchoolContext $schoolContext): RedirectResponse
+    {
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        if ((int) $incomeType->school_id !== (int) $schoolId) {
+            abort(403, 'Aksi tidak diizinkan untuk sekolah ini.');
+        }
+
+        $incomeType->delete();
+
+        return redirect()->route('finance.income-types')->with('success', 'Jenis pemasukan berhasil dihapus.');
     }
 
     public function storeExpenseType(Request $request, SchoolContext $schoolContext, FinanceService $finance): RedirectResponse
@@ -146,12 +315,8 @@ class FinanceFoundationController extends Controller
     {
         $schoolId = $schoolContext->activeSchoolIdFor();
 
-        return view('pages.foundation.index', [
-            'title' => 'Tahun Anggaran',
-            'eyebrow' => 'Budget Control',
-            'description' => 'Periode anggaran yang tersedia untuk rencana kegiatan sekolah.',
-            'rows' => BudgetYear::where('school_id', $schoolId)->latest()->get(['name', 'start_date', 'end_date', 'status']),
-            'columns' => ['name' => 'Nama', 'start_date' => 'Mulai', 'end_date' => 'Selesai', 'status' => 'Status'],
+        return view('pages.keuangan.budget-years', [
+            'budgetYears' => BudgetYear::where('school_id', $schoolId)->latest('start_date')->get(),
         ]);
     }
 
@@ -169,22 +334,93 @@ class FinanceFoundationController extends Controller
         return back()->with('success', 'Tahun anggaran berhasil ditambahkan.');
     }
 
+    public function updateBudgetYear(Request $request, BudgetYear $budgetYear, SchoolContext $schoolContext): RedirectResponse
+    {
+        $schoolId = $this->activeSchoolId($request, $schoolContext);
+        abort_unless((int) $budgetYear->school_id === $schoolId, 404);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            'status' => ['required', 'string', Rule::in(['active', 'closed'])],
+        ]);
+
+        $budgetYear->update($validated);
+
+        return back()->with('success', 'Tahun anggaran berhasil diperbarui.');
+    }
+
     public function budgets(SchoolContext $schoolContext): View
     {
         $schoolId = $schoolContext->activeSchoolIdFor();
 
-        return view('pages.foundation.index', [
-            'title' => 'Anggaran & Revisi',
-            'eyebrow' => 'Budget Control',
-            'description' => 'Tahun anggaran, program, aktivitas, revisi, dan status approval.',
-            'metrics' => [
-                ['label' => 'Tahun Anggaran', 'value' => BudgetYear::where('school_id', $schoolId)->count()],
-                ['label' => 'Rencana', 'value' => BudgetPlan::where('school_id', $schoolId)->count()],
-                ['label' => 'Pending', 'value' => BudgetPlan::where('school_id', $schoolId)->where('status', 'pending')->count()],
-            ],
-            'rows' => BudgetPlan::where('school_id', $schoolId)->latest()->get(['source_funding', 'program_name', 'activity_name', 'amount', 'status']),
-            'columns' => ['source_funding' => 'Sumber', 'program_name' => 'Program', 'activity_name' => 'Kegiatan', 'amount' => 'Anggaran', 'status' => 'Status'],
+        $budgetYears = BudgetYear::where('school_id', $schoolId)->orderByDesc('start_date')->get();
+        $budgetPlans = BudgetPlan::with(['budgetYear', 'revisions'])
+            ->where('school_id', $schoolId)
+            ->latest()
+            ->get();
+
+        $metrics = [
+            ['label' => 'Tahun Anggaran', 'value' => $budgetYears->count()],
+            ['label' => 'Total Rencana', 'value' => $budgetPlans->count()],
+            ['label' => 'Pending Approval', 'value' => $budgetPlans->where('status', 'pending')->count()],
+            ['label' => 'Total Anggaran', 'value' => 'Rp ' . number_format($budgetPlans->sum('amount'), 0, ',', '.')],
+        ];
+
+        return view('pages.keuangan.budgets', [
+            'budgetYears' => $budgetYears,
+            'budgetPlans' => $budgetPlans,
+            'metrics' => $metrics,
         ]);
+    }
+
+    public function budgetRevisions(SchoolContext $schoolContext): View
+    {
+        $schoolId = $schoolContext->activeSchoolIdFor();
+
+        $budgetYears = BudgetYear::where('school_id', $schoolId)->orderByDesc('start_date')->get();
+        $budgetPlans = BudgetPlan::with(['budgetYear', 'revisions'])
+            ->where('school_id', $schoolId)
+            ->latest()
+            ->get();
+
+        $allRevisions = BudgetPlanRevision::with(['budgetPlan.budgetYear'])
+            ->where('school_id', $schoolId)
+            ->latest()
+            ->get();
+
+        $metrics = [
+            ['label' => 'Total Rencana Anggaran', 'value' => $budgetPlans->count()],
+            ['label' => 'Total Usulan Revisi', 'value' => $allRevisions->count()],
+            ['label' => 'Revisi Pending', 'value' => $allRevisions->where('status', 'pending')->count()],
+            ['label' => 'Revisi Disetujui', 'value' => $allRevisions->where('status', 'approved')->count()],
+        ];
+
+        return view('pages.keuangan.budget-revisions', [
+            'budgetYears' => $budgetYears,
+            'budgetPlans' => $budgetPlans,
+            'revisions' => $allRevisions,
+            'metrics' => $metrics,
+        ]);
+    }
+
+    public function updateBudget(Request $request, BudgetPlan $budgetPlan, SchoolContext $schoolContext): RedirectResponse
+    {
+        $schoolId = $this->activeSchoolId($request, $schoolContext);
+        abort_unless((int) $budgetPlan->school_id === $schoolId, 404);
+
+        $validated = $request->validate([
+            'budget_year_id' => ['required', 'integer', Rule::exists('budget_years', 'id')->where(fn ($query) => $query->where('school_id', $schoolId))],
+            'source_funding' => ['required', 'string', 'max:50'],
+            'program_name' => ['required', 'string', 'max:160'],
+            'activity_name' => ['required', 'string', 'max:160'],
+            'amount' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $budgetPlan->update($validated);
+
+        return back()->with('success', 'Rencana anggaran berhasil diperbarui.');
     }
 
     public function storeBudget(Request $request, SchoolContext $schoolContext, FinanceService $finance): RedirectResponse
@@ -220,17 +456,22 @@ class FinanceFoundationController extends Controller
 
     public function approvals(SchoolContext $schoolContext): View
     {
-        return view('pages.foundation.index', [
-            'title' => 'Approval Transfer & Anggaran',
-            'eyebrow' => 'Approval Queue',
-            'description' => 'Transfer, revisi anggaran, dan pengeluaran masuk antrian sebelum valid.',
-            'metrics' => [
-                ['label' => 'Approval Pending', 'value' => ApprovalRequest::where('school_id', $schoolContext->activeSchoolId())->where('status', 'pending')->count()],
-                ['label' => 'Bukti Transfer', 'value' => PaymentSubmission::where('school_id', $schoolContext->activeSchoolId())->count()],
-            ],
-            'rows' => ApprovalRequest::where('school_id', $schoolContext->activeSchoolId())->where('type', 'expense')->latest()->get(['id', 'type', 'status', 'note']),
-            'columns' => ['type' => 'Tipe', 'status' => 'Status', 'note' => 'Catatan'],
-            'approvalActions' => true,
+        $schoolId = $schoolContext->activeSchoolId();
+        $approvals = ApprovalRequest::with(['requester', 'reviewer'])
+            ->where('school_id', $schoolId)
+            ->latest()
+            ->get();
+
+        $metrics = [
+            ['label' => 'Total Pengajuan', 'value' => $approvals->count()],
+            ['label' => 'Pending Approval', 'value' => $approvals->where('status', 'pending')->count()],
+            ['label' => 'Disetujui', 'value' => $approvals->where('status', 'approved')->count()],
+            ['label' => 'Ditolak', 'value' => $approvals->where('status', 'rejected')->count()],
+        ];
+
+        return view('pages.keuangan.approvals', [
+            'approvals' => $approvals,
+            'metrics' => $metrics,
         ]);
     }
 
@@ -238,16 +479,22 @@ class FinanceFoundationController extends Controller
     {
         $schoolId = $schoolContext->activeSchoolIdFor();
 
-        return view('pages.foundation.index', [
-            'title' => 'Tagihan Komite',
-            'eyebrow' => 'Billing Generalized',
-            'description' => 'SPP digeneralisasi menjadi tagihan sekolah, tingkat, kelas, jurusan, atau siswa.',
-            'metrics' => [
-                ['label' => 'Tagihan', 'value' => BillingItem::where('school_id', $schoolId)->count()],
-                ['label' => 'Transfer Pending', 'value' => PaymentSubmission::where('school_id', $schoolId)->where('status', 'pending')->count()],
-            ],
-            'rows' => BillingItem::where('school_id', $schoolId)->latest()->get(['name', 'amount', 'target_type', 'due_date', 'status']),
-            'columns' => ['name' => 'Tagihan', 'amount' => 'Nominal', 'target_type' => 'Target', 'due_date' => 'Deadline', 'status' => 'Status'],
+        $billingItems = BillingItem::with('incomeType')
+            ->where('school_id', $schoolId)
+            ->latest()
+            ->get();
+        $incomeTypes = IncomeType::where('school_id', $schoolId)->orderBy('name')->get();
+
+        $metrics = [
+            ['label' => 'Total Item Tagihan', 'value' => $billingItems->count()],
+            ['label' => 'Total Nominal', 'value' => 'Rp ' . number_format($billingItems->sum('amount'), 0, ',', '.')],
+            ['label' => 'Transfer Pending', 'value' => PaymentSubmission::where('school_id', $schoolId)->where('status', 'pending')->count()],
+        ];
+
+        return view('pages.keuangan.billing', [
+            'billingItems' => $billingItems,
+            'incomeTypes' => $incomeTypes,
+            'metrics' => $metrics,
         ]);
     }
 
@@ -267,25 +514,63 @@ class FinanceFoundationController extends Controller
         BillingItem::create([
             ...$validated,
             'school_id' => $schoolId,
-            'status' => 'draft',
+            'status' => 'active',
         ]);
 
-        return back()->with('success', 'Tagihan berhasil disimpan sebagai draft.');
+        return back()->with('success', 'Tagihan berhasil disimpan.');
     }
 
-    public function closing(SchoolContext $schoolContext): View
+    public function updateBilling(Request $request, BillingItem $billingItem, SchoolContext $schoolContext): RedirectResponse
+    {
+        $schoolId = $this->activeSchoolId($request, $schoolContext);
+        abort_unless((int) $billingItem->school_id === $schoolId, 404);
+
+        $validated = $request->validate([
+            'income_type_id' => ['nullable', 'integer', Rule::exists('income_types', 'id')->where(fn ($query) => $query->where('school_id', $schoolId))],
+            'name' => ['required', 'string', 'max:160'],
+            'amount' => ['required', 'numeric', 'min:0'],
+            'billing_frequency' => ['nullable', 'string', 'max:40'],
+            'due_date' => ['nullable', 'date'],
+            'target_type' => ['nullable', 'string', 'max:40'],
+            'status' => ['required', 'string', Rule::in(['draft', 'active', 'closed'])],
+        ]);
+
+        $billingItem->update($validated);
+
+        return back()->with('success', 'Tagihan berhasil diperbarui.');
+    }
+
+    public function closing(SchoolContext $schoolContext, FinanceClosingService $closingService): View
     {
         $schoolId = $schoolContext->activeSchoolIdFor();
 
-        return view('pages.foundation.index', [
-            'title' => 'Tutup Buku',
+        $validation = $closingService->validate($schoolId);
+        $closings = BookClosing::with('closedBy')
+            ->where('school_id', $schoolId)
+            ->latest('closed_at')
+            ->get();
+
+        $accounts = SchoolAccount::where('school_id', $schoolId)
+            ->orderBy('id')
+            ->get();
+
+        $lastClosing = $closings->first();
+
+        $metrics = [
+            ['label' => 'Total Periode Ditutup', 'value' => $closings->count().' periode'],
+            ['label' => 'Tutup Buku Terakhir', 'value' => $lastClosing ? $lastClosing->period : 'Belum Ada'],
+            ['label' => 'Status Audit Kesiapan', 'value' => $validation['all_passed'] ? 'Siap Tutup Buku' : 'Perlu Tindakan'],
+            ['label' => 'Approval Pending', 'value' => $validation['pending_approvals'].' item'],
+        ];
+
+        return view('pages.keuangan.closing', [
+            'title' => 'Tutup Buku & Penguncian Periode',
             'eyebrow' => 'Financial Closing',
-            'description' => 'Tutup buku bulanan, tahunan, dan BOS menyimpan snapshot saldo dan mengunci periode.',
-            'metrics' => [
-                ['label' => 'Periode Ditutup', 'value' => BookClosing::where('school_id', $schoolId)->count()],
-            ],
-            'rows' => BookClosing::where('school_id', $schoolId)->latest()->get(['type', 'period', 'status', 'closed_at']),
-            'columns' => ['type' => 'Jenis', 'period' => 'Periode', 'status' => 'Status', 'closed_at' => 'Ditutup Pada'],
+            'description' => 'Tutup buku bulanan, tahunan, dan BOS merekam snapshot saldo kas/bank dan membekukan transaksi.',
+            'closings' => $closings,
+            'validation' => $validation,
+            'accounts' => $accounts,
+            'metrics' => $metrics,
         ]);
     }
 
@@ -299,7 +584,7 @@ class FinanceFoundationController extends Controller
 
         $closing->close($schoolId, $validated['type'], $validated['period'], $request->user()->id);
 
-        return back()->with('success', 'Periode finance berhasil ditutup.');
+        return back()->with('success', 'Periode finance berhasil ditutup dan saldo telah dikunci.');
     }
 
     public function ledger(Request $request, SchoolContext $schoolContext, FinanceLedgerService $ledger): View
@@ -322,29 +607,36 @@ class FinanceFoundationController extends Controller
         ]);
     }
 
-    public function reports(SchoolContext $schoolContext, FinanceLedgerService $ledger): View
+    public function reports(Request $request, SchoolContext $schoolContext, FinanceLedgerService $ledger): View
     {
         $schoolId = $schoolContext->activeSchoolIdFor();
-        $summary = $ledger->summary($schoolId);
+        $filters = $request->only(['from', 'to', 'source_funding', 'account_id']);
 
-        return view('pages.foundation.index', [
-            'title' => 'Laporan Finance',
+        $summary = $ledger->summary($schoolId);
+        $entries = $ledger->entries($schoolId, $filters);
+        $accounts = SchoolAccount::where('school_id', $schoolId)->get();
+
+        $debetTotal = (float) $entries->sum('debet');
+        $kreditTotal = (float) $entries->sum('kredit');
+        $surplusDefisit = $debetTotal - $kreditTotal;
+
+        $metrics = [
+            ['label' => 'Total Penerimaan', 'value' => 'Rp '.number_format($debetTotal, 0, ',', '.')],
+            ['label' => 'Total Pengeluaran', 'value' => 'Rp '.number_format($kreditTotal, 0, ',', '.')],
+            ['label' => 'Surplus / (Defisit)', 'value' => 'Rp '.number_format($surplusDefisit, 0, ',', '.')],
+            ['label' => 'Sisa Piutang Siswa', 'value' => 'Rp '.number_format($summary['outstanding'], 0, ',', '.')],
+            ['label' => 'Total Saldo Rekening', 'value' => 'Rp '.number_format($summary['account_balance'], 0, ',', '.')],
+        ];
+
+        return view('pages.keuangan.reports', [
+            'title' => 'Laporan Keuangan & Pembukuan',
             'eyebrow' => 'Finance Reports',
-            'description' => 'Ringkasan finance sekolah aktif berdasarkan transaksi yang sudah disetujui.',
+            'description' => 'Ringkasan mutasi kas, realisasi anggaran, dan buku jurnal keuangan sekolah yang telah disetujui.',
             'summary' => $summary,
-            'metrics' => [
-                ['label' => 'Terkumpul', 'value' => 'Rp '.number_format($summary['collected'], 0, ',', '.')],
-                ['label' => 'Terpakai', 'value' => 'Rp '.number_format($summary['spent'], 0, ',', '.')],
-                ['label' => 'Tunggakan', 'value' => 'Rp '.number_format($summary['outstanding'], 0, ',', '.')],
-                ['label' => 'Saldo Rekening', 'value' => 'Rp '.number_format($summary['account_balance'], 0, ',', '.')],
-            ],
-            'sections' => [[
-                'title' => 'Ringkasan periode berjalan',
-                'items' => [
-                    'Penerimaan dan pengeluaran hanya dihitung dari data approved.',
-                    'Saldo rekening mengikuti rekening sekolah aktif.',
-                ],
-            ]],
+            'entries' => $entries,
+            'accounts' => $accounts,
+            'filters' => $filters,
+            'metrics' => $metrics,
         ]);
     }
 

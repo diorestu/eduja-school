@@ -17,7 +17,7 @@ class SppTransactionController extends Controller
 {
     public function index(Request $request)
     {
-        $invoices = Invoice::with(['student.schoolClasses', 'transactions'])
+        $invoices = Invoice::with(['student.schoolClasses', 'transactions', 'invoiceItems'])
             ->orderBy('created_at', 'desc');
 
         if ($request->has('search') && !empty($request->search)) {

@@ -15,4 +15,14 @@ class IncomeType extends Model
         'uses_allocation' => 'boolean',
         'requires_approval' => 'boolean',
     ];
+
+    public function fundAllocations(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(FundAllocation::class);
+    }
+
+    public function billingItems(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(BillingItem::class);
+    }
 }

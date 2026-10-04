@@ -26,7 +26,7 @@ it('shows the school account form and excludes accounts from another school', fu
         'status' => 'active', 'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
     ]);
     SchoolAccount::create(['school_id' => $other, 'name' => 'Rekening Rahasia', 'type' => 'Tunai']);
-    $this->get(route('finance.accounts'))->assertOk()->assertSee('+ Rekening Sekolah')
+    $this->get(route('finance.accounts'))->assertOk()->assertSee('Rekening Sekolah')
         ->assertSee('Nominal saat ini')->assertDontSee('Rekening Rahasia');
 });
 
