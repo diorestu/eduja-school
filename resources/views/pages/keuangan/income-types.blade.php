@@ -81,8 +81,8 @@
         },
         openEdit(row) {
             this.editingIncome = row;
-            this.editUsesAllocation = row.uses_allocation ? '1' : '0';
-            this.editRequiresApproval = row.requires_approval ? '1' : '0';
+            this.editUsesAllocation = (row.uses_allocation === '1' || row.uses_allocation === 1 || row.uses_allocation === true) ? '1' : '0';
+            this.editRequiresApproval = (row.requires_approval === '1' || row.requires_approval === 1 || row.requires_approval === true) ? '1' : '0';
             this.editAllocations = (row.allocations && row.allocations.length > 0)
                 ? JSON.parse(JSON.stringify(row.allocations)).map(a => ({
                     name: a.name,
@@ -234,14 +234,14 @@
                             <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
                                 {{-- Nama Alokasi --}}
                                 <div class="sm:col-span-4">
-                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300 mb-1">Nama Alokasi <span class="text-red-500">*</span></label>
-                                    <input type="text" x-model="alloc.name" :name="'allocations[' + index + '][name]'" required placeholder="Misal: Kas Utama / Tabungan" class="text-xs py-1.5 px-2.5 min-h-[36px]">
+                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300 mb-1">Nama Alokasi <span class="text-red-500" x-show="usesAllocation == '1'">*</span></label>
+                                    <input type="text" x-model="alloc.name" :name="'allocations[' + index + '][name]'" :required="usesAllocation == '1'" :disabled="usesAllocation != '1'" placeholder="Misal: Kas Utama / Tabungan" class="text-xs py-1.5 px-2.5 min-h-[36px]">
                                 </div>
 
                                 {{-- Metode: Persentase / Angka --}}
                                 <div class="sm:col-span-3">
-                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300 mb-1">Metode <span class="text-red-500">*</span></label>
-                                    <select x-model="alloc.method" :name="'allocations[' + index + '][method]'" required class="text-xs py-1.5 px-2 min-h-[36px]">
+                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300 mb-1">Metode <span class="text-red-500" x-show="usesAllocation == '1'">*</span></label>
+                                    <select x-model="alloc.method" :name="'allocations[' + index + '][method]'" :required="usesAllocation == '1'" :disabled="usesAllocation != '1'" class="text-xs py-1.5 px-2 min-h-[36px]">
                                         <option value="persentase">Persentase (%)</option>
                                         <option value="nominal">Angka / Nominal (Rp)</option>
                                     </select>
@@ -255,7 +255,8 @@
                                             :inputmode="alloc.method === 'persentase' ? 'decimal' : 'numeric'"
                                             :data-mask="alloc.method === 'nominal' ? 'currency' : null"
                                             min="0" :step="alloc.method === 'persentase' ? '0.01' : null" :max="alloc.method === 'persentase' ? '100' : null"
-                                            x-model="alloc.amount" :name="'allocations[' + index + '][amount]'" required
+                                            x-model="alloc.amount" :name="'allocations[' + index + '][amount]'"
+                                            :required="usesAllocation == '1'" :disabled="usesAllocation != '1'"
                                             :placeholder="alloc.method === 'persentase' ? '50' : '500.000'"
                                             class="text-xs py-1.5 pl-2 pr-6 min-h-[36px] tabular-nums"
                                             :class="alloc.method === 'nominal' ? 'mask-currency' : ''">
@@ -266,8 +267,8 @@
                                 {{-- Dompet Penyimpanan (Mengacu ke Dompet Virtual) --}}
                                 <div class="sm:col-span-3 flex items-end gap-1.5">
                                     <div class="flex-1 min-w-0">
-                                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300 mb-1 truncate">Dompet Penyimpanan <span class="text-red-500">*</span></label>
-                                        <select x-model="alloc.virtual_wallet_id" :name="'allocations[' + index + '][virtual_wallet_id]'" required class="text-xs py-1.5 px-2 min-h-[36px]">
+                                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300 mb-1 truncate">Dompet Penyimpanan <span class="text-red-500" x-show="usesAllocation == '1'">*</span></label>
+                                        <select x-model="alloc.virtual_wallet_id" :name="'allocations[' + index + '][virtual_wallet_id]'" :required="usesAllocation == '1'" :disabled="usesAllocation != '1'" class="text-xs py-1.5 px-2 min-h-[36px]">
                                             <option value="" disabled>-- Pilih Dompet Virtual --</option>
                                             @if(isset($virtualWallets) && $virtualWallets->isNotEmpty())
                                                 @foreach($virtualWallets as $wallet)
@@ -463,14 +464,14 @@
                             <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
                                 {{-- Nama Alokasi --}}
                                 <div class="sm:col-span-4">
-                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300 mb-1">Nama Alokasi <span class="text-red-500">*</span></label>
-                                    <input type="text" x-model="alloc.name" :name="'allocations[' + index + '][name]'" required placeholder="Misal: Kas Utama / Tabungan" class="text-xs py-1.5 px-2.5 min-h-[36px]">
+                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300 mb-1">Nama Alokasi <span class="text-red-500" x-show="editUsesAllocation == '1'">*</span></label>
+                                    <input type="text" x-model="alloc.name" :name="'allocations[' + index + '][name]'" :required="editUsesAllocation == '1'" :disabled="editUsesAllocation != '1'" placeholder="Misal: Kas Utama / Tabungan" class="text-xs py-1.5 px-2.5 min-h-[36px]">
                                 </div>
 
                                 {{-- Metode: Persentase / Angka --}}
                                 <div class="sm:col-span-3">
-                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300 mb-1">Metode <span class="text-red-500">*</span></label>
-                                    <select x-model="alloc.method" :name="'allocations[' + index + '][method]'" required class="text-xs py-1.5 px-2 min-h-[36px]">
+                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300 mb-1">Metode <span class="text-red-500" x-show="editUsesAllocation == '1'">*</span></label>
+                                    <select x-model="alloc.method" :name="'allocations[' + index + '][method]'" :required="editUsesAllocation == '1'" :disabled="editUsesAllocation != '1'" class="text-xs py-1.5 px-2 min-h-[36px]">
                                         <option value="persentase">Persentase (%)</option>
                                         <option value="nominal">Angka / Nominal (Rp)</option>
                                     </select>
@@ -484,7 +485,8 @@
                                             :inputmode="alloc.method === 'persentase' ? 'decimal' : 'numeric'"
                                             :data-mask="alloc.method === 'nominal' ? 'currency' : null"
                                             min="0" :step="alloc.method === 'persentase' ? '0.01' : null" :max="alloc.method === 'persentase' ? '100' : null"
-                                            x-model="alloc.amount" :name="'allocations[' + index + '][amount]'" required
+                                            x-model="alloc.amount" :name="'allocations[' + index + '][amount]'"
+                                            :required="editUsesAllocation == '1'" :disabled="editUsesAllocation != '1'"
                                             :placeholder="alloc.method === 'persentase' ? '50' : '500.000'"
                                             class="text-xs py-1.5 pl-2 pr-6 min-h-[36px] tabular-nums"
                                             :class="alloc.method === 'nominal' ? 'mask-currency' : ''">
@@ -495,8 +497,8 @@
                                 {{-- Dompet Penyimpanan (Mengacu ke Dompet Virtual) --}}
                                 <div class="sm:col-span-3 flex items-end gap-1.5">
                                     <div class="flex-1 min-w-0">
-                                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300 mb-1 truncate">Dompet Penyimpanan <span class="text-red-500">*</span></label>
-                                        <select x-model="alloc.virtual_wallet_id" :name="'allocations[' + index + '][virtual_wallet_id]'" required class="text-xs py-1.5 px-2 min-h-[36px]">
+                                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300 mb-1 truncate">Dompet Penyimpanan <span class="text-red-500" x-show="editUsesAllocation == '1'">*</span></label>
+                                        <select x-model="alloc.virtual_wallet_id" :name="'allocations[' + index + '][virtual_wallet_id]'" :required="editUsesAllocation == '1'" :disabled="editUsesAllocation != '1'" class="text-xs py-1.5 px-2 min-h-[36px]">
                                             <option value="" disabled>-- Pilih Dompet Virtual --</option>
                                             @if(isset($virtualWallets) && $virtualWallets->isNotEmpty())
                                                 @foreach($virtualWallets as $wallet)

@@ -302,7 +302,9 @@ class FinanceFoundationController extends Controller
     public function storeIncomeType(Request $request, SchoolContext $schoolContext, FinanceService $finance): RedirectResponse
     {
         $schoolId = $this->activeSchoolId($request, $schoolContext);
-        $validated = $request->validate([
+        $usesAllocation = filter_var($request->input('uses_allocation', false), FILTER_VALIDATE_BOOLEAN);
+
+        $rules = [
             'name' => [
                 'required',
                 'string',
@@ -313,13 +315,18 @@ class FinanceFoundationController extends Controller
             'category' => ['required', 'string', 'max:50'],
             'uses_allocation' => ['nullable'],
             'requires_approval' => ['nullable'],
-            'allocations' => ['nullable', 'array'],
-            'allocations.*.name' => ['nullable', 'string', 'max:120'],
-            'allocations.*.method' => ['nullable', 'string', Rule::in(['persentase', 'nominal'])],
-            'allocations.*.amount' => ['nullable', 'numeric', 'min:0'],
-            'allocations.*.virtual_wallet_id' => ['nullable'],
-            'allocations.*.account_id' => ['nullable'],
-        ], [
+        ];
+
+        if ($usesAllocation) {
+            $rules['allocations'] = ['nullable', 'array'];
+            $rules['allocations.*.name'] = ['nullable', 'string', 'max:120'];
+            $rules['allocations.*.method'] = ['nullable', 'string', Rule::in(['persentase', 'nominal'])];
+            $rules['allocations.*.amount'] = ['nullable', 'numeric', 'min:0'];
+            $rules['allocations.*.virtual_wallet_id'] = ['nullable'];
+            $rules['allocations.*.account_id'] = ['nullable'];
+        }
+
+        $validated = $request->validate($rules, [
             'name.required' => 'Nama jenis pemasukan wajib diisi.',
             'name.unique' => 'Jenis pemasukan dengan nama "'.$request->input('name').'" sudah ada.',
             'category.required' => 'Kategori wajib dipilih.',
@@ -335,12 +342,12 @@ class FinanceFoundationController extends Controller
             $validated['code'] = $code;
         }
 
-        $validated['uses_allocation'] = filter_var($validated['uses_allocation'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        $validated['requires_approval'] = filter_var($validated['requires_approval'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $validated['uses_allocation'] = $usesAllocation;
+        $validated['requires_approval'] = filter_var($request->input('requires_approval', false), FILTER_VALIDATE_BOOLEAN);
 
         $incomeType = $finance->createIncomeType($schoolId, $validated);
 
-        if ($validated['uses_allocation'] && !empty($request->input('allocations'))) {
+        if ($usesAllocation && !empty($request->input('allocations'))) {
             foreach ($request->input('allocations') as $alloc) {
                 $walletId = $alloc['virtual_wallet_id'] ?? $alloc['account_id'] ?? null;
                 if (!empty($alloc['name']) && !empty($walletId)) {
@@ -380,7 +387,9 @@ class FinanceFoundationController extends Controller
             abort(403, 'Aksi tidak diizinkan untuk sekolah ini.');
         }
 
-        $validated = $request->validate([
+        $usesAllocation = filter_var($request->input('uses_allocation', false), FILTER_VALIDATE_BOOLEAN);
+
+        $rules = [
             'name' => [
                 'required',
                 'string',
@@ -390,13 +399,18 @@ class FinanceFoundationController extends Controller
             'category' => ['required', 'string', 'max:50'],
             'uses_allocation' => ['nullable'],
             'requires_approval' => ['nullable'],
-            'allocations' => ['nullable', 'array'],
-            'allocations.*.name' => ['nullable', 'string', 'max:120'],
-            'allocations.*.method' => ['nullable', 'string', Rule::in(['persentase', 'nominal'])],
-            'allocations.*.amount' => ['nullable', 'numeric', 'min:0'],
-            'allocations.*.virtual_wallet_id' => ['nullable'],
-            'allocations.*.account_id' => ['nullable'],
-        ], [
+        ];
+
+        if ($usesAllocation) {
+            $rules['allocations'] = ['nullable', 'array'];
+            $rules['allocations.*.name'] = ['nullable', 'string', 'max:120'];
+            $rules['allocations.*.method'] = ['nullable', 'string', Rule::in(['persentase', 'nominal'])];
+            $rules['allocations.*.amount'] = ['nullable', 'numeric', 'min:0'];
+            $rules['allocations.*.virtual_wallet_id'] = ['nullable'];
+            $rules['allocations.*.account_id'] = ['nullable'];
+        }
+
+        $validated = $request->validate($rules, [
             'name.required' => 'Nama jenis pemasukan wajib diisi.',
             'name.unique' => 'Jenis pemasukan dengan nama "'.$request->input('name').'" sudah ada.',
             'category.required' => 'Kategori wajib dipilih.',

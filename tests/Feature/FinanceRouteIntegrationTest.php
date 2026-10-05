@@ -620,6 +620,26 @@ it('creates and updates income types with dynamic fund allocations including per
     ])->assertRedirect(route('finance.income-types'));
 
     expect(DB::table('fund_allocations')->where('income_type_id', $incomeType->id)->count())->toBe(0);
+
+    // 5. Create income type with uses_allocation = '0' without any allocations payload
+    $this->post(route('finance.income-types.store'), [
+        'name' => 'Sumbangan Sukarela',
+        'category' => 'Lainnya',
+        'uses_allocation' => '0',
+        'requires_approval' => '0',
+    ])->assertRedirect(route('finance.income-types'));
+
+    $noAllocType = DB::table('income_types')->where('name', 'Sumbangan Sukarela')->first();
+    expect($noAllocType)->not->toBeNull()
+        ->and((bool) $noAllocType->uses_allocation)->toBeFalse();
+    expect(DB::table('fund_allocations')->where('income_type_id', $noAllocType->id)->count())->toBe(0);
+
+    // 6. Ensure Blade has conditional required and disabled bindings so hidden fields do not block submission
+    $resp = $this->get(route('finance.income-types'))->assertOk();
+    $resp->assertSee(':required="usesAllocation == \'1\'"', false);
+    $resp->assertSee(':disabled="usesAllocation != \'1\'"', false);
+    $resp->assertSee(':required="editUsesAllocation == \'1\'"', false);
+    $resp->assertSee(':disabled="editUsesAllocation != \'1\'"', false);
 });
 
 it('separates Susun Anggaran and Revisi Anggaran routes and navigates independently', function () {
