@@ -79,13 +79,12 @@ it('organizes the bendahara navigation around the requested finance workflow', f
         'Pemasukan',
         'Pengeluaran',
         'Approval',
-        'Dompet Virtual',
         'Laporan',
         'Tutup Buku',
     );
 
     expect(collect($items->firstWhere('name', 'Master Data Keuangan')['subItems'])->pluck('name')->all())
-        ->toEqual(['Rekening Sekolah', 'Jenis Pemasukan', 'BOS', 'Jenis Pengeluaran']);
+        ->toEqual(['Rekening Sekolah', 'Dompet Virtual', 'Jenis Pemasukan', 'BOS', 'Jenis Pengeluaran']);
     expect(collect($items->firstWhere('name', 'Perencanaan Anggaran')['subItems'])->pluck('name')->all())
         ->toEqual(['Tahun Anggaran', 'Susun Anggaran', 'Revisi Anggaran']);
 
@@ -94,7 +93,6 @@ it('organizes the bendahara navigation around the requested finance workflow', f
         'Pemasukan' => '/spp/transaksi',
         'Pengeluaran' => '/bos/belanja',
         'Approval' => '/finance/approvals',
-        'Dompet Virtual' => '/finance/accounts',
         'Laporan' => '/finance/reports',
         'Tutup Buku' => '/finance/closing',
     ] as $name => $path) {
@@ -747,6 +745,294 @@ it('renders modern data-table on tagihan, pemasukan, pengeluaran, and approvals 
     expect(preg_match('/<button[^>]*>\s*\+/', $respReports->getContent()))->toBe(0);
 });
 
+it('implements CRUD for virtual wallets as special school fund buckets under master data keuangan', function () {
+    $schoolId = makeFinanceRouteSchool('Sekolah Dompet Virtual');
+    $user = makeFinanceRouteUser($schoolId);
+    $this->actingAs($user)->withSession(['active_school_id' => $schoolId]);
 
+    // 1. Visit virtual wallets page
+    $response = $this->get(route('finance.virtual-wallets'))->assertOk();
+    $response->assertSee('Dompet Virtual');
+    $response->assertSee('Master Data Keuangan');
+    $response->assertSee('Kantong-kantong dompet virtual');
+    $response->assertSee('data-table', false);
 
+    // 2. Store virtual wallet
+    $this->post(route('finance.virtual-wallets.store'), [
+        'name' => 'Kantong Perawatan Gedung',
+        'nominal' => 3500000,
+        'status' => 'active',
+        'source' => 'Dana Komite',
+        'notes' => 'Keperluan perbaikan fasilitas ruang kelas',
+    ])->assertRedirect(route('finance.virtual-wallets'))->assertSessionHas('success');
+
+    $wallet = DB::table('virtual_wallets')->where('school_id', $schoolId)->first();
+    expect($wallet)->not->toBeNull()
+        ->and($wallet->name)->toBe('Kantong Perawatan Gedung')
+        ->and((float) $wallet->nominal)->toBe(3500000.0)
+        ->and($wallet->status)->toBe('active')
+        ->and($wallet->source)->toBe('Dana Komite');
+
+    // 3. Update virtual wallet
+    $this->put(route('finance.virtual-wallets.update', $wallet->id), [
+        'name' => 'Kantong Perawatan Gedung & Fasilitas',
+        'nominal' => 4000000,
+        'status' => 'active',
+        'source' => 'Dana Komite & Hibah',
+        'notes' => 'Catatan revisi',
+    ])->assertRedirect(route('finance.virtual-wallets'))->assertSessionHas('success');
+
+    $updated = DB::table('virtual_wallets')->where('id', $wallet->id)->first();
+    expect($updated->name)->toBe('Kantong Perawatan Gedung & Fasilitas')
+        ->and((float) $updated->nominal)->toBe(4000000.0)
+        ->and($updated->source)->toBe('Dana Komite & Hibah');
+
+    // 4. Delete virtual wallet
+    $this->delete(route('finance.virtual-wallets.destroy', $wallet->id))
+        ->assertRedirect(route('finance.virtual-wallets'))->assertSessionHas('success');
+    expect(DB::table('virtual_wallets')->where('id', $wallet->id)->count())->toBe(0);
+});
+
+it('links virtual wallet as storage destination for income type fund allocations', function () {
+    $schoolId = makeFinanceRouteSchool('Sekolah Kantong Alokasi');
+    $user = makeFinanceRouteUser($schoolId);
+    $this->actingAs($user)->withSession(['active_school_id' => $schoolId]);
+
+    // Create 2 virtual wallets
+    $wallet1Id = DB::table('virtual_wallets')->insertGetId([
+        'school_id' => $schoolId,
+        'name' => 'Kantong Ekstrakurikuler',
+        'nominal' => 1000000,
+        'status' => 'active',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $wallet2Id = DB::table('virtual_wallets')->insertGetId([
+        'school_id' => $schoolId,
+        'name' => 'Kantong Kesejahteraan Guru',
+        'nominal' => 2000000,
+        'status' => 'active',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    // Check income types page lists virtual wallets in allocation form
+    $resp = $this->get(route('finance.income-types'))->assertOk();
+    $resp->assertSee('Kantong Ekstrakurikuler');
+    $resp->assertSee('Kantong Kesejahteraan Guru');
+
+    // Store income type using virtual wallets
+    $this->post(route('finance.income-types.store'), [
+        'name' => 'Uang Praktikum Lab',
+        'category' => 'Komite',
+        'uses_allocation' => '1',
+        'allocations' => [
+            [
+                'name' => 'Porsi Kegiatan',
+                'method' => 'persentase',
+                'amount' => 50,
+                'virtual_wallet_id' => $wallet1Id,
+            ],
+            [
+                'name' => 'Porsi Kesejahteraan',
+                'method' => 'persentase',
+                'amount' => 50,
+                'virtual_wallet_id' => $wallet2Id,
+            ],
+        ],
+    ])->assertRedirect(route('finance.income-types'));
+
+    $incomeType = DB::table('income_types')->where('name', 'Uang Praktikum Lab')->first();
+    expect($incomeType)->not->toBeNull();
+
+    $allocations = DB::table('fund_allocations')->where('income_type_id', $incomeType->id)->get();
+    expect($allocations)->toHaveCount(2);
+
+    $alloc1 = $allocations->firstWhere('name', 'Porsi Kegiatan');
+    expect($alloc1->virtual_wallet_id)->toBe($wallet1Id);
+
+    // Verify virtual wallet source was updated with the income type name
+    $wallet1 = DB::table('virtual_wallets')->where('id', $wallet1Id)->first();
+    expect($wallet1->source)->toBe('Uang Praktikum Lab');
+});
+
+it('places login assistance link below password input on signin page', function () {
+    $response = $this->get('/signin')->assertOk();
+    $content = $response->getContent();
+
+    $passwordPos = strpos($content, 'id="password"');
+    $helpPos = strpos($content, 'Butuh bantuan masuk?');
+
+    expect($passwordPos)->not->toBeFalse();
+    expect($helpPos)->not->toBeFalse();
+    expect($helpPos)->toBeGreaterThan($passwordPos);
+});
+
+it('implements Flow Master BOS to manage fund sources and components with modal and validation', function () {
+    $schoolId = makeFinanceRouteSchool('Sekolah Master BOS');
+    $user = makeFinanceRouteUser($schoolId);
+    $this->actingAs($user)->withSession(['active_school_id' => $schoolId]);
+
+    // 1. Visit BOS page from Master Data Keuangan
+    $response = $this->get(route('bos.anggaran.index'))->assertOk();
+    $response->assertSee('Master Data Keuangan');
+    $response->assertSee('Data Sumber Dana BOS');
+    $response->assertSee('Tambah BOS');
+    $response->assertSee('BOS Reguler');
+    $response->assertSee('Belanja pegawai');
+    $response->assertSee('Sumber dana dan komponen BOS dapat ditambahkan oleh admin jika diperlukan.');
+
+    // 2. Validate empty submission fails
+    $this->post(route('bos.anggaran.store'), [
+        'source_funding' => '',
+        'name' => '',
+    ])->assertSessionHasErrors(['source_funding', 'name']);
+
+    // 3. Store new BOS entry with predefined options
+    $this->post(route('bos.anggaran.store'), [
+        'source_funding' => 'BOS Reguler',
+        'name' => 'Belanja Pegawai',
+    ])->assertRedirect(route('bos.anggaran.index'))
+      ->assertSessionHas('success_modal', true)
+      ->assertSessionHas('success', 'Data jenis pemasukan BOS berhasil disimpan ke dalam sistem.');
+
+    $cat = DB::table('budget_categories')->where('school_id', $schoolId)->where('source_funding', 'BOS Reguler')->first();
+    expect($cat)->not->toBeNull()
+        ->and($cat->name)->toBe('Belanja Pegawai')
+        ->and($cat->code)->toStartWith('BOS-');
+
+    // 4. Store custom "Lainnya" source and component
+    $this->post(route('bos.anggaran.store'), [
+        'source_funding' => 'Lainnya',
+        'custom_source' => 'BOS Kinerja Afirmasi',
+        'name' => 'Lainnya',
+        'custom_component' => 'Digitalisasi Pembelajaran',
+    ])->assertRedirect(route('bos.anggaran.index'))
+      ->assertSessionHas('success_modal', true);
+
+    $customCat = DB::table('budget_categories')->where('school_id', $schoolId)->where('source_funding', 'BOS Kinerja Afirmasi')->first();
+    expect($customCat)->not->toBeNull()
+        ->and($customCat->name)->toBe('Digitalisasi Pembelajaran');
+
+    // 5. Update BOS entry
+    $this->put(route('bos.anggaran.update', $cat->id), [
+        'source_funding' => 'BOS Reguler',
+        'name' => 'Belanja Pegawai & Honorarium',
+    ])->assertRedirect(route('bos.anggaran.index'))->assertSessionHas('success');
+
+    $updatedCat = DB::table('budget_categories')->where('id', $cat->id)->first();
+    expect($updatedCat->name)->toBe('Belanja Pegawai & Honorarium');
+
+    // 6. Delete BOS entry
+    $this->delete(route('bos.anggaran.destroy', $cat->id))
+        ->assertRedirect(route('bos.anggaran.index'))->assertSessionHas('success');
+    expect(DB::table('budget_categories')->where('id', $cat->id)->count())->toBe(0);
+});
+
+it('implements Flow Master Jenis Pengeluaran according to Menu Bendahara page 10-11', function () {
+    $schoolId = makeFinanceRouteSchool('Sekolah Jenis Pengeluaran');
+    $user = makeFinanceRouteUser($schoolId);
+    $this->actingAs($user)->withSession(['active_school_id' => $schoolId]);
+
+    // 1. Visit Jenis Pengeluaran page
+    $response = $this->get(route('finance.expense-types'))->assertOk();
+    $response->assertSee('Jenis Pengeluaran');
+    $response->assertSee('Master Data Keuangan');
+    $response->assertSee('data-table');
+
+    // 2. Validation fails if required fields are missing
+    $this->post(route('finance.expense-types.store'), [
+        'name' => '',
+        'source_funding' => '',
+    ])->assertSessionHasErrors(['name', 'source_funding']);
+
+    // 3. Successfully create expense type
+    $this->post(route('finance.expense-types.store'), [
+        'name' => 'Honorarium Guru Tidak Tetap',
+        'source_funding' => 'BOS Reguler',
+        'bos_component' => 'Belanja pegawai',
+        'requires_approval' => '1',
+    ])->assertRedirect()->assertSessionHas('success', 'Jenis pengeluaran disimpan');
+
+    $expenseType = DB::table('expense_types')
+        ->where('school_id', $schoolId)
+        ->where('name', 'Honorarium Guru Tidak Tetap')
+        ->first();
+
+    expect($expenseType)->not->toBeNull()
+        ->and($expenseType->code)->toStartWith('JPK-')
+        ->and($expenseType->source_funding)->toBe('BOS Reguler')
+        ->and($expenseType->bos_component)->toBe('Belanja pegawai')
+        ->and((bool) $expenseType->requires_approval)->toBeTrue();
+
+    // 4. Update expense type
+    $this->put(route('finance.expense-types.update', $expenseType->id), [
+        'name' => 'Honorarium GTT & PTT',
+        'source_funding' => 'Komite',
+        'requires_approval' => '0',
+    ])->assertRedirect()->assertSessionHas('success', 'Jenis pengeluaran disimpan');
+
+    $updated = DB::table('expense_types')->where('id', $expenseType->id)->first();
+    expect($updated->name)->toBe('Honorarium GTT & PTT')
+        ->and($updated->source_funding)->toBe('Komite')
+        ->and((bool) $updated->requires_approval)->toBeFalse();
+
+    // 5. Delete expense type
+    $this->delete(route('finance.expense-types.destroy', $expenseType->id))
+        ->assertRedirect()->assertSessionHas('success');
+    expect(DB::table('expense_types')->where('id', $expenseType->id)->count())->toBe(0);
+});
+
+it('implements Flow Perencanaan Anggaran actions according to Menu Bendahara page 12-15', function () {
+    $schoolId = makeFinanceRouteSchool('Sekolah Perencanaan Anggaran');
+    $user = makeFinanceRouteUser($schoolId);
+    $this->actingAs($user)->withSession(['active_school_id' => $schoolId]);
+
+    // 1. Tahun Anggaran: Store & notification
+    $this->post(route('finance.budget-years.store'), [
+        'name' => 'Tahun Anggaran 2026/2027',
+        'start_date' => '2026-01-01',
+        'end_date' => '2026-12-31',
+    ])->assertRedirect()->assertSessionHas('success', 'Tahun anggaran disimpan');
+
+    $year = DB::table('budget_years')->where('school_id', $schoolId)->where('name', 'Tahun Anggaran 2026/2027')->first();
+    expect($year)->not->toBeNull();
+
+    // 2. Susun Anggaran: Store & notification
+    $this->post(route('finance.budgets.store'), [
+        'budget_year_id' => $year->id,
+        'source_funding' => 'BOS',
+        'program_name' => 'Pengembangan Perpustakaan',
+        'activity_name' => 'Pengadaan Buku Pelajaran',
+        'amount' => 15000000,
+    ])->assertRedirect()->assertSessionHas('success', 'Susunan anggaran disimpan');
+
+    $plan = DB::table('budget_plans')
+        ->where('school_id', $schoolId)
+        ->where('program_name', 'Pengembangan Perpustakaan')
+        ->first();
+    expect($plan)->not->toBeNull()
+        ->and($plan->status)->toBe('pending');
+
+    // 3. Revisi Anggaran: Store revision & notification
+    $this->post(route('finance.budgets.revisions.store', $plan->id), [
+        'new_amount' => 18000000,
+        'reason' => 'Kebutuhan kurikulum baru',
+    ])->assertRedirect()->assertSessionHas('success', 'Susunan anggaran disimpan');
+
+    $revision = DB::table('budget_plan_revisions')->where('budget_plan_id', $plan->id)->first();
+    expect($revision)->not->toBeNull()
+        ->and((float) $revision->new_amount)->toEqual(18000000.0);
+
+    // 4. Delete budget plan
+    $this->delete(route('finance.budgets.destroy', $plan->id))
+        ->assertRedirect()->assertSessionHas('success', 'Susunan anggaran berhasil dihapus.');
+    expect(DB::table('budget_plans')->where('id', $plan->id)->count())->toBe(0);
+
+    // 5. Delete budget year
+    $this->delete(route('finance.budget-years.destroy', $year->id))
+        ->assertRedirect()->assertSessionHas('success', 'Tahun anggaran berhasil dihapus.');
+    expect(DB::table('budget_years')->where('id', $year->id)->count())->toBe(0);
+});
 

@@ -8,7 +8,7 @@
         ['key' => 'program_name', 'label' => 'Program & Kegiatan', 'bold' => true, 'subKey' => 'activity_name'],
         ['key' => 'amount', 'label' => 'Nominal Anggaran', 'type' => 'currency', 'minimumFractionDigits' => 0],
         ['key' => 'status', 'label' => 'Status', 'type' => 'badge'],
-        ['key' => 'aksi', 'label' => 'Aksi', 'sortable' => false, 'onlyEdit' => true],
+        ['key' => 'aksi', 'label' => 'Aksi', 'sortable' => false, 'onlyEdit' => true, 'allowDelete' => true],
     ];
 
     $budgetRows = $budgetPlans->map(function ($plan) {
@@ -31,8 +31,10 @@
             'status_raw' => $plan->status ?? 'pending',
             'revision_url' => route('finance.budgets.revisions.store', $plan),
             'update_url' => route('finance.budgets.update', $plan),
+            'delete_url' => route('finance.budgets.destroy', $plan),
             'revisions_count' => $plan->revisions->count(),
             'only_edit' => true,
+            'allow_delete' => true,
         ];
     });
 
@@ -45,7 +47,11 @@
     x-data="{
         saving: false,
         activePlan: null,
+        deletingPlan: null,
         mode: 'revision', // 'revision' or 'edit'
+        createSource: 'komite',
+        createBosSource: 'BOS Reguler',
+        createBosComponent: 'Belanja pegawai',
         editYearId: '',
         editSource: 'BOS',
         editProgram: '',
@@ -67,12 +73,19 @@
                 this.$refs.actionModal.showModal();
             });
         },
+        openDelete(row) {
+            this.deletingPlan = row;
+            this.$nextTick(() => {
+                this.$refs.deleteBudgetModal.showModal();
+            });
+        },
         formatRupiah(val) {
             if (!val && val !== 0) return 'Rp 0';
             return 'Rp ' + Number(val).toLocaleString('id-ID');
         }
     }"
     @table-edit="openEdit($event.detail)"
+    @table-delete="openDelete($event.detail)"
     x-init="
         @if($errors->any() && !old('_method') && !old('new_amount')) $nextTick(() => $refs.budgetModal.showModal()); @endif
     ">
@@ -145,9 +158,18 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div class="work-field">
-                    <label for="budget-year-id">Tahun Anggaran <span class="text-red-500">*</span></label>
+                    <label for="budget-source">Sumber Dana <span class="text-red-500">*</span></label>
+                    <select id="budget-source" name="source_funding" x-model="createSource" required>
+                        <option value="Komite" @selected(old('source_funding') === 'Komite')>Komite</option>
+                        <option value="BOS" @selected(old('source_funding', 'BOS') === 'BOS')>BOS</option>
+                    </select>
+                    @error('source_funding')<p class="work-muted work-error text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
+                </div>
+
+                <div class="work-field">
+                    <label for="budget-year-id">Pilih Tahun Anggaran <span class="text-red-500">*</span></label>
                     <select id="budget-year-id" name="budget_year_id" required>
-                        <option value="" disabled @selected(!old('budget_year_id'))>-- Pilih Periode --</option>
+                        <option value="" disabled @selected(!old('budget_year_id'))>-- Pilih Tahun Anggaran Aktif --</option>
                         @foreach($budgetYears as $year)
                             <option value="{{ $year->id }}" @selected(old('budget_year_id') == $year->id)>
                                 {{ $year->name }} ({{ ucfirst($year->status) }})
@@ -156,17 +178,30 @@
                     </select>
                     @error('budget_year_id')<p class="work-muted work-error text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
                 </div>
+            </div>
 
-                <div class="work-field">
-                    <label for="budget-source">Sumber Pendanaan <span class="text-red-500">*</span></label>
-                    <select id="budget-source" name="source_funding" required>
-                        <option value="BOS" @selected(old('source_funding', 'BOS') === 'BOS')>BOS (Bantuan Operasional Sekolah)</option>
-                        <option value="Komite" @selected(old('source_funding') === 'Komite')>Komite Sekolah / SPP</option>
-                        <option value="Yayasan" @selected(old('source_funding') === 'Yayasan')>Yayasan</option>
-                        <option value="Hibah" @selected(old('source_funding') === 'Hibah')>Hibah / Donasi</option>
-                        <option value="Lainnya" @selected(old('source_funding') === 'Lainnya')>Lainnya</option>
+            {{-- Pilihan Tambahan jika Sumber Dana BOS --}}
+            <div x-show="createSource.toLowerCase() === 'bos'" x-transition class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-xl mb-4">
+                <div class="work-field mb-0">
+                    <label class="block text-xs font-semibold text-blue-900 dark:text-blue-300 mb-1">Sumber Dana BOS</label>
+                    <select name="bos_source" x-model="createBosSource" class="w-full text-xs rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-white">
+                        <option value="BOS Reguler">BOS Reguler</option>
+                        <option value="BOS Kinerja">BOS Kinerja</option>
+                        <option value="BOP">BOP</option>
+                        <option value="DAK">DAK</option>
+                        <option value="Lainnya">Lainnya</option>
                     </select>
-                    @error('source_funding')<p class="work-muted work-error text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
+                </div>
+                <div class="work-field mb-0">
+                    <label class="block text-xs font-semibold text-blue-900 dark:text-blue-300 mb-1">Komponen BOS</label>
+                    <select name="bos_component" x-model="createBosComponent" class="w-full text-xs rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-white">
+                        <option value="Belanja pegawai">Belanja pegawai</option>
+                        <option value="Belanja barang">Belanja barang</option>
+                        <option value="Belanja modal">Belanja modal</option>
+                        <option value="Pembelajaran">Pembelajaran</option>
+                        <option value="Pemeliharaan">Pemeliharaan</option>
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
                 </div>
             </div>
 
@@ -320,6 +355,38 @@
                 </div>
             </form>
         </div>
+    </dialog>
+
+    {{-- MODAL HAPUS ANGGARAN --}}
+    <dialog x-ref="deleteBudgetModal" class="account-dialog work" style="max-width: 28rem; width: 100%;" aria-labelledby="delete-budget-title"
+        @close="saving = false" @cancel="if (saving) $event.preventDefault()"
+        @click="const bounds = $el.getBoundingClientRect(); if (!saving && ($event.clientX < bounds.left || $event.clientX > bounds.right || $event.clientY < bounds.top || $event.clientY > bounds.bottom)) $el.close()">
+        <div class="account-dialog-head">
+            <div class="min-w-0">
+                <h2 id="delete-budget-title" class="text-base font-semibold text-gray-900 dark:text-white">Hapus Susunan Anggaran</h2>
+                <p class="work-muted text-xs mt-0.5">Tindakan ini tidak dapat dibatalkan.</p>
+            </div>
+            <button type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1 rounded-md" @click="$refs.deleteBudgetModal.close()" :disabled="saving" aria-label="Tutup dialog">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <p class="text-xs text-gray-600 dark:text-gray-400 my-4">
+            Apakah Anda yakin ingin menghapus susunan anggaran kegiatan <strong class="text-gray-900 dark:text-white" x-text="deletingPlan?.activity_name"></strong>?
+            Susunan anggaran yang sudah memiliki realisasi transaksi belanja tidak dapat dihapus.
+        </p>
+
+        <form method="POST" :action="deletingPlan ? deletingPlan.delete_url : '#'" @submit="saving = true" :aria-busy="saving">
+            @csrf
+            @method('DELETE')
+            <div class="account-dialog-actions mt-4">
+                <button type="button" class="work-btn work-btn-secondary" @click="$refs.deleteBudgetModal.close()" :disabled="saving">Batal</button>
+                <button type="submit" class="work-btn bg-rose-600 hover:bg-rose-700 text-white" :disabled="saving">
+                    <span x-show="!saving">Hapus Anggaran</span>
+                    <span x-show="saving" x-cloak>Menghapus…</span>
+                </button>
+            </div>
+        </form>
     </dialog>
 </div>
 @endsection

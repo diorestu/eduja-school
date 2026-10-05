@@ -154,6 +154,12 @@ Route::middleware('auth')->group(function () {
                 Route::post('/accounts', [FinanceFoundationController::class, 'storeAccount'])->name('accounts.store');
                 Route::put('/accounts/{account}', [FinanceFoundationController::class, 'updateAccount'])->name('accounts.update');
             });
+            Route::middleware('permission:finance.virtual_wallets,super_admin,bendahara')->group(function () {
+                Route::get('/virtual-wallets', [FinanceFoundationController::class, 'virtualWallets'])->name('virtual-wallets');
+                Route::post('/virtual-wallets', [FinanceFoundationController::class, 'storeVirtualWallet'])->name('virtual-wallets.store');
+                Route::put('/virtual-wallets/{virtualWallet}', [FinanceFoundationController::class, 'updateVirtualWallet'])->name('virtual-wallets.update');
+                Route::delete('/virtual-wallets/{virtualWallet}', [FinanceFoundationController::class, 'destroyVirtualWallet'])->name('virtual-wallets.destroy');
+            });
             Route::middleware('permission:finance.income_types,super_admin,bendahara')->group(function () {
                 Route::get('/income-types', [FinanceFoundationController::class, 'incomeTypes'])->name('income-types');
                 Route::post('/income-types', [FinanceFoundationController::class, 'storeIncomeType'])->name('income-types.store');
@@ -163,6 +169,8 @@ Route::middleware('auth')->group(function () {
             Route::middleware('permission:finance.expense_types,super_admin,bendahara')->group(function () {
                 Route::get('/expense-types', [FinanceFoundationController::class, 'expenseTypes'])->name('expense-types');
                 Route::post('/expense-types', [FinanceFoundationController::class, 'storeExpenseType'])->name('expense-types.store');
+                Route::put('/expense-types/{expenseType}', [FinanceFoundationController::class, 'updateExpenseType'])->name('expense-types.update');
+                Route::delete('/expense-types/{expenseType}', [FinanceFoundationController::class, 'destroyExpenseType'])->name('expense-types.destroy');
             });
             Route::middleware('permission:finance.allocations,super_admin,bendahara')->group(function () {
                 Route::get('/allocations', [FinanceFoundationController::class, 'allocations'])->name('allocations');
@@ -172,12 +180,14 @@ Route::middleware('auth')->group(function () {
                 Route::get('/budget-years', [FinanceFoundationController::class, 'budgetYears'])->name('budget-years');
                 Route::post('/budget-years', [FinanceFoundationController::class, 'storeBudgetYear'])->name('budget-years.store');
                 Route::put('/budget-years/{budgetYear}', [FinanceFoundationController::class, 'updateBudgetYear'])->name('budget-years.update');
+                Route::delete('/budget-years/{budgetYear}', [FinanceFoundationController::class, 'destroyBudgetYear'])->name('budget-years.destroy');
             });
             Route::middleware('permission:finance.budgets,super_admin,bendahara')->group(function () {
                 Route::get('/budgets', [FinanceFoundationController::class, 'budgets'])->name('budgets');
                 Route::get('/budgets/revisions', [FinanceFoundationController::class, 'budgetRevisions'])->name('budgets.revisions');
                 Route::post('/budgets', [FinanceFoundationController::class, 'storeBudget'])->name('budgets.store');
                 Route::put('/budgets/{budgetPlan}', [FinanceFoundationController::class, 'updateBudget'])->name('budgets.update');
+                Route::delete('/budgets/{budgetPlan}', [FinanceFoundationController::class, 'destroyBudget'])->name('budgets.destroy');
                 Route::post('/budgets/{budgetPlan}/revisions', [FinanceFoundationController::class, 'storeBudgetRevision'])->name('budgets.revisions.store');
             });
             Route::middleware('permission:finance.approvals,super_admin,bendahara')->get('/approvals', [FinanceFoundationController::class, 'approvals'])->name('approvals');
@@ -287,6 +297,8 @@ Route::middleware('auth')->group(function () {
             Route::middleware('permission:bos.budgets,super_admin,kepsek,bendahara')->group(function () {
                 Route::get('/anggaran', [BosController::class, 'anggaran'])->name('anggaran.index');
                 Route::post('/anggaran', [BosController::class, 'storeAnggaran'])->name('anggaran.store');
+                Route::put('/anggaran/{category}', [BosController::class, 'updateAnggaran'])->name('anggaran.update');
+                Route::delete('/anggaran/{category}', [BosController::class, 'destroyAnggaran'])->name('anggaran.destroy');
             });
             Route::middleware('permission:bos.expenses,super_admin,kepsek,bendahara')->group(function () {
                 Route::get('/belanja', [BosController::class, 'belanja'])->name('belanja.index');

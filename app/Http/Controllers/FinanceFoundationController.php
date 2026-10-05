@@ -2,17 +2,23 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
 use App\Models\ApprovalRequest;
 use App\Models\BillingItem;
 use App\Models\BookClosing;
 use App\Models\BudgetPlan;
 use App\Models\BudgetPlanRevision;
 use App\Models\BudgetYear;
+use App\Models\Expense;
 use App\Models\ExpenseType;
 use App\Models\FundAllocation;
 use App\Models\IncomeType;
+use App\Models\Invoice;
 use App\Models\PaymentSubmission;
 use App\Models\SchoolAccount;
+use App\Models\SchoolClass;
+use App\Models\Student;
+use App\Models\VirtualWallet;
 use App\Services\FinanceClosingService;
 use App\Services\FinanceLedgerService;
 use App\Services\FinanceService;
@@ -61,7 +67,9 @@ class FinanceFoundationController extends Controller
 
         $finance->createAccount($schoolId, $validated);
 
-        return redirect()->route('finance.accounts')->with('success', 'Rekening Sekolah disimpan');
+        return redirect()->route('finance.accounts')
+            ->with('success', 'Rekening Sekolah disimpan')
+            ->with('success_modal', 'Rekening Sekolah disimpan');
     }
 
     public function updateAccount(Request $request, SchoolAccount $account, SchoolContext $schoolContext): RedirectResponse
@@ -90,11 +98,131 @@ class FinanceFoundationController extends Controller
         return redirect()->route('finance.accounts')->with('success', 'Rekening Sekolah berhasil diperbarui.');
     }
 
+    public function virtualWallets(SchoolContext $schoolContext): View
+    {
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        $wallets = VirtualWallet::where('school_id', $schoolId)
+            ->with(['fundAllocations.incomeType'])
+            ->latest()
+            ->get();
+
+        $incomeTypes = IncomeType::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']);
+
+        $totalNominal = $wallets->sum('nominal');
+        $activeCount = $wallets->filter(fn ($w) => in_array(strtolower($w->status), ['active', 'aktif']))->count();
+        $withAllocationsCount = $wallets->filter(fn ($w) => $w->fundAllocations->isNotEmpty() || filled($w->source))->count();
+
+        $metrics = [
+            ['label' => 'Total Dompet Virtual', 'value' => (string) $wallets->count()],
+            ['label' => 'Total Saldo / Nominal', 'value' => 'Rp ' . number_format($totalNominal, 0, ',', '.')],
+            ['label' => 'Dompet Aktif', 'value' => (string) $activeCount],
+            ['label' => 'Terhubung Alokasi', 'value' => (string) $withAllocationsCount],
+        ];
+
+        return view('pages.keuangan.virtual-wallets', [
+            'title' => 'Dompet Virtual',
+            'wallets' => $wallets,
+            'incomeTypes' => $incomeTypes,
+            'metrics' => $metrics,
+        ]);
+    }
+
+    public function storeVirtualWallet(Request $request, SchoolContext $schoolContext): RedirectResponse
+    {
+        $schoolId = $this->activeSchoolId($request, $schoolContext);
+        $validated = $request->validate([
+            'name' => [
+                'required',
+                'string',
+                'max:120',
+                Rule::unique('virtual_wallets')->where(fn ($query) => $query->where('school_id', $schoolId)),
+            ],
+            'nominal' => ['required', 'numeric', 'min:0', 'max:9999999999999.99'],
+            'status' => ['required', 'string', Rule::in(['active', 'inactive', 'Aktif', 'Nonaktif'])],
+            'source' => ['nullable', 'string', 'max:120'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ], [
+            'name.required' => 'Nama dompet virtual wajib diisi.',
+            'name.unique' => 'Dompet virtual dengan nama "'.$request->input('name').'" sudah ada.',
+            'nominal.required' => 'Nominal wajib diisi.',
+            'nominal.numeric' => 'Nominal harus berupa angka yang valid.',
+            'status.required' => 'Status dompet wajib dipilih.',
+        ]);
+
+        $status = in_array(strtolower($validated['status']), ['active', 'aktif']) ? 'active' : 'inactive';
+
+        VirtualWallet::create([
+            'school_id' => $schoolId,
+            'name' => $validated['name'],
+            'nominal' => $validated['nominal'],
+            'status' => $status,
+            'source' => $validated['source'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        return redirect()->route('finance.virtual-wallets')
+            ->with('success', 'Dompet virtual "'.$validated['name'].'" berhasil disimpan.');
+    }
+
+    public function updateVirtualWallet(Request $request, VirtualWallet $virtualWallet, SchoolContext $schoolContext): RedirectResponse
+    {
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        if ((int) $virtualWallet->school_id !== (int) $schoolId) {
+            abort(403, 'Aksi tidak diizinkan untuk sekolah ini.');
+        }
+
+        $validated = $request->validate([
+            'name' => [
+                'required',
+                'string',
+                'max:120',
+                Rule::unique('virtual_wallets')->where(fn ($query) => $query->where('school_id', $schoolId))->ignore($virtualWallet->id),
+            ],
+            'nominal' => ['required', 'numeric', 'min:0', 'max:9999999999999.99'],
+            'status' => ['required', 'string', Rule::in(['active', 'inactive', 'Aktif', 'Nonaktif'])],
+            'source' => ['nullable', 'string', 'max:120'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ], [
+            'name.required' => 'Nama dompet virtual wajib diisi.',
+            'name.unique' => 'Dompet virtual dengan nama "'.$request->input('name').'" sudah ada.',
+            'nominal.required' => 'Nominal wajib diisi.',
+            'nominal.numeric' => 'Nominal harus berupa angka yang valid.',
+            'status.required' => 'Status dompet wajib dipilih.',
+        ]);
+
+        $status = in_array(strtolower($validated['status']), ['active', 'aktif']) ? 'active' : 'inactive';
+
+        $virtualWallet->update([
+            'name' => $validated['name'],
+            'nominal' => $validated['nominal'],
+            'status' => $status,
+            'source' => $validated['source'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        return redirect()->route('finance.virtual-wallets')
+            ->with('success', 'Dompet virtual "'.$virtualWallet->name.'" berhasil diperbarui.');
+    }
+
+    public function destroyVirtualWallet(VirtualWallet $virtualWallet, SchoolContext $schoolContext): RedirectResponse
+    {
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        if ((int) $virtualWallet->school_id !== (int) $schoolId) {
+            abort(403, 'Aksi tidak diizinkan untuk sekolah ini.');
+        }
+
+        $name = $virtualWallet->name;
+        $virtualWallet->delete();
+
+        return redirect()->route('finance.virtual-wallets')
+            ->with('success', 'Dompet virtual "'.$name.'" berhasil dihapus.');
+    }
+
     public function incomeTypes(SchoolContext $schoolContext): View
     {
         $schoolId = $schoolContext->activeSchoolIdFor();
 
-        $incomeTypes = IncomeType::with('fundAllocations.account')
+        $incomeTypes = IncomeType::with(['fundAllocations.account', 'fundAllocations.virtualWallet'])
             ->where('school_id', $schoolId)
             ->latest()
             ->get();
@@ -112,12 +240,18 @@ class FinanceFoundationController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'type', 'bank_name', 'account_number']);
 
+        $virtualWallets = VirtualWallet::where('school_id', $schoolId)
+            ->whereIn('status', ['active', 'Aktif'])
+            ->orderBy('name')
+            ->get(['id', 'name', 'nominal', 'source']);
+
         return view('pages.keuangan.income-types', [
             'title' => 'Jenis Pemasukan',
             'incomeTypes' => $incomeTypes,
             'nextCode' => $nextCode,
             'categories' => $categories,
             'accounts' => $accounts,
+            'virtualWallets' => $virtualWallets,
         ]);
     }
 
@@ -125,7 +259,40 @@ class FinanceFoundationController extends Controller
     {
         $schoolId = $schoolContext->activeSchoolIdFor();
 
-        return $this->typePage('Jenis Pengeluaran', 'expense', ExpenseType::where('school_id', $schoolId)->latest()->get(['code', 'name', 'source_funding', 'requires_approval']));
+        $expenseTypes = ExpenseType::where('school_id', $schoolId)
+            ->latest()
+            ->get();
+
+        $count = ExpenseType::where('school_id', $schoolId)->count();
+        $codeNumber = $count + 1;
+        do {
+            $nextCode = 'JPK-'.str_pad((string) $codeNumber, 4, '0', STR_PAD_LEFT);
+            $codeNumber++;
+        } while (ExpenseType::where('school_id', $schoolId)->where('code', $nextCode)->exists());
+
+        $totalCount = $expenseTypes->count();
+        $komiteCount = $expenseTypes->filter(fn ($e) => strtolower($e->source_funding ?? '') === 'komite')->count();
+        $bosCount = $expenseTypes->filter(fn ($e) => str_contains(strtolower($e->source_funding ?? ''), 'bos') || in_array($e->source_funding, ['BOP', 'DAK']))->count();
+        $approvalCount = $expenseTypes->filter(fn ($e) => (bool) $e->requires_approval)->count();
+
+        $metrics = [
+            ['label' => 'Total Jenis Pengeluaran', 'value' => (string) $totalCount],
+            ['label' => 'Pengeluaran Komite', 'value' => (string) $komiteCount],
+            ['label' => 'Pengeluaran BOS', 'value' => (string) $bosCount],
+            ['label' => 'Perlu Approval', 'value' => (string) $approvalCount],
+        ];
+
+        $sourceFundings = ['Komite', 'BOS Reguler', 'BOS Kinerja', 'BOP', 'DAK', 'Lainnya'];
+        $bosComponents = ['Belanja pegawai', 'Belanja barang', 'Belanja modal', 'Pembelajaran', 'Pemeliharaan', 'Lainnya'];
+
+        return view('pages.keuangan.expense-types', [
+            'title' => 'Jenis Pengeluaran',
+            'expenseTypes' => $expenseTypes,
+            'nextCode' => $nextCode,
+            'metrics' => $metrics,
+            'sourceFundings' => $sourceFundings,
+            'bosComponents' => $bosComponents,
+        ]);
     }
 
     public function storeIncomeType(Request $request, SchoolContext $schoolContext, FinanceService $finance): RedirectResponse
@@ -146,7 +313,8 @@ class FinanceFoundationController extends Controller
             'allocations.*.name' => ['nullable', 'string', 'max:120'],
             'allocations.*.method' => ['nullable', 'string', Rule::in(['persentase', 'nominal'])],
             'allocations.*.amount' => ['nullable', 'numeric', 'min:0'],
-            'allocations.*.account_id' => ['nullable', 'integer', Rule::exists('school_accounts', 'id')->where(fn ($query) => $query->where('school_id', $schoolId))],
+            'allocations.*.virtual_wallet_id' => ['nullable'],
+            'allocations.*.account_id' => ['nullable'],
         ], [
             'name.required' => 'Nama jenis pemasukan wajib diisi.',
             'name.unique' => 'Jenis pemasukan dengan nama "'.$request->input('name').'" sudah ada.',
@@ -170,16 +338,28 @@ class FinanceFoundationController extends Controller
 
         if ($validated['uses_allocation'] && !empty($request->input('allocations'))) {
             foreach ($request->input('allocations') as $alloc) {
-                if (!empty($alloc['name']) && !empty($alloc['account_id'])) {
+                $walletId = $alloc['virtual_wallet_id'] ?? $alloc['account_id'] ?? null;
+                if (!empty($alloc['name']) && !empty($walletId)) {
+                    $isVirtual = VirtualWallet::where('school_id', $schoolId)->where('id', $walletId)->exists();
+                    $isAccount = (! $isVirtual) && SchoolAccount::where('school_id', $schoolId)->where('id', $walletId)->exists();
+
                     FundAllocation::create([
                         'school_id' => $schoolId,
                         'income_type_id' => $incomeType->id,
-                        'account_id' => $alloc['account_id'],
+                        'virtual_wallet_id' => $isVirtual ? (int) $walletId : null,
+                        'account_id' => $isAccount ? (int) $walletId : null,
                         'name' => $alloc['name'],
                         'method' => $alloc['method'] ?? 'persentase',
                         'amount' => $alloc['amount'] ?? 0,
                         'status' => 'active',
                     ]);
+
+                    if ($isVirtual) {
+                        $vw = VirtualWallet::where('school_id', $schoolId)->find($walletId);
+                        if ($vw && (empty($vw->source) || $vw->source === '-')) {
+                            $vw->update(['source' => $incomeType->name]);
+                        }
+                    }
                 }
             }
         }
@@ -210,7 +390,8 @@ class FinanceFoundationController extends Controller
             'allocations.*.name' => ['nullable', 'string', 'max:120'],
             'allocations.*.method' => ['nullable', 'string', Rule::in(['persentase', 'nominal'])],
             'allocations.*.amount' => ['nullable', 'numeric', 'min:0'],
-            'allocations.*.account_id' => ['nullable', 'integer', Rule::exists('school_accounts', 'id')->where(fn ($query) => $query->where('school_id', $schoolId))],
+            'allocations.*.virtual_wallet_id' => ['nullable'],
+            'allocations.*.account_id' => ['nullable'],
         ], [
             'name.required' => 'Nama jenis pemasukan wajib diisi.',
             'name.unique' => 'Jenis pemasukan dengan nama "'.$request->input('name').'" sudah ada.',
@@ -229,16 +410,28 @@ class FinanceFoundationController extends Controller
             $incomeType->fundAllocations()->delete();
             if (!empty($request->input('allocations'))) {
                 foreach ($request->input('allocations') as $alloc) {
-                    if (!empty($alloc['name']) && !empty($alloc['account_id'])) {
+                    $walletId = $alloc['virtual_wallet_id'] ?? $alloc['account_id'] ?? null;
+                    if (!empty($alloc['name']) && !empty($walletId)) {
+                        $isVirtual = VirtualWallet::where('school_id', $schoolId)->where('id', $walletId)->exists();
+                        $isAccount = (! $isVirtual) && SchoolAccount::where('school_id', $schoolId)->where('id', $walletId)->exists();
+
                         FundAllocation::create([
                             'school_id' => $schoolId,
                             'income_type_id' => $incomeType->id,
-                            'account_id' => $alloc['account_id'],
+                            'virtual_wallet_id' => $isVirtual ? (int) $walletId : null,
+                            'account_id' => $isAccount ? (int) $walletId : null,
                             'name' => $alloc['name'],
                             'method' => $alloc['method'] ?? 'persentase',
                             'amount' => $alloc['amount'] ?? 0,
                             'status' => 'active',
                         ]);
+
+                        if ($isVirtual) {
+                            $vw = VirtualWallet::where('school_id', $schoolId)->find($walletId);
+                            if ($vw && (empty($vw->source) || $vw->source === '-')) {
+                                $vw->update(['source' => $incomeType->name]);
+                            }
+                        }
                     }
                 }
             }
@@ -268,14 +461,70 @@ class FinanceFoundationController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'code' => ['nullable', 'string', 'max:40'],
-            'source_funding' => ['nullable', 'string', 'max:50'],
+            'source_funding' => ['required', 'string', 'max:50'],
             'bos_component' => ['nullable', 'string', 'max:100'],
             'requires_approval' => ['nullable', 'boolean'],
+            'supporting_document' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
+        ], [
+            'name.required' => 'Kolom nama pengeluaran wajib diisi.',
+            'source_funding.required' => 'Sumber dana harus dipilih.',
         ]);
+
+        if (empty($validated['code'])) {
+            $count = ExpenseType::where('school_id', $schoolId)->count();
+            $codeNumber = $count + 1;
+            do {
+                $nextCode = 'JPK-'.str_pad((string) $codeNumber, 4, '0', STR_PAD_LEFT);
+                $codeNumber++;
+            } while (ExpenseType::where('school_id', $schoolId)->where('code', $nextCode)->exists());
+            $validated['code'] = $nextCode;
+        }
+
+        if ($request->hasFile('supporting_document')) {
+            $validated['supporting_document_path'] = $request->file('supporting_document')->store('expense-types-docs', 'public');
+        }
 
         $finance->createExpenseType($schoolId, $validated);
 
-        return back()->with('success', 'Jenis pengeluaran berhasil ditambahkan.');
+        return back()->with('success', 'Jenis pengeluaran disimpan');
+    }
+
+    public function updateExpenseType(Request $request, ExpenseType $expenseType, SchoolContext $schoolContext): RedirectResponse
+    {
+        $schoolId = $this->activeSchoolId($request, $schoolContext);
+        abort_unless((int) $expenseType->school_id === $schoolId, 404);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'code' => ['nullable', 'string', 'max:40'],
+            'source_funding' => ['required', 'string', 'max:50'],
+            'bos_component' => ['nullable', 'string', 'max:100'],
+            'requires_approval' => ['nullable', 'boolean'],
+            'supporting_document' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
+        ], [
+            'name.required' => 'Kolom nama pengeluaran wajib diisi.',
+            'source_funding.required' => 'Sumber dana harus dipilih.',
+        ]);
+
+        if ($request->hasFile('supporting_document')) {
+            $validated['supporting_document_path'] = $request->file('supporting_document')->store('expense-types-docs', 'public');
+        }
+
+        $validated['requires_approval'] = (bool) ($request->input('requires_approval', false));
+
+        $expenseType->update($validated);
+
+        return back()->with('success', 'Jenis pengeluaran disimpan');
+    }
+
+    public function destroyExpenseType(ExpenseType $expenseType, SchoolContext $schoolContext): RedirectResponse
+    {
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        abort_unless((int) $expenseType->school_id === (int) $schoolId, 403);
+
+        $expenseType->delete();
+
+        return back()->with('success', 'Jenis pengeluaran berhasil dihapus.');
     }
 
     public function allocations(SchoolContext $schoolContext): View
@@ -331,7 +580,7 @@ class FinanceFoundationController extends Controller
 
         $finance->createBudgetYear($schoolId, $validated);
 
-        return back()->with('success', 'Tahun anggaran berhasil ditambahkan.');
+        return back()->with('success', 'Tahun anggaran disimpan');
     }
 
     public function updateBudgetYear(Request $request, BudgetYear $budgetYear, SchoolContext $schoolContext): RedirectResponse
@@ -349,6 +598,25 @@ class FinanceFoundationController extends Controller
         $budgetYear->update($validated);
 
         return back()->with('success', 'Tahun anggaran berhasil diperbarui.');
+    }
+
+    public function destroyBudgetYear(BudgetYear $budgetYear, SchoolContext $schoolContext): RedirectResponse
+    {
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        abort_unless((int) $budgetYear->school_id === (int) $schoolId, 403);
+
+        if ($budgetYear->status === 'closed') {
+            return back()->with('error', 'Tahun anggaran tidak dapat dihapus karena sudah tutup buku.');
+        }
+
+        $hasPlans = BudgetPlan::where('school_id', $schoolId)->where('budget_year_id', $budgetYear->id)->exists();
+        if ($hasPlans) {
+            return back()->with('error', 'Tahun anggaran tidak dapat dihapus karena sudah ada perencanaan atau transaksi anggaran.');
+        }
+
+        $budgetYear->delete();
+
+        return back()->with('success', 'Tahun anggaran berhasil dihapus.');
     }
 
     public function budgets(SchoolContext $schoolContext): View
@@ -436,7 +704,28 @@ class FinanceFoundationController extends Controller
 
         $finance->createBudgetPlan($schoolId, $request->user()->id, $validated);
 
-        return back()->with('success', 'Rencana anggaran berhasil dibuat dan menunggu approval.');
+        return back()->with('success', 'Susunan anggaran disimpan');
+    }
+
+    public function destroyBudget(BudgetPlan $budgetPlan, SchoolContext $schoolContext): RedirectResponse
+    {
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        abort_unless((int) $budgetPlan->school_id === (int) $schoolId, 403);
+
+        $hasExpenses = Expense::where('school_id', $schoolId)
+            ->where(function ($q) use ($budgetPlan) {
+                $q->where('expense_name', 'like', "%{$budgetPlan->activity_name}%")
+                  ->orWhere('expense_name', 'like', "%{$budgetPlan->program_name}%");
+            })->exists();
+
+        if ($hasExpenses) {
+            return back()->with('error', 'Susunan anggaran tidak dapat dihapus karena sudah ada transaksi realisasi belanja.');
+        }
+
+        $budgetPlan->revisions()->delete();
+        $budgetPlan->delete();
+
+        return back()->with('success', 'Susunan anggaran berhasil dihapus.');
     }
 
     public function storeBudgetRevision(Request $request, BudgetPlan $budgetPlan, SchoolContext $schoolContext, FinanceService $finance): RedirectResponse
@@ -451,7 +740,7 @@ class FinanceFoundationController extends Controller
 
         $finance->reviseBudgetPlan($schoolId, $request->user()->id, $budgetPlan->id, $validated);
 
-        return back()->with('success', 'Revisi anggaran berhasil dibuat dan menunggu approval.');
+        return back()->with('success', 'Susunan anggaran disimpan');
     }
 
     public function approvals(SchoolContext $schoolContext): View

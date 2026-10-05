@@ -7,7 +7,7 @@
         ['key' => 'start_date', 'label' => 'Tanggal Mulai'],
         ['key' => 'end_date', 'label' => 'Tanggal Selesai'],
         ['key' => 'status', 'label' => 'Status', 'type' => 'badge'],
-        ['key' => 'aksi', 'label' => 'Aksi', 'sortable' => false, 'onlyEdit' => true],
+        ['key' => 'aksi', 'label' => 'Aksi', 'sortable' => false, 'onlyEdit' => true, 'allowDelete' => true],
     ];
 
     $yearRows = $budgetYears->map(function ($year) {
@@ -22,7 +22,9 @@
             'start_date_raw' => $year->start_date ? \Carbon\Carbon::parse($year->start_date)->format('Y-m-d') : '',
             'end_date_raw' => $year->end_date ? \Carbon\Carbon::parse($year->end_date)->format('Y-m-d') : '',
             'update_url' => route('finance.budget-years.update', $year),
+            'delete_url' => route('finance.budget-years.destroy', $year),
             'only_edit' => true,
+            'allow_delete' => $isActive,
         ];
     });
 
@@ -35,6 +37,7 @@
     x-data="{
         saving: false,
         editingYear: null,
+        deletingYear: null,
         editName: '',
         editStartDate: '',
         editEndDate: '',
@@ -48,9 +51,16 @@
             this.$nextTick(() => {
                 this.$refs.editYearModal.showModal();
             });
+        },
+        openDelete(row) {
+            this.deletingYear = row;
+            this.$nextTick(() => {
+                this.$refs.deleteYearModal.showModal();
+            });
         }
     }"
     @table-edit="openEdit($event.detail)"
+    @table-delete="openDelete($event.detail)"
     x-init="
         @if($errors->any() && !old('_method')) $nextTick(() => $refs.yearModal.showModal()); @endif
     ">
@@ -186,6 +196,38 @@
                 <button type="submit" class="work-btn work-btn-primary" :disabled="saving">
                     <span x-show="!saving">Simpan Perubahan</span>
                     <span x-show="saving" x-cloak>Menyimpan…</span>
+                </button>
+            </div>
+        </form>
+    </dialog>
+
+    {{-- MODAL HAPUS TAHUN ANGGARAN --}}
+    <dialog x-ref="deleteYearModal" class="account-dialog work" style="max-width: 28rem; width: 100%;" aria-labelledby="delete-year-title"
+        @close="saving = false" @cancel="if (saving) $event.preventDefault()"
+        @click="const bounds = $el.getBoundingClientRect(); if (!saving && ($event.clientX < bounds.left || $event.clientX > bounds.right || $event.clientY < bounds.top || $event.clientY > bounds.bottom)) $el.close()">
+        <div class="account-dialog-head">
+            <div class="min-w-0">
+                <h2 id="delete-year-title" class="text-base font-semibold text-gray-900 dark:text-white">Hapus Tahun Anggaran</h2>
+                <p class="work-muted text-xs mt-0.5">Tindakan ini tidak dapat dibatalkan.</p>
+            </div>
+            <button type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1 rounded-md" @click="$refs.deleteYearModal.close()" :disabled="saving" aria-label="Tutup dialog">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <p class="text-xs text-gray-600 dark:text-gray-400 my-4">
+            Apakah Anda yakin ingin menghapus tahun anggaran <strong class="text-gray-900 dark:text-white" x-text="deletingYear?.name"></strong>?
+            Tahun anggaran yang sudah ada perencanaan anggaran atau tutup buku tidak dapat dihapus.
+        </p>
+
+        <form method="POST" :action="deletingYear ? deletingYear.delete_url : '#'" @submit="saving = true" :aria-busy="saving">
+            @csrf
+            @method('DELETE')
+            <div class="account-dialog-actions mt-4">
+                <button type="button" class="work-btn work-btn-secondary" @click="$refs.deleteYearModal.close()" :disabled="saving">Batal</button>
+                <button type="submit" class="work-btn bg-rose-600 hover:bg-rose-700 text-white" :disabled="saving">
+                    <span x-show="!saving">Hapus</span>
+                    <span x-show="saving" x-cloak>Menghapus…</span>
                 </button>
             </div>
         </form>

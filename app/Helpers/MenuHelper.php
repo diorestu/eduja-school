@@ -67,6 +67,7 @@ class MenuHelper
                 'name' => 'Finance Foundation',
                 'subItems' => [
                     ['name' => 'Rekening & Wallet', 'path' => '/finance/accounts', 'permission' => 'finance.accounts', 'roles' => ['super_admin'], 'pro' => false],
+                    ['name' => 'Dompet Virtual', 'path' => '/finance/virtual-wallets', 'permission' => 'finance.virtual_wallets', 'roles' => ['super_admin'], 'pro' => false],
                     ['name' => 'Jenis Pemasukan', 'path' => '/finance/income-types', 'permission' => 'finance.income_types', 'roles' => ['super_admin'], 'pro' => false],
                     ['name' => 'Jenis Pengeluaran', 'path' => '/finance/expense-types', 'permission' => 'finance.expense_types', 'roles' => ['super_admin'], 'pro' => false],
                     ['name' => 'Alokasi Dana', 'path' => '/finance/allocations', 'permission' => 'finance.allocations', 'roles' => ['super_admin'], 'pro' => false],
@@ -84,6 +85,7 @@ class MenuHelper
                 'name' => 'Master Data Keuangan',
                 'subItems' => [
                     ['name' => 'Rekening Sekolah', 'path' => '/finance/accounts', 'permission' => 'finance.accounts', 'roles' => ['bendahara'], 'pro' => false],
+                    ['name' => 'Dompet Virtual', 'path' => '/finance/virtual-wallets', 'permission' => 'finance.virtual_wallets', 'roles' => ['bendahara'], 'pro' => false],
                     ['name' => 'Jenis Pemasukan', 'path' => '/finance/income-types', 'permission' => 'finance.income_types', 'roles' => ['bendahara'], 'pro' => false],
                     ['name' => 'BOS', 'path' => '/bos/anggaran', 'permission' => 'bos.budgets', 'roles' => ['bendahara'], 'pro' => false],
                     ['name' => 'Jenis Pengeluaran', 'path' => '/finance/expense-types', 'permission' => 'finance.expense_types', 'roles' => ['bendahara'], 'pro' => false],
@@ -102,7 +104,7 @@ class MenuHelper
             ['icon' => 'ecommerce', 'name' => 'Pemasukan', 'subItems' => [['name' => 'Pemasukan', 'path' => '/spp/transaksi', 'permission' => 'spp.transactions', 'roles' => ['bendahara'], 'pro' => false]]],
             ['icon' => 'forms', 'name' => 'Pengeluaran', 'subItems' => [['name' => 'Pengeluaran', 'path' => '/bos/belanja', 'permission' => 'bos.expenses', 'roles' => ['bendahara'], 'pro' => false]]],
             ['icon' => 'forms', 'name' => 'Approval', 'subItems' => [['name' => 'Approval', 'path' => '/finance/approvals', 'permission' => 'finance.approvals', 'roles' => ['bendahara'], 'pro' => false]]],
-            ['icon' => 'ecommerce', 'name' => 'Dompet Virtual', 'subItems' => [['name' => 'Dompet Virtual', 'path' => '/finance/accounts', 'permission' => 'finance.accounts', 'roles' => ['bendahara'], 'pro' => false]]],
+            ['icon' => 'ecommerce', 'name' => 'Dompet Virtual', 'subItems' => [['name' => 'Dompet Virtual', 'path' => '/finance/virtual-wallets', 'permission' => 'finance.virtual_wallets', 'roles' => ['bendahara'], 'pro' => false]]],
             ['icon' => 'charts', 'name' => 'Laporan', 'subItems' => [['name' => 'Laporan', 'path' => '/finance/reports', 'permission' => 'finance.reports', 'roles' => ['bendahara'], 'pro' => false]]],
             ['icon' => 'forms', 'name' => 'Tutup Buku', 'subItems' => [['name' => 'Tutup Buku', 'path' => '/finance/closing', 'permission' => 'finance.closing', 'roles' => ['bendahara'], 'pro' => false]]],
             [

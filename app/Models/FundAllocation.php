@@ -21,6 +21,11 @@ class FundAllocation extends Model
         return $this->belongsTo(SchoolAccount::class, 'account_id');
     }
 
+    public function virtualWallet(): BelongsTo
+    {
+        return $this->belongsTo(VirtualWallet::class, 'virtual_wallet_id');
+    }
+
     public function incomeType(): BelongsTo
     {
         return $this->belongsTo(IncomeType::class);

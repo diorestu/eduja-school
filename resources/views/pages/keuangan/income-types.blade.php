@@ -22,6 +22,7 @@
                 'name' => $alloc->name,
                 'method' => $alloc->method ?? 'persentase',
                 'amount' => (float) $alloc->amount,
+                'virtual_wallet_id' => $alloc->virtual_wallet_id ?? $alloc->account_id,
                 'account_id' => $alloc->account_id,
             ])->values()->all(),
             'update_url' => route('finance.income-types.update', $type),
@@ -43,11 +44,11 @@
         editUsesAllocation: '0',
         editRequiresApproval: '0',
         allocations: @js(old('allocations', [
-            ['name' => '', 'method' => 'persentase', 'amount' => '', 'account_id' => '']
+            ['name' => '', 'method' => 'persentase', 'amount' => '', 'virtual_wallet_id' => '']
         ])),
         editAllocations: [],
         addAllocation() {
-            this.allocations.push({ name: '', method: 'persentase', amount: '', account_id: '' });
+            this.allocations.push({ name: '', method: 'persentase', amount: '', virtual_wallet_id: '' });
         },
         removeAllocation(index) {
             if (this.allocations.length > 1) {
@@ -55,7 +56,7 @@
             }
         },
         addEditAllocation() {
-            this.editAllocations.push({ name: '', method: 'persentase', amount: '', account_id: '' });
+            this.editAllocations.push({ name: '', method: 'persentase', amount: '', virtual_wallet_id: '' });
         },
         removeEditAllocation(index) {
             if (this.editAllocations.length > 1) {
@@ -83,8 +84,13 @@
             this.editUsesAllocation = row.uses_allocation ? '1' : '0';
             this.editRequiresApproval = row.requires_approval ? '1' : '0';
             this.editAllocations = (row.allocations && row.allocations.length > 0)
-                ? JSON.parse(JSON.stringify(row.allocations))
-                : [{ name: '', method: 'persentase', amount: '', account_id: '' }];
+                ? JSON.parse(JSON.stringify(row.allocations)).map(a => ({
+                    name: a.name,
+                    method: a.method,
+                    amount: a.amount,
+                    virtual_wallet_id: a.virtual_wallet_id || a.account_id || ''
+                }))
+                : [{ name: '', method: 'persentase', amount: '', virtual_wallet_id: '' }];
             this.$nextTick(() => {
                 this.$refs.editIncomeTypeModal.showModal();
             });
@@ -250,15 +256,21 @@
                                     </div>
                                 </div>
 
-                                {{-- Dompet Penyimpanan --}}
+                                {{-- Dompet Penyimpanan (Mengacu ke Dompet Virtual) --}}
                                 <div class="sm:col-span-3 flex items-end gap-1.5">
                                     <div class="flex-1 min-w-0">
                                         <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300 mb-1 truncate">Dompet Penyimpanan <span class="text-red-500">*</span></label>
-                                        <select x-model="alloc.account_id" :name="'allocations[' + index + '][account_id]'" required class="text-xs py-1.5 px-2 min-h-[36px]">
-                                            <option value="" disabled>-- Pilih Dompet --</option>
-                                            @foreach($accounts as $account)
-                                                <option value="{{ $account->id }}">{{ $account->name }} ({{ $account->type }})</option>
-                                            @endforeach
+                                        <select x-model="alloc.virtual_wallet_id" :name="'allocations[' + index + '][virtual_wallet_id]'" required class="text-xs py-1.5 px-2 min-h-[36px]">
+                                            <option value="" disabled>-- Pilih Dompet Virtual --</option>
+                                            @if(isset($virtualWallets) && $virtualWallets->isNotEmpty())
+                                                @foreach($virtualWallets as $wallet)
+                                                    <option value="{{ $wallet->id }}">{{ $wallet->name }} (Rp {{ number_format($wallet->nominal, 0, ',', '.') }})</option>
+                                                @endforeach
+                                            @else
+                                                @foreach($accounts as $account)
+                                                    <option value="{{ $account->id }}">{{ $account->name }} ({{ $account->type }})</option>
+                                                @endforeach
+                                            @endif
                                         </select>
                                     </div>
                                     <template x-if="allocations.length > 1">
@@ -466,15 +478,21 @@
                                     </div>
                                 </div>
 
-                                {{-- Dompet Penyimpanan --}}
+                                {{-- Dompet Penyimpanan (Mengacu ke Dompet Virtual) --}}
                                 <div class="sm:col-span-3 flex items-end gap-1.5">
                                     <div class="flex-1 min-w-0">
                                         <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300 mb-1 truncate">Dompet Penyimpanan <span class="text-red-500">*</span></label>
-                                        <select x-model="alloc.account_id" :name="'allocations[' + index + '][account_id]'" required class="text-xs py-1.5 px-2 min-h-[36px]">
-                                            <option value="" disabled>-- Pilih Dompet --</option>
-                                            @foreach($accounts as $account)
-                                                <option value="{{ $account->id }}">{{ $account->name }} ({{ $account->type }})</option>
-                                            @endforeach
+                                        <select x-model="alloc.virtual_wallet_id" :name="'allocations[' + index + '][virtual_wallet_id]'" required class="text-xs py-1.5 px-2 min-h-[36px]">
+                                            <option value="" disabled>-- Pilih Dompet Virtual --</option>
+                                            @if(isset($virtualWallets) && $virtualWallets->isNotEmpty())
+                                                @foreach($virtualWallets as $wallet)
+                                                    <option value="{{ $wallet->id }}">{{ $wallet->name }} (Rp {{ number_format($wallet->nominal, 0, ',', '.') }})</option>
+                                                @endforeach
+                                            @else
+                                                @foreach($accounts as $account)
+                                                    <option value="{{ $account->id }}">{{ $account->name }} ({{ $account->type }})</option>
+                                                @endforeach
+                                            @endif
                                         </select>
                                     </div>
                                     <template x-if="editAllocations.length > 1">
