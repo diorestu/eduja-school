@@ -73,7 +73,7 @@ class MenuHelper
                     ['name' => 'Alokasi Dana', 'path' => '/finance/allocations', 'permission' => 'finance.allocations', 'roles' => ['super_admin'], 'pro' => false],
                     ['name' => 'Tahun Anggaran', 'path' => '/finance/budget-years', 'permission' => 'finance.budget_years', 'roles' => ['super_admin'], 'pro' => false],
                     ['name' => 'Anggaran', 'path' => '/finance/budgets', 'permission' => 'finance.budgets', 'roles' => ['super_admin'], 'pro' => false],
-                    ['name' => 'Approval', 'path' => '/finance/approvals', 'permission' => 'finance.approvals', 'roles' => ['super_admin'], 'pro' => false],
+                    ['name' => 'Approval', 'path' => '/finance/approvals', 'permission' => 'finance.approvals', 'roles' => ['super_admin', 'kepsek'], 'pro' => false],
                     ['name' => 'Tagihan Komite', 'path' => '/finance/billing', 'permission' => 'finance.billing', 'roles' => ['super_admin'], 'pro' => false],
                     ['name' => 'Tutup Buku', 'path' => '/finance/closing', 'permission' => 'finance.closing', 'roles' => ['super_admin'], 'pro' => false],
                     ['name' => 'Ledger Finance', 'path' => '/finance/ledger', 'permission' => 'finance.ledger', 'roles' => ['super_admin'], 'pro' => false],
@@ -103,8 +103,7 @@ class MenuHelper
             ['icon' => 'tables', 'name' => 'Tagihan', 'subItems' => [['name' => 'Tagihan', 'path' => '/finance/billing', 'permission' => 'finance.billing', 'roles' => ['bendahara'], 'pro' => false]]],
             ['icon' => 'ecommerce', 'name' => 'Pemasukan', 'subItems' => [['name' => 'Pemasukan', 'path' => '/spp/transaksi', 'permission' => 'spp.transactions', 'roles' => ['bendahara'], 'pro' => false]]],
             ['icon' => 'forms', 'name' => 'Pengeluaran', 'subItems' => [['name' => 'Pengeluaran', 'path' => '/bos/belanja', 'permission' => 'bos.expenses', 'roles' => ['bendahara'], 'pro' => false]]],
-            ['icon' => 'forms', 'name' => 'Approval', 'subItems' => [['name' => 'Approval', 'path' => '/finance/approvals', 'permission' => 'finance.approvals', 'roles' => ['bendahara'], 'pro' => false]]],
-            ['icon' => 'ecommerce', 'name' => 'Dompet Virtual', 'subItems' => [['name' => 'Dompet Virtual', 'path' => '/finance/virtual-wallets', 'permission' => 'finance.virtual_wallets', 'roles' => ['bendahara'], 'pro' => false]]],
+            ['icon' => 'forms', 'name' => 'Approval', 'subItems' => [['name' => 'Approval', 'path' => '/finance/approvals', 'permission' => 'finance.approvals', 'roles' => ['bendahara', 'kepsek'], 'pro' => false]]],
             ['icon' => 'charts', 'name' => 'Laporan', 'subItems' => [['name' => 'Laporan', 'path' => '/finance/reports', 'permission' => 'finance.reports', 'roles' => ['bendahara'], 'pro' => false]]],
             ['icon' => 'forms', 'name' => 'Tutup Buku', 'subItems' => [['name' => 'Tutup Buku', 'path' => '/finance/closing', 'permission' => 'finance.closing', 'roles' => ['bendahara'], 'pro' => false]]],
             [
@@ -164,7 +163,7 @@ class MenuHelper
                 ));
 
                 if (! empty($item['subItems'])) {
-                    if ($user->hasRole('bendahara') && count($item['subItems']) === 1) {
+                    if (($user->hasRole('bendahara') || ($item['name'] === ($item['subItems'][0]['name'] ?? null))) && count($item['subItems']) === 1) {
                         $onlySubItem = $item['subItems'][0];
                         $item['path'] = $onlySubItem['path'];
                         unset($item['subItems']);

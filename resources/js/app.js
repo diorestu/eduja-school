@@ -11,10 +11,33 @@ import { Calendar } from '@fullcalendar/core';
 
 
 
+import { formatCurrency, unmaskCurrency, attachCurrencyMask, initCurrencyMasks } from './components/currency-mask';
+
 window.Alpine = Alpine;
 window.ApexCharts = ApexCharts;
 window.flatpickr = flatpickr;
 window.FullCalendar = Calendar;
+window.formatCurrency = formatCurrency;
+window.unmaskCurrency = unmaskCurrency;
+window.attachCurrencyMask = attachCurrencyMask;
+window.initCurrencyMasks = initCurrencyMasks;
+
+Alpine.directive('money', (el, { expression }, { effect, evaluateLater }) => {
+    attachCurrencyMask(el);
+    if (expression) {
+        const getVal = evaluateLater(expression);
+        effect(() => {
+            getVal(val => {
+                if (val !== undefined && val !== null) {
+                    const formatted = formatCurrency(val);
+                    if (el.value !== formatted) {
+                        el.value = formatted;
+                    }
+                }
+            });
+        });
+    }
+});
 
 Alpine.data('dataTable', dataTable);
 Alpine.start();

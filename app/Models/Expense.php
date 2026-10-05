@@ -12,6 +12,8 @@ class Expense extends Model
 
     protected $fillable = [
         'budget_category_id',
+        'expense_type_id',
+        'virtual_wallet_id',
         'school_id',
         'account_id',
         'academic_year_id',
@@ -21,6 +23,8 @@ class Expense extends Model
         'source_funding',
         'payment_method',
         'reference_invoice',
+        'proof_path',
+        'document_checklist',
         'recipient_name',
         'tax_type',
         'tax_amount',
@@ -39,11 +43,27 @@ class Expense extends Model
         'tax_amount' => 'decimal:2',
         'reviewed_at' => 'datetime',
         'posted_at' => 'datetime',
-        ];
+        'document_checklist' => 'array',
+    ];
 
     public function budgetCategory(): BelongsTo
     {
         return $this->belongsTo(BudgetCategory::class);
+    }
+
+    public function expenseType(): BelongsTo
+    {
+        return $this->belongsTo(ExpenseType::class);
+    }
+
+    public function virtualWallet(): BelongsTo
+    {
+        return $this->belongsTo(VirtualWallet::class);
+    }
+
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(SchoolAccount::class);
     }
 
     public function academicYear(): BelongsTo

@@ -16,6 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
             users: '/dashboard'
         );
 
+        $middleware->web(append: [
+            \App\Http\Middleware\NormalizeMonetaryInputs::class,
+        ]);
+
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
             'permission' => \App\Http\Middleware\EnsureUserHasPermission::class,

@@ -64,6 +64,10 @@ class ApprovalController extends Controller
             abort_unless($request->user()->hasRole(['kepsek', 'super_admin']), 403);
         }
 
+        if (in_array($approval->type, ['budget', 'budget_revision'], true) || in_array($approval->approvable_type, [BudgetPlan::class, BudgetPlanRevision::class], true)) {
+            abort_unless($request->user()->hasRole(['kepsek', 'super_admin']), 403, 'Hanya kepala sekolah yang dapat menyetujui penyusunan dan revisi anggaran.');
+        }
+
         $validated = $request->validate([
             'note' => ['nullable', 'string', 'max:1000'],
         ]);

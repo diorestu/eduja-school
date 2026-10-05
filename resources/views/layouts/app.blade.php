@@ -82,6 +82,112 @@
                     }
                 }
             });
+
+            if (typeof Alpine !== 'undefined' && !Alpine._moneyDirectiveRegistered) {
+                Alpine._moneyDirectiveRegistered = true;
+                Alpine.directive('money', (el, { expression }, { effect, evaluateLater }) => {
+                    if (window.attachCurrencyMask) window.attachCurrencyMask(el);
+                    if (expression) {
+                        const getVal = evaluateLater(expression);
+                        effect(() => {
+                            getVal(val => {
+                                if (val !== undefined && val !== null && window.formatCurrencyMask) {
+                                    const formatted = window.formatCurrencyMask(val);
+                                    if (el.value !== formatted) {
+                                        el.value = formatted;
+                                    }
+                                }
+                            });
+                        });
+                    }
+                });
+            }
+        });
+
+        // Global currency masking helper with thousands delimiter '.'
+        function formatCurrencyMask(value) {
+            if (value === null || value === undefined || value === '') return '';
+            const clean = String(value).replace(/\D/g, '');
+            if (!clean) return '';
+            return clean.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+
+        function unmaskCurrency(value) {
+            if (value === null || value === undefined || value === '') return '';
+            return String(value).replace(/\D/g, '');
+        }
+
+        function attachCurrencyMask(input) {
+            if (!input || input._currencyMaskAttached) return;
+            input._currencyMaskAttached = true;
+            input.type = 'text';
+            input.inputMode = 'numeric';
+            input.autocomplete = 'off';
+
+            const formatSelf = () => {
+                const cursor = input.selectionStart || 0;
+                const oldLen = input.value.length;
+                const clean = unmaskCurrency(input.value);
+                const formatted = formatCurrencyMask(clean);
+
+                if (input.value !== formatted) {
+                    input.value = formatted;
+                    const newLen = formatted.length;
+                    const newCursor = Math.max(0, cursor + (newLen - oldLen));
+                    input.setSelectionRange(newCursor, newCursor);
+                }
+            };
+
+            input.addEventListener('input', formatSelf);
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace') {
+                    const pos = input.selectionStart;
+                    if (pos > 0 && input.value[pos - 1] === '.') {
+                        e.preventDefault();
+                        const raw = input.value.slice(0, pos - 2) + input.value.slice(pos);
+                        const formatted = formatCurrencyMask(unmaskCurrency(raw));
+                        input.value = formatted;
+                        const newPos = Math.max(0, pos - 2);
+                        input.setSelectionRange(newPos, newPos);
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                }
+            });
+
+            if (input.value) {
+                input.value = formatCurrencyMask(input.value);
+            }
+        }
+
+        function initCurrencyMasks(root = document) {
+            const inputs = root.querySelectorAll('input[data-mask="currency"], input.mask-currency, input[data-currency]');
+            inputs.forEach(attachCurrencyMask);
+        }
+
+        window.formatCurrencyMask = formatCurrencyMask;
+        window.formatCurrency = formatCurrencyMask;
+        window.unmaskCurrency = unmaskCurrency;
+        window.attachCurrencyMask = attachCurrencyMask;
+        window.initCurrencyMasks = initCurrencyMasks;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initCurrencyMasks();
+
+            const observer = new MutationObserver(() => {
+                initCurrencyMasks();
+            });
+            if (document.body) {
+                observer.observe(document.body, { childList: true, subtree: true });
+            }
+
+            document.addEventListener('submit', (e) => {
+                const form = e.target;
+                if (!form || !form.querySelectorAll) return;
+                form.querySelectorAll('input[data-mask="currency"], input.mask-currency, input[data-currency]').forEach(input => {
+                    input.value = unmaskCurrency(input.value);
+                });
+            }, true);
         });
     </script>
 

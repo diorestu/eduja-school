@@ -127,7 +127,7 @@ class FinanceService
 
         if (isset($attributes['academic_year_id']) && ! AcademicYear::query()
             ->whereKey($attributes['academic_year_id'])
-            ->where('school_id', $schoolId)
+            ->where(fn ($q) => $q->where('school_id', $schoolId)->orWhereNull('school_id'))
             ->exists()) {
             throw new InvalidArgumentException('Tahun akademik tidak berada pada sekolah aktif.');
         }
@@ -226,8 +226,9 @@ class FinanceService
             $this->postPayment($approvable, $reviewerId);
         }
 
-        if ($approvable instanceof BudgetPlan && $status === 'approved') {
+        if ($approvable instanceof BudgetPlan) {
             $approvable->forceFill([
+                'status' => $status,
                 'approved_by' => $reviewerId,
                 'approved_at' => now(),
             ])->save();

@@ -8,7 +8,8 @@
         ['key' => 'source_funding', 'label' => 'Sumber Dana', 'type' => 'badge'],
         ['key' => 'payment_method', 'label' => 'Metode'],
         ['key' => 'amount', 'label' => 'Jumlah Belanja', 'type' => 'currency', 'minimumFractionDigits' => 0],
-        ['key' => 'tax_summary', 'label' => 'Pajak'],
+        ['key' => 'wallet_or_account', 'label' => 'Dompet / Rekening'],
+        ['key' => 'status', 'label' => 'Status', 'type' => 'badge'],
         ['key' => 'aksi', 'label' => 'Aksi', 'sortable' => false, 'onlyEdit' => true],
     ];
 
@@ -32,10 +33,16 @@
             $taxStr = ($exp->tax_type ?? 'Pajak') . ': Rp ' . number_format($tax, 0, ',', '.') . ($exp->is_tax_paid ? ' (Disetor)' : ' (Belum Setor)');
         }
 
-        $categoryText = $exp->budgetCategory ? ($exp->budgetCategory->code . ' - ' . $exp->budgetCategory->name) : 'Operasional Umum';
+        $categoryText = $exp->budgetCategory ? ($exp->budgetCategory->code . ' - ' . $exp->budgetCategory->name) : ($exp->expenseType?->name ?? 'Operasional Umum');
         if ($exp->recipient_name) {
             $categoryText .= ' · Penerima: ' . $exp->recipient_name;
         }
+
+        $statusLabels = [
+            'pending' => 'Pending Approval',
+            'approved' => 'Disetujui',
+            'rejected' => 'Ditolak',
+        ];
 
         return [
             'id' => $exp->id,
@@ -50,14 +57,19 @@
             'source_funding' => $exp->source_funding ?? 'BOS',
             'payment_method' => $exp->payment_method ?? 'Tunai',
             'amount' => $amt,
+            'wallet_or_account' => $exp->virtualWallet?->name ?? ($exp->account?->name ?? 'Kas Sekolah'),
             'tax_type' => $exp->tax_type ?? '',
             'tax_amount' => $tax,
             'is_tax_paid' => (bool) $exp->is_tax_paid,
             'tax_summary' => $taxStr,
+            'status' => $statusLabels[$exp->status] ?? ucfirst($exp->status ?? 'pending'),
+            'status_raw' => $exp->status ?? 'pending',
             'update_url' => route('bos.belanja.update', $exp),
             'only_edit' => true,
         ];
     });
+
+    $bosRemainingBudget = 50000000; // fallback default
 @endphp
 
 <x-common.page-breadcrumb pageTitle="Pencatatan Belanja & Operasional Sekolah" label="Pengeluaran" />
@@ -65,11 +77,17 @@
 <div class="work work-stack"
     x-data="{
         saving: false,
+        expenseCategory: 'Operasional', // Operasional | BOS | Transfer Alokasi
         createAmount: 0,
         createTaxType: '',
         createTaxAmount: 0,
+        // BOS specific state
+        bosYear: {{ date('Y') }},
+        bosSource: 'BOS Reguler',
+        bosComponent: 'Belanja barang',
+        bosRemainingBudget: 50000000,
         calculateCreateTax() {
-            let amt = parseFloat(this.createAmount) || 0;
+            let amt = parseFloat(String(this.createAmount || '').replace(/\D/g, '')) || 0;
             if (this.createTaxType === 'PPN') {
                 this.createTaxAmount = Math.round(amt * 0.11);
             } else if (this.createTaxType === 'PPh 22') {
@@ -92,23 +110,11 @@
         editTaxType: '',
         editTaxAmount: 0,
         editIsTaxPaid: false,
-        calculateEditTax() {
-            let amt = parseFloat(this.editAmount) || 0;
-            if (this.editTaxType === 'PPN') {
-                this.editTaxAmount = Math.round(amt * 0.11);
-            } else if (this.editTaxType === 'PPh 22') {
-                this.editTaxAmount = Math.round(amt * 0.015);
-            } else if (this.editTaxType === 'PPh 23') {
-                this.editTaxAmount = Math.round(amt * 0.02);
-            } else {
-                this.editTaxAmount = 0;
-            }
-        },
         openEdit(row) {
             this.editingItem = row;
             this.editCategoryId = row.budget_category_id || '';
             this.editExpenseName = row.expense_name || '';
-            this.editAmount = row.amount || 0;
+            this.editAmount = window.formatCurrencyMask ? window.formatCurrencyMask(row.amount) : (row.amount || 0);
             this.editDate = row.transaction_date_raw || '';
             this.editFunding = row.source_funding || 'BOS';
             this.editPaymentMethod = row.payment_method || 'Tunai';
@@ -120,6 +126,9 @@
             this.$nextTick(() => {
                 this.$refs.editExpenseModal.showModal();
             });
+        },
+        formatRupiah(val) {
+            return 'Rp ' + Number(val || 0).toLocaleString('id-ID');
         }
     }"
     @table-edit="openEdit($event.detail)">
@@ -156,7 +165,7 @@
 
     {{-- HEADER ACTION --}}
     <div class="work-head mb-0">
-        <p class="work-muted">Pencatatan realisasi belanja operasional sekolah, BOS, yayasan, dan potongan pajak terkait.</p>
+        <p class="work-muted">Pencatatan realisasi belanja operasional komite sekolah, BOS, yayasan, dan potongan pajak terkait.</p>
         <button type="button" class="work-btn work-btn-primary" @click="$refs.createExpenseModal.showModal()">
             <svg class="w-4 h-4 mr-1.5 -ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             Catat Pengeluaran
@@ -179,115 +188,222 @@
         empty-hint="Pilih Catat Pengeluaran untuk mencatat transaksi pertama."
     />
 
-    {{-- MODAL TAMBAH PENGELUARAN --}}
-    <dialog x-ref="createExpenseModal" class="account-dialog work" aria-labelledby="create-expense-title" aria-describedby="create-expense-help"
+    {{-- MODAL TAMBAH PENGELUARAN (FLOW INPUT PENGELUARAN KOMITE & BOS PAGE 30-33) --}}
+    <dialog x-ref="createExpenseModal" class="account-dialog work" style="max-width: 44rem; width: 100%;" aria-labelledby="create-expense-title" aria-describedby="create-expense-help"
         @close="saving = false" @cancel="if (saving) $event.preventDefault()"
         @click="const bounds = $el.getBoundingClientRect(); if (!saving && ($event.clientX < bounds.left || $event.clientX > bounds.right || $event.clientY < bounds.top || $event.clientY > bounds.bottom)) $el.close()">
         <div class="account-dialog-head">
             <div class="min-w-0">
-                <h2 id="create-expense-title" class="text-lg font-semibold text-gray-900 dark:text-white">Catat Pengeluaran Belanja</h2>
-                <p id="create-expense-help" class="work-muted text-xs mt-0.5">Input transaksi realisasi pengeluaran dan perhitungan pajaknya.</p>
+                <h2 id="create-expense-title" class="text-lg font-semibold text-gray-900 dark:text-white">Catat Pengeluaran Sekolah</h2>
+                <p id="create-expense-help" class="work-muted text-xs mt-0.5">Input transaksi belanja Operasional (Komite), BOS, atau Transfer Alokasi.</p>
             </div>
             <button type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1 rounded-md" @click="$refs.createExpenseModal.close()" :disabled="saving" aria-label="Tutup form">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
 
-        <form method="POST" action="{{ route('bos.belanja.store') }}" @submit="saving = true" :aria-busy="saving" class="space-y-4">
+        <form method="POST" action="{{ route('bos.belanja.store') }}" enctype="multipart/form-data" @submit="saving = true" :aria-busy="saving" class="space-y-4">
             @csrf
             <input type="hidden" name="academic_year_id" value="{{ $activeYear?->id }}" />
 
+            {{-- 1. Pilih Kategori (dropdown: Operasional, BOS, Transfer Alokasi) --}}
             <div class="work-field">
-                <label for="create-budget-category">Akun Anggaran RKAS</label>
-                <select id="create-budget-category" name="budget_category_id">
-                    <option value="">-- Pilih Akun Anggaran --</option>
-                    @foreach($categories as $cat)
-                        <option value="{{ $cat->id }}">{{ $cat->code }} - {{ $cat->name }}</option>
-                    @endforeach
+                <label for="create-expense-category">Kategori Pengeluaran <span class="text-red-500">*</span></label>
+                <select id="create-expense-category" name="category" x-model="expenseCategory" required>
+                    <option value="Operasional">Operasional (Komite / Biaya Rutin)</option>
+                    <option value="BOS">BOS (Bantuan Operasional Sekolah)</option>
+                    <option value="Transfer Alokasi">Transfer Alokasi (Antar Dompet / Rekening)</option>
                 </select>
             </div>
 
-            <div class="work-field">
-                <label for="create-expense-name">Uraian Belanja / Kegiatan <span class="text-red-500">*</span></label>
-                <input id="create-expense-name" name="expense_name" type="text" required placeholder="Contoh: Pembelian ATK Ujian Ganjil">
-            </div>
+            {{-- FORM KHUSUS OPERASIONAL KOMITE (PAGE 30-31) --}}
+            <template x-if="expenseCategory === 'Operasional' || expenseCategory === 'Transfer Alokasi'">
+                <div class="space-y-4 rounded-xl border border-gray-100 bg-gray-50/70 p-3.5 dark:border-gray-800 dark:bg-gray-800/40">
+                    <input type="hidden" name="source_funding" value="Komite" />
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="work-field">
-                    <label for="create-amount">Jumlah Belanja (Rp) <span class="text-red-500">*</span></label>
-                    <input id="create-amount" name="amount" type="number" x-model="createAmount" @input="calculateCreateTax()" min="1" step="1000" required placeholder="Contoh: 1500000">
-                </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="work-field">
+                            <label for="create-op-date">Tanggal Transaksi <span class="text-red-500">*</span></label>
+                            <input id="create-op-date" name="transaction_date" type="date" value="{{ date('Y-m-d') }}" required>
+                        </div>
+                        <div class="work-field">
+                            <label for="create-op-type">Jenis Pengeluaran <span class="text-red-500">*</span></label>
+                            <select id="create-op-type" name="expense_type_id" required>
+                                <option value="">-- Pilih Jenis Pengeluaran --</option>
+                                @foreach($expenseTypes as $et)
+                                    <option value="{{ $et->id }}">{{ $et->code }} - {{ $et->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
 
-                <div class="work-field">
-                    <label for="create-date">Tanggal Belanja <span class="text-red-500">*</span></label>
-                    <input id="create-date" name="transaction_date" type="date" value="{{ date('Y-m-d') }}" required>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="work-field">
-                    <label for="create-funding">Sumber Dana <span class="text-red-500">*</span></label>
-                    <select id="create-funding" name="source_funding" required>
-                        <option value="BOS">BOS (Reguler/Kinerja)</option>
-                        <option value="Yayasan">Yayasan (Swasta)</option>
-                        <option value="Komite">Komite / Iuran</option>
-                    </select>
-                </div>
-
-                <div class="work-field">
-                    <label for="create-payment">Metode Pembayaran <span class="text-red-500">*</span></label>
-                    <select id="create-payment" name="payment_method" required>
-                        <option value="Tunai">Tunai / Cash</option>
-                        <option value="Transfer">Transfer Bank</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="work-field">
-                    <label for="create-reference">No. Bukti / Invoice</label>
-                    <input id="create-reference" name="reference_invoice" type="text" placeholder="Contoh: NOTA-0922">
-                </div>
-
-                <div class="work-field">
-                    <label for="create-recipient">Penerima Dana / Toko</label>
-                    <input id="create-recipient" name="recipient_name" type="text" placeholder="Contoh: CV. Restu Agung">
-                </div>
-            </div>
-
-            <div class="rounded-xl border border-gray-100 bg-gray-50/70 p-3.5 dark:border-gray-800 dark:bg-gray-800/30 space-y-3">
-                <span class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Potongan Pajak</span>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="work-field">
-                        <label for="create-tax-type">Jenis Pajak</label>
-                        <select id="create-tax-type" name="tax_type" x-model="createTaxType" @change="calculateCreateTax()">
-                            <option value="">Tidak Ada Pajak</option>
-                            <option value="PPN">PPN (11%)</option>
-                            <option value="PPh 21">PPh 21 (Honor/Gaji)</option>
-                            <option value="PPh 22">PPh 22 (Barang 1.5%)</option>
-                            <option value="PPh 23">PPh 23 (Jasa 2%)</option>
+                        <label for="create-op-name">Deskripsi / Uraian Belanja <span class="text-red-500">*</span></label>
+                        <input id="create-op-name" name="expense_name" type="text" required placeholder="Contoh: Konsumsi rapat komite sekolah">
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="work-field">
+                            <label for="create-op-amount">Nominal (Rp) <span class="text-red-500">*</span></label>
+                            <input id="create-op-amount" name="amount" type="text" inputmode="numeric" data-mask="currency" required placeholder="Contoh: 750.000" class="mask-currency">
+                        </div>
+                        <div class="work-field">
+                            <label for="create-op-recipient">Penerima Dana</label>
+                            <input id="create-op-recipient" name="recipient_name" type="text" placeholder="Contoh: Toko Berkah / Catering Ibu Ani">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="work-field">
+                            <label for="create-op-method">Metode Pembayaran <span class="text-red-500">*</span></label>
+                            <select id="create-op-method" name="payment_method" required>
+                                <option value="Tunai">Tunai / Cash</option>
+                                <option value="Transfer">Transfer Bank</option>
+                            </select>
+                        </div>
+                        <div class="work-field">
+                            <label for="create-op-wallet">Dompet Sumber Dana <span class="text-red-500">*</span></label>
+                            <select id="create-op-wallet" name="virtual_wallet_id">
+                                <option value="">-- Rekening Utama / Kas --</option>
+                                @foreach($virtualWallets as $vw)
+                                    <option value="{{ $vw->id }}">{{ $vw->name }} (Saldo: Rp {{ number_format($vw->nominal, 0, ',', '.') }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="work-field">
+                        <label for="create-op-proof">Upload Bukti Transaksi (Kuitansi / Nota)</label>
+                        <input id="create-op-proof" name="proof" type="file" accept=".pdf,.jpg,.jpeg,.png,.heic"
+                            class="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
+                    </div>
+                </div>
+            </template>
+
+            {{-- FORM KHUSUS PENGELUARAN BOS (PAGE 32-33) --}}
+            <template x-if="expenseCategory === 'BOS'">
+                <div class="space-y-4 rounded-xl border border-gray-100 bg-gray-50/70 p-3.5 dark:border-gray-800 dark:bg-gray-800/40">
+                    <input type="hidden" name="source_funding" value="BOS" />
+
+                    {{-- Step 1: Pilih Tahun BOS, Sumber Dana BOS & Komponen BOS --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="work-field">
+                            <label for="create-bos-year">Tahun BOS <span class="text-red-500">*</span></label>
+                            <input id="create-bos-year" name="bos_year" type="number" min="2020" max="2099" x-model="bosYear" required>
+                        </div>
+                        <div class="work-field">
+                            <label for="create-bos-source">Sumber Dana BOS <span class="text-red-500">*</span></label>
+                            <select id="create-bos-source" name="bos_source" x-model="bosSource">
+                                <option value="BOS Reguler">BOS Reguler</option>
+                                <option value="BOS Kinerja">BOS Kinerja</option>
+                                <option value="BOS Afirmasi">BOS Afirmasi</option>
+                            </select>
+                        </div>
+                        <div class="work-field">
+                            <label for="create-bos-comp">Komponen BOS <span class="text-red-500">*</span></label>
+                            <select id="create-bos-comp" name="bos_component" x-model="bosComponent">
+                                <option value="Belanja pegawai">Belanja pegawai</option>
+                                <option value="Belanja barang">Belanja barang</option>
+                                <option value="Belanja modal">Belanja modal</option>
+                                <option value="Pembelajaran">Pembelajaran</option>
+                                <option value="Pemeliharaan">Pemeliharaan</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {{-- Akun / Kategori Anggaran BOS --}}
+                    <div class="work-field">
+                        <label for="create-bos-cat">Akun Anggaran RKAS / Jenis Pengeluaran <span class="text-red-500">*</span></label>
+                        <select id="create-bos-cat" name="budget_category_id" required>
+                            <option value="">-- Pilih Jenis Pengeluaran BOS --</option>
+                            @foreach($categories as $cat)
+                                <option value="{{ $cat->id }}">{{ $cat->code }} - {{ $cat->name }}</option>
+                            @endforeach
                         </select>
                     </div>
 
+                    {{-- Warning jika Anggaran Tidak Cukup (Page 32-33) --}}
+                    <div x-show="createAmount > bosRemainingBudget" x-cloak
+                        class="p-3 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 text-xs flex items-center gap-2">
+                        <svg class="w-4 h-4 shrink-0 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <span><strong>Peringatan Anggaran:</strong> Sisa anggaran BOS komponen ini tidak mencukupi (Sisa: <span x-text="formatRupiah(bosRemainingBudget)"></span>).</span>
+                    </div>
+
                     <div class="work-field">
-                        <label for="create-tax-amount">Nilai Pajak (Rp)</label>
-                        <input id="create-tax-amount" name="tax_amount" type="number" x-model="createTaxAmount" readonly class="bg-gray-100 dark:bg-gray-800/60 text-gray-500">
+                        <label for="create-bos-name">Deskripsi / Uraian Kegiatan <span class="text-red-500">*</span></label>
+                        <input id="create-bos-name" name="expense_name" type="text" required placeholder="Contoh: Pengadaan bahan ajar praktikum siswa">
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="work-field">
+                            <label for="create-bos-amount">Nominal (Rp) <span class="text-red-500">*</span></label>
+                            <input id="create-bos-amount" name="amount" type="text" inputmode="numeric" data-mask="currency" x-model="createAmount" @input="calculateCreateTax()" required placeholder="Contoh: 4.500.000" class="mask-currency">
+                        </div>
+                        <div class="work-field">
+                            <label for="create-bos-date">Tanggal Transaksi <span class="text-red-500">*</span></label>
+                            <input id="create-bos-date" name="transaction_date" type="date" value="{{ date('Y-m-d') }}" required>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="work-field">
+                            <label for="create-bos-recipient">Penerima Dana / Rekanan <span class="text-red-500">*</span></label>
+                            <input id="create-bos-recipient" name="recipient_name" type="text" placeholder="Contoh: CV. Restu Agung" required>
+                        </div>
+                        <div class="work-field">
+                            <label for="create-bos-method">Metode Pembayaran <span class="text-red-500">*</span></label>
+                            <select id="create-bos-method" name="payment_method" required>
+                                <option value="Transfer">Transfer Rekening BOS</option>
+                                <option value="Tunai">Tunai Kas BOS</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {{-- CHECKLIST DOKUMEN BELANJA BOS SESUAI FLOW (PAGE 33) --}}
+                    <div class="border-t border-gray-200 dark:border-gray-700/60 pt-3 space-y-3">
+                        <span class="block text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">Kelengkapan Dokumen Belanja BOS</span>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                            {{-- Dokumen Belanja --}}
+                            <div class="p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 space-y-1.5">
+                                <span class="font-semibold block text-[11px] text-gray-500">1. Bukti Dokumen Belanja</span>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" name="document_checklist[]" value="Kuitansi" checked class="rounded text-brand-600"> Kuitansi</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" name="document_checklist[]" value="Faktur/Nota" checked class="rounded text-brand-600"> Faktur / Nota Pembelian</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" name="document_checklist[]" value="e-Billing" class="rounded text-brand-600"> e-Billing</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" name="document_checklist[]" value="BAST" class="rounded text-brand-600"> BAST</label>
+                            </div>
+
+                            {{-- Bukti Perpajakan --}}
+                            <div class="p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 space-y-1.5">
+                                <span class="font-semibold block text-[11px] text-gray-500">2. Bukti Perpajakan</span>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" name="document_checklist[]" value="SSP" class="rounded text-brand-600"> Surat Setoran Pajak</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" name="document_checklist[]" value="Faktur Pajak" class="rounded text-brand-600"> Faktur / Nota Pajak</label>
+                            </div>
+
+                            {{-- Dokumen Pendukung Kegiatan --}}
+                            <div class="p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 space-y-1.5">
+                                <span class="font-semibold block text-[11px] text-gray-500">3. Pendukung Kegiatan</span>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" name="document_checklist[]" value="Daftar Hadir" class="rounded text-brand-600"> Daftar Hadir</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" name="document_checklist[]" value="Honor/Transport" class="rounded text-brand-600"> Daftar Penerima Honor</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" name="document_checklist[]" value="SK/Tugas" class="rounded text-brand-600"> SK / Surat Tugas</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" name="document_checklist[]" value="Dokumentasi" class="rounded text-brand-600"> Dokumentasi Foto</label>
+                            </div>
+                        </div>
+
+                        <div class="work-field pt-2">
+                            <label for="create-bos-proof">Upload File Berkas Dokumen (PDF gabungan)</label>
+                            <input id="create-bos-proof" name="proof" type="file" accept=".pdf,.jpg,.jpeg,.png,.heic"
+                                class="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
+                        </div>
                     </div>
                 </div>
-
-                <label class="flex items-center gap-2 cursor-pointer pt-1">
-                    <input type="checkbox" name="is_tax_paid" value="1" class="h-4 w-4 rounded-sm border-gray-300 text-brand-600 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-900">
-                    <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">Pajak sudah langsung disetor ke kas negara (SSP)</span>
-                </label>
-            </div>
+            </template>
 
             <div class="account-dialog-actions mt-5 pt-3 border-t border-gray-100 dark:border-gray-800">
-                <button type="button" class="work-btn work-btn-secondary" @click="$refs.createExpenseModal.close()" :disabled="saving">
-                    Batal
-                </button>
+                <button type="button" class="work-btn" @click="$refs.createExpenseModal.close()" :disabled="saving">Batal</button>
                 <button type="submit" class="work-btn work-btn-primary" :disabled="saving">
-                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    Simpan Transaksi Belanja
+                    <span x-show="!saving">Ajukan Pengeluaran</span>
+                    <span x-show="saving" x-cloak>Menyimpan…</span>
                 </button>
             </div>
         </form>
@@ -323,15 +439,14 @@
 
             <div class="work-field">
                 <label for="edit-expense-name">Uraian Belanja / Kegiatan <span class="text-red-500">*</span></label>
-                <input id="edit-expense-name" name="expense_name" type="text" x-model="editExpenseName" required>
+                <input id="edit-expense-name" name="expense_name" x-model="editExpenseName" type="text" required>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div class="work-field">
                     <label for="edit-amount">Jumlah Belanja (Rp) <span class="text-red-500">*</span></label>
-                    <input id="edit-amount" name="amount" type="number" x-model="editAmount" @input="calculateEditTax()" min="1" step="1000" required>
+                    <input id="edit-amount" name="amount" type="text" inputmode="numeric" data-mask="currency" x-model="editAmount" required class="mask-currency">
                 </div>
-
                 <div class="work-field">
                     <label for="edit-date">Tanggal Belanja <span class="text-red-500">*</span></label>
                     <input id="edit-date" name="transaction_date" type="date" x-model="editDate" required>
@@ -347,7 +462,6 @@
                         <option value="Komite">Komite / Iuran</option>
                     </select>
                 </div>
-
                 <div class="work-field">
                     <label for="edit-payment">Metode Pembayaran <span class="text-red-500">*</span></label>
                     <select id="edit-payment" name="payment_method" x-model="editPaymentMethod" required>
@@ -362,46 +476,17 @@
                     <label for="edit-reference">No. Bukti / Invoice</label>
                     <input id="edit-reference" name="reference_invoice" type="text" x-model="editReference">
                 </div>
-
                 <div class="work-field">
                     <label for="edit-recipient">Penerima Dana / Toko</label>
                     <input id="edit-recipient" name="recipient_name" type="text" x-model="editRecipient">
                 </div>
             </div>
 
-            <div class="rounded-xl border border-gray-100 bg-gray-50/70 p-3.5 dark:border-gray-800 dark:bg-gray-800/30 space-y-3">
-                <span class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Potongan Pajak</span>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div class="work-field">
-                        <label for="edit-tax-type">Jenis Pajak</label>
-                        <select id="edit-tax-type" name="tax_type" x-model="editTaxType" @change="calculateEditTax()">
-                            <option value="">Tidak Ada Pajak</option>
-                            <option value="PPN">PPN (11%)</option>
-                            <option value="PPh 21">PPh 21 (Honor/Gaji)</option>
-                            <option value="PPh 22">PPh 22 (Barang 1.5%)</option>
-                            <option value="PPh 23">PPh 23 (Jasa 2%)</option>
-                        </select>
-                    </div>
-
-                    <div class="work-field">
-                        <label for="edit-tax-amount">Nilai Pajak (Rp)</label>
-                        <input id="edit-tax-amount" name="tax_amount" type="number" x-model="editTaxAmount" readonly class="bg-gray-100 dark:bg-gray-800/60 text-gray-500">
-                    </div>
-                </div>
-
-                <label class="flex items-center gap-2 cursor-pointer pt-1">
-                    <input type="checkbox" name="is_tax_paid" value="1" x-model="editIsTaxPaid" class="h-4 w-4 rounded-sm border-gray-300 text-brand-600 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-900">
-                    <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">Pajak sudah langsung disetor ke kas negara (SSP)</span>
-                </label>
-            </div>
-
             <div class="account-dialog-actions mt-5 pt-3 border-t border-gray-100 dark:border-gray-800">
-                <button type="button" class="work-btn work-btn-secondary" @click="$refs.editExpenseModal.close()" :disabled="saving">
-                    Batal
-                </button>
+                <button type="button" class="work-btn" @click="$refs.editExpenseModal.close()" :disabled="saving">Batal</button>
                 <button type="submit" class="work-btn work-btn-primary" :disabled="saving">
-                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    Simpan Perubahan
+                    <span x-show="!saving">Simpan Perubahan</span>
+                    <span x-show="saving" x-cloak>Menyimpan…</span>
                 </button>
             </div>
         </form>

@@ -22,4 +22,14 @@ class BudgetPlanRevision extends Model
     {
         return $this->belongsTo(BudgetPlan::class);
     }
+
+    public function requestedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    public function reviewedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
 }

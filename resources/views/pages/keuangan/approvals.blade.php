@@ -14,6 +14,7 @@
         'budget' => 'Rencana Anggaran',
         'budget_revision' => 'Revisi Anggaran',
         'expense' => 'Pengeluaran Belanja',
+        'payment' => 'Pembayaran Siswa / Transfer',
         'transfer' => 'Transfer Antar Rekening',
         'attendance' => 'Izin / Cuti',
     ];
@@ -24,10 +25,20 @@
         'rejected' => 'Ditolak',
     ];
 
-    $approvalRows = $approvals->map(function ($app) use ($typeNames, $statusLabels) {
+    $isKepsek = auth()->user()?->hasRole(['kepsek', 'super_admin']) ?? false;
+
+    $approvalRows = $approvals->map(function ($app) use ($typeNames, $statusLabels, $isKepsek) {
+        $isBudget = in_array($app->type, ['budget', 'budget_revision'], true);
+        $isExpense = $app->type === 'expense';
+        $requiresKepsek = $isBudget || $isExpense;
+        $canApprove = ! $requiresKepsek || $isKepsek;
+
         return [
             'id' => $app->id,
             'type' => $app->type,
+            'is_budget' => $isBudget,
+            'requires_kepsek' => $requiresKepsek,
+            'can_approve' => $canApprove,
             'type_label' => $typeNames[$app->type] ?? ucfirst($app->type),
             'requester_name' => $app->requester?->name ?? 'Sistem',
             'created_at' => $app->created_at ? $app->created_at->translatedFormat('d M Y H:i') : '-',
@@ -148,22 +159,39 @@
         </div>
 
         <template x-if="activeApproval?.status_raw === 'pending'">
-            <div class="flex items-center justify-end gap-3">
-                <form :action="activeApproval?.reject_url" method="POST">
-                    @csrf
-                    <button type="submit" class="work-btn text-rose-600 hover:text-white hover:bg-rose-600 border-rose-300 dark:border-rose-800">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                        Tolak
-                    </button>
-                </form>
+            <div class="space-y-4">
+                <template x-if="!activeApproval?.can_approve">
+                    <div class="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 rounded-lg text-xs flex items-center gap-2">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span x-text="activeApproval?.is_budget ? 'Hanya Kepala Sekolah yang memiliki wewenang untuk menyetujui atau menolak penyusunan dan revisi anggaran.' : 'Hanya Kepala Sekolah yang memiliki wewenang untuk menyetujui atau menolak pengeluaran belanja.'"></span>
+                    </div>
+                </template>
 
-                <form :action="activeApproval?.approve_url" method="POST">
-                    @csrf
-                    <button type="submit" class="work-btn work-btn-primary">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                        Setujui
-                    </button>
-                </form>
+                <div class="flex items-center justify-end gap-3">
+                    <template x-if="!activeApproval?.can_approve">
+                        <button type="button" class="work-btn" @click="$refs.approvalModal.close()">Tutup</button>
+                    </template>
+
+                    <template x-if="activeApproval?.can_approve">
+                        <div class="flex items-center gap-3">
+                            <form :action="activeApproval?.reject_url" method="POST">
+                                @csrf
+                                <button type="submit" class="work-btn text-rose-600 hover:text-white hover:bg-rose-600 border-rose-300 dark:border-rose-800">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    Tolak
+                                </button>
+                            </form>
+
+                            <form :action="activeApproval?.approve_url" method="POST">
+                                @csrf
+                                <button type="submit" class="work-btn work-btn-primary">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    Setujui
+                                </button>
+                            </form>
+                        </div>
+                    </template>
+                </div>
             </div>
         </template>
         <template x-if="activeApproval?.status_raw !== 'pending'">

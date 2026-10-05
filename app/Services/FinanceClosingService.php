@@ -33,6 +33,23 @@ class FinanceClosingService
             ->where('is_tax_paid', false)
             ->count();
 
+        $errorMessages = [];
+        if ($pendingApprovals > 0) {
+            $errorMessages[] = "{$pendingApprovals} transaksi belum approval Kepala Sekolah.";
+        }
+        if ($pendingPayments > 0) {
+            $errorMessages[] = "{$pendingPayments} verifikasi transfer pembayaran siswa masih pending.";
+        }
+        if ($pendingExpenses > 0) {
+            $errorMessages[] = "{$pendingExpenses} pengeluaran belanja berstatus pending.";
+        }
+        if ($negativeAccounts > 0) {
+            $errorMessages[] = "{$negativeAccounts} rekening kas/bank sekolah bersaldo negatif.";
+        }
+        if ($unpaidTaxes > 0) {
+            $errorMessages[] = "{$unpaidTaxes} transaksi belanja memiliki pajak terutang belum disetor.";
+        }
+
         $checks = [
             'pending_approvals' => $pendingApprovals,
             'pending_payments' => $pendingPayments,
@@ -42,6 +59,7 @@ class FinanceClosingService
             'incomplete_transfers' => 0,
             'unpaid_taxes' => $unpaidTaxes,
             'account_reconciliation' => 0,
+            'error_messages' => $errorMessages,
             'all_passed' => $pendingApprovals === 0
                 && $pendingPayments === 0
                 && $pendingExpenses === 0
@@ -57,8 +75,9 @@ class FinanceClosingService
         $validation = $this->validate($schoolId);
 
         if (! $validation['all_passed']) {
+            $reason = !empty($validation['error_messages']) ? implode(' ', $validation['error_messages']) : 'Seluruh pemeriksaan finance harus lulus.';
             throw ValidationException::withMessages([
-                'closing' => 'Tutup buku tidak dapat dilakukan sebelum seluruh pemeriksaan finance lulus.',
+                'closing' => 'Tutup buku tidak dapat dilakukan: ' . $reason,
             ]);
         }
 

@@ -190,11 +190,15 @@ Route::middleware('auth')->group(function () {
                 Route::delete('/budgets/{budgetPlan}', [FinanceFoundationController::class, 'destroyBudget'])->name('budgets.destroy');
                 Route::post('/budgets/{budgetPlan}/revisions', [FinanceFoundationController::class, 'storeBudgetRevision'])->name('budgets.revisions.store');
             });
-            Route::middleware('permission:finance.approvals,super_admin,bendahara')->get('/approvals', [FinanceFoundationController::class, 'approvals'])->name('approvals');
+            Route::middleware('permission:finance.approvals,super_admin,bendahara,kepsek')->get('/approvals', [FinanceFoundationController::class, 'approvals'])->name('approvals');
             Route::middleware('permission:finance.billing,super_admin,bendahara')->group(function () {
                 Route::get('/billing', [FinanceFoundationController::class, 'billing'])->name('billing');
                 Route::post('/billing', [FinanceFoundationController::class, 'storeBilling'])->name('billing.store');
                 Route::put('/billing/{billingItem}', [FinanceFoundationController::class, 'updateBilling'])->name('billing.update');
+                Route::delete('/billing/{billingItem}', [FinanceFoundationController::class, 'destroyBilling'])->name('billing.destroy');
+            });
+            Route::middleware('permission:finance.income_types,super_admin,bendahara')->group(function () {
+                Route::post('/incomes', [FinanceFoundationController::class, 'storeIncome'])->name('incomes.store');
             });
             Route::middleware('permission:finance.closing,super_admin,bendahara')->group(function () {
                 Route::get('/closing', [FinanceFoundationController::class, 'closing'])->name('closing');
@@ -288,6 +292,7 @@ Route::middleware('auth')->group(function () {
                 Route::get('/transaksi', [SppTransactionController::class, 'index'])->name('transaksi.index');
                 Route::post('/transaksi/generate', [SppTransactionController::class, 'generateInvoices'])->name('transaksi.generate');
                 Route::post('/transaksi/{id}/bayar', [SppTransactionController::class, 'pay'])->name('transaksi.pay');
+                Route::post('/transaksi/pemasukan', [FinanceFoundationController::class, 'storeIncome'])->name('transaksi.pemasukan');
             });
             Route::middleware('permission:spp.reports,super_admin,kepsek,bendahara')->get('/laporan', [SppReportController::class, 'index'])->name('laporan.index');
         });

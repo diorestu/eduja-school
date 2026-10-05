@@ -191,7 +191,7 @@
             {{-- Nominal Saldo Saat Ini --}}
             <div class="work-field">
                 <label for="account-opening_balance">Nominal saat ini (Saldo awal) <span aria-hidden="true">*</span></label>
-                <input id="account-opening_balance" name="opening_balance" value="{{ old('opening_balance', '0') }}" type="number" min="0" max="9999999999999.99" step="0.01" inputmode="decimal" required
+                <input id="account-opening_balance" name="opening_balance" value="{{ old('opening_balance') ? number_format((float)old('opening_balance'), 0, ',', '.') : '0' }}" type="text" inputmode="numeric" data-mask="currency" required placeholder="0" class="mask-currency"
                     aria-describedby="balance-help{{ $errors->has('opening_balance') ? ' error-opening_balance' : '' }}"
                     @if($firstError === 'opening_balance') autofocus @endif
                     @if($errors->has('opening_balance')) aria-invalid="true" @endif>

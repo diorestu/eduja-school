@@ -45,7 +45,7 @@
             this.editingWallet = {
                 id: row.id,
                 name: row.name,
-                nominal: row.nominal,
+                nominal: window.formatCurrencyMask ? window.formatCurrencyMask(row.nominal) : row.nominal,
                 source: row.source || '',
                 status: (row.status === 'inactive' || row.status === 'Nonaktif') ? 'inactive' : 'active',
                 notes: row.notes || ''
@@ -132,7 +132,7 @@
             {{-- Nominal --}}
             <div class="work-field">
                 <label for="wallet-nominal">Nominal / Saldo Awal (Rp) <span aria-hidden="true" class="text-red-500">*</span></label>
-                <input id="wallet-nominal" name="nominal" value="{{ old('nominal', 0) }}" type="number" step="1000" min="0" required placeholder="Contoh: 2500000"
+                <input id="wallet-nominal" name="nominal" value="{{ old('nominal') ? number_format((float)old('nominal'), 0, ',', '.') : '0' }}" type="text" inputmode="numeric" data-mask="currency" required placeholder="Contoh: 2.500.000" class="mask-currency"
                     @if($firstError === 'nominal') autofocus @endif
                     @if($errors->has('nominal')) aria-invalid="true" aria-describedby="error-nominal" @endif>
                 @error('nominal')<p id="error-nominal" class="work-muted work-error">{{ $message }}</p>@enderror
@@ -208,7 +208,7 @@
             {{-- Nominal --}}
             <div class="work-field">
                 <label for="edit-wallet-nominal">Nominal / Saldo (Rp) <span aria-hidden="true" class="text-red-500">*</span></label>
-                <input id="edit-wallet-nominal" name="nominal" x-model="editingWallet.nominal" type="number" step="1000" min="0" required placeholder="0">
+                <input id="edit-wallet-nominal" name="nominal" x-model="editingWallet.nominal" type="text" inputmode="numeric" data-mask="currency" required placeholder="0" class="mask-currency">
             </div>
 
             {{-- Asal Alokasi Dana --}}

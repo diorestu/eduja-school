@@ -251,7 +251,14 @@
                                 <div class="sm:col-span-2">
                                     <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300 mb-1" x-text="alloc.method === 'persentase' ? 'Porsi (%)' : 'Nominal'"></label>
                                     <div class="relative">
-                                        <input type="number" min="0" :step="alloc.method === 'persentase' ? '0.01' : '1000'" :max="alloc.method === 'persentase' ? '100' : '999999999999'" x-model.number="alloc.amount" :name="'allocations[' + index + '][amount]'" required :placeholder="alloc.method === 'persentase' ? '50' : '500000'" class="text-xs py-1.5 pl-2 pr-6 min-h-[36px]">
+                                        <input :type="alloc.method === 'persentase' ? 'number' : 'text'"
+                                            :inputmode="alloc.method === 'persentase' ? 'decimal' : 'numeric'"
+                                            :data-mask="alloc.method === 'nominal' ? 'currency' : null"
+                                            min="0" :step="alloc.method === 'persentase' ? '0.01' : null" :max="alloc.method === 'persentase' ? '100' : null"
+                                            x-model="alloc.amount" :name="'allocations[' + index + '][amount]'" required
+                                            :placeholder="alloc.method === 'persentase' ? '50' : '500.000'"
+                                            class="text-xs py-1.5 pl-2 pr-6 min-h-[36px] tabular-nums"
+                                            :class="alloc.method === 'nominal' ? 'mask-currency' : ''">
                                         <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400" x-text="alloc.method === 'persentase' ? '%' : 'Rp'"></span>
                                     </div>
                                 </div>
@@ -473,7 +480,14 @@
                                 <div class="sm:col-span-2">
                                     <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-300 mb-1" x-text="alloc.method === 'persentase' ? 'Porsi (%)' : 'Nominal'"></label>
                                     <div class="relative">
-                                        <input type="number" min="0" :step="alloc.method === 'persentase' ? '0.01' : '1000'" :max="alloc.method === 'persentase' ? '100' : '999999999999'" x-model.number="alloc.amount" :name="'allocations[' + index + '][amount]'" required :placeholder="alloc.method === 'persentase' ? '50' : '500000'" class="text-xs py-1.5 pl-2 pr-6 min-h-[36px]">
+                                        <input :type="alloc.method === 'persentase' ? 'number' : 'text'"
+                                            :inputmode="alloc.method === 'persentase' ? 'decimal' : 'numeric'"
+                                            :data-mask="alloc.method === 'nominal' ? 'currency' : null"
+                                            min="0" :step="alloc.method === 'persentase' ? '0.01' : null" :max="alloc.method === 'persentase' ? '100' : null"
+                                            x-model="alloc.amount" :name="'allocations[' + index + '][amount]'" required
+                                            :placeholder="alloc.method === 'persentase' ? '50' : '500.000'"
+                                            class="text-xs py-1.5 pl-2 pr-6 min-h-[36px] tabular-nums"
+                                            :class="alloc.method === 'nominal' ? 'mask-currency' : ''">
                                         <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400" x-text="alloc.method === 'persentase' ? '%' : 'Rp'"></span>
                                     </div>
                                 </div>

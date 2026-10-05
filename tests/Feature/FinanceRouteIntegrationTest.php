@@ -1019,7 +1019,7 @@ it('implements Flow Perencanaan Anggaran actions according to Menu Bendahara pag
     $this->post(route('finance.budgets.revisions.store', $plan->id), [
         'new_amount' => 18000000,
         'reason' => 'Kebutuhan kurikulum baru',
-    ])->assertRedirect()->assertSessionHas('success', 'Susunan anggaran disimpan');
+    ])->assertRedirect()->assertSessionHas('success', 'Revisi anggaran disimpan');
 
     $revision = DB::table('budget_plan_revisions')->where('budget_plan_id', $plan->id)->first();
     expect($revision)->not->toBeNull()
@@ -1035,4 +1035,892 @@ it('implements Flow Perencanaan Anggaran actions according to Menu Bendahara pag
         ->assertRedirect()->assertSessionHas('success', 'Tahun anggaran berhasil dihapus.');
     expect(DB::table('budget_years')->where('id', $year->id)->count())->toBe(0);
 });
+
+it('implements Flow Buat Tagihan Baru and Flow Lihat Tunggakan Siswa matching Menu Bendahara page 16-22', function () {
+    $schoolId = makeFinanceRouteSchool('Sekolah Tagihan & Tunggakan');
+    $user = makeFinanceRouteUser($schoolId);
+    $this->actingAs($user)->withSession(['active_school_id' => $schoolId]);
+
+    // Create supporting master data
+    $incomeTypeId = DB::table('income_types')->insertGetId([
+        'school_id' => $schoolId,
+        'code' => 'KMT-001',
+        'name' => 'Iuran Komite',
+        'category' => 'komite',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $academicYearId = DB::table('academic_years')->insertGetId([
+        'school_id' => $schoolId,
+        'year' => '2026/2027',
+        'semester' => 'Ganjil',
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $studentId = DB::table('students')->insertGetId([
+        'school_id' => $schoolId,
+        'name' => 'Ahmad Santoso',
+        'nis' => '102938',
+        'nisn' => '0098765432',
+        'gender' => 'L',
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $bankAccountId = DB::table('school_accounts')->insertGetId([
+        'school_id' => $schoolId,
+        'name' => 'Rekening Komite Bank BNI',
+        'type' => 'bank',
+        'bank_name' => 'BNI',
+        'account_number' => '1234567890',
+        'opening_balance' => 10000000,
+        'current_balance' => 10000000,
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $walletId = DB::table('virtual_wallets')->insertGetId([
+        'school_id' => $schoolId,
+        'name' => 'Dompet Sarpras Komite',
+        'nominal' => 2000000,
+        'status' => 'active',
+        'source' => 'komite',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    DB::table('fund_allocations')->insert([
+        'school_id' => $schoolId,
+        'income_type_id' => $incomeTypeId,
+        'virtual_wallet_id' => $walletId,
+        'name' => 'Alokasi Sarpras 20%',
+        'method' => 'percentage',
+        'amount' => 20.00,
+        'status' => 'active',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    // 1. Flow Buat Tagihan Baru (Page 16-17)
+    $this->post(route('finance.billing.store'), [
+        'income_type_id' => $incomeTypeId,
+        'academic_year_id' => $academicYearId,
+        'name' => 'Iuran Komite Semester Ganjil',
+        'amount' => 500000,
+        'allow_installment' => '1',
+        'minimum_installment' => 100000,
+        'has_late_fee' => '1',
+        'late_fee_per_day' => 2000,
+        'late_fee_maximum' => 50000,
+        'billing_frequency' => 'Bulanan',
+        'start_date' => '2026-07-01',
+        'due_date' => '2026-07-10',
+        'target_type' => 'school',
+    ])->assertRedirect()->assertSessionHas('success', 'Tagihan berhasil disimpan.');
+
+    $bill = DB::table('billing_items')
+        ->where('school_id', $schoolId)
+        ->where('name', 'Iuran Komite Semester Ganjil')
+        ->first();
+    expect($bill)->not->toBeNull()
+        ->and((bool) $bill->allow_installment)->toBeTrue()
+        ->and((float) $bill->minimum_installment)->toEqual(100000.0)
+        ->and((bool) $bill->has_late_fee)->toBeTrue()
+        ->and((float) $bill->late_fee_per_day)->toEqual(2000.0);
+
+    // 2. Flow Lihat Tunggakan Siswa (Page 18-20)
+    $invoiceId = DB::table('invoices')->insertGetId([
+        'school_id' => $schoolId,
+        'student_id' => $studentId,
+        'academic_year_id' => $academicYearId,
+        'invoice_number' => 'INV-2026-001',
+        'due_date' => '2026-07-10',
+        'total_amount' => 500000,
+        'status' => 'Belum Lunas',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    DB::table('invoice_items')->insert([
+        'invoice_id' => $invoiceId,
+        'name' => 'Iuran Komite Semester Ganjil',
+        'amount' => 500000,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $respBilling = $this->get(route('finance.billing'))->assertOk();
+    $respBilling->assertSee('Ahmad Santoso', false);
+    $respBilling->assertSee('102938', false);
+    $respBilling->assertSee('data-table', false);
+
+    // 3. Bayar Tagihan Tunggakan Siswa (Page 19-20 & 21-22)
+    $this->post("/spp/transaksi/{$invoiceId}/bayar", [
+        'amount_paid' => 300000,
+        'payment_method' => 'Transfer Bank',
+        'account_id' => $bankAccountId,
+        'payment_date' => '2026-07-05',
+    ])->assertRedirect()->assertSessionHas('success', 'Transaksi berhasil disimpan');
+
+    // Verify invoice status updated to Cicilan
+    $inv = DB::table('invoices')->where('id', $invoiceId)->first();
+    expect($inv->status)->toBe('Cicilan');
+
+    // Verify school account incremented
+    $account = DB::table('school_accounts')->where('id', $bankAccountId)->first();
+    expect((float) $account->current_balance)->toEqual(10300000.0);
+
+    // Verify virtual wallet allocated 20% of 300,000 = 60,000 (2,000,000 + 60,000 = 2,060,000)
+    $wallet = DB::table('virtual_wallets')->where('id', $walletId)->first();
+    expect((float) $wallet->nominal)->toEqual(2060000.0);
+});
+
+it('implements Flow Input Pemasukan BOS, Hibah, and Lainnya matching Menu Bendahara page 25-29', function () {
+    $schoolId = makeFinanceRouteSchool('Sekolah Pemasukan Non-Siswa');
+    $user = makeFinanceRouteUser($schoolId);
+    $this->actingAs($user)->withSession(['active_school_id' => $schoolId]);
+
+    $bosAccountId = DB::table('school_accounts')->insertGetId([
+        'school_id' => $schoolId,
+        'name' => 'Rekening Kas BOS Reguler',
+        'type' => 'bos',
+        'bank_name' => 'Bank Mandiri',
+        'account_number' => '987654321',
+        'opening_balance' => 0,
+        'current_balance' => 0,
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $bankAccountId = DB::table('school_accounts')->insertGetId([
+        'school_id' => $schoolId,
+        'name' => 'Rekening Operasional Bank BRI',
+        'type' => 'bank',
+        'bank_name' => 'BRI',
+        'account_number' => '1122334455',
+        'opening_balance' => 5000000,
+        'current_balance' => 5000000,
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    // 1. Flow Input Pemasukan BOS (Page 25)
+    $this->post(route('finance.incomes.store'), [
+        'category' => 'bos',
+        'source_funding' => 'BOS Reguler',
+        'bos_year' => 2026,
+        'amount' => 75000000,
+        'received_date' => '2026-07-15',
+    ])->assertRedirect()->assertSessionHas('success', 'Transaksi berhasil disimpan');
+
+    $bosAcc = DB::table('school_accounts')->where('id', $bosAccountId)->first();
+    expect((float) $bosAcc->current_balance)->toEqual(75000000.0);
+
+    // 2. Flow Input Pemasukan Hibah (Page 26-27)
+    $this->post(route('finance.incomes.store'), [
+        'category' => 'hibah',
+        'donor_name' => 'PT. Inovasi Cemerlang',
+        'amount' => 25000000,
+        'received_date' => '2026-07-20',
+        'payment_method' => 'Transfer',
+        'account_id' => $bankAccountId,
+    ])->assertRedirect()->assertSessionHas('success', 'Transaksi berhasil disimpan');
+
+    $bankAcc = DB::table('school_accounts')->where('id', $bankAccountId)->first();
+    expect((float) $bankAcc->current_balance)->toEqual(30000000.0);
+
+    // 3. Flow Input Pendapatan Lainnya (Page 28-29)
+    $this->post(route('finance.incomes.store'), [
+        'category' => 'lainnya',
+        'source_funding' => 'Bagi Hasil Kantin Sekolah',
+        'amount' => 1500000,
+        'received_date' => '2026-07-25',
+        'payment_method' => 'Transfer',
+        'account_id' => $bankAccountId,
+    ])->assertRedirect()->assertSessionHas('success', 'Transaksi berhasil disimpan');
+
+    $bankAccAfter = DB::table('school_accounts')->where('id', $bankAccountId)->first();
+    expect((float) $bankAccAfter->current_balance)->toEqual(31500000.0);
+});
+
+it('implements Flow Input Pengeluaran Komite and BOS matching Menu Bendahara page 30-33', function () {
+    $schoolId = makeFinanceRouteSchool('Sekolah Belanja Komite & BOS');
+    $user = makeFinanceRouteUser($schoolId);
+    $this->actingAs($user)->withSession(['active_school_id' => $schoolId]);
+
+    $academicYearId = DB::table('academic_years')->insertGetId([
+        'school_id' => $schoolId,
+        'year' => '2026/2027',
+        'semester' => 'Ganjil',
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $expTypeId = DB::table('expense_types')->insertGetId([
+        'school_id' => $schoolId,
+        'code' => 'JPK-0010',
+        'name' => 'Konsumsi Rapat & Tamu',
+        'source_funding' => 'komite',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $walletId = DB::table('virtual_wallets')->insertGetId([
+        'school_id' => $schoolId,
+        'name' => 'Dompet Operasional Kantor',
+        'nominal' => 5000000,
+        'status' => 'active',
+        'source' => 'komite',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $budgetCatId = DB::table('budget_categories')->insertGetId([
+        'school_id' => $schoolId,
+        'code' => '5.1.02',
+        'name' => 'Belanja Barang dan Jasa BOS',
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    // 1. Visit /bos/belanja
+    $resp = $this->get(route('bos.belanja.index'))->assertOk();
+    $resp->assertSee('Operasional', false);
+    $resp->assertSee('BOS', false);
+    $resp->assertSee('data-table', false);
+
+    // 2. Submit Operasional Expense (Page 30-31)
+    $this->post(route('bos.belanja.store'), [
+        'category' => 'Operasional',
+        'source_funding' => 'Komite',
+        'academic_year_id' => $academicYearId,
+        'expense_type_id' => $expTypeId,
+        'virtual_wallet_id' => $walletId,
+        'expense_name' => 'Konsumsi Rapat Komite Bulanan',
+        'amount' => 450000,
+        'transaction_date' => '2026-07-28',
+        'payment_method' => 'Tunai',
+        'recipient_name' => 'Catering Bu Siti',
+    ])->assertRedirect()->assertSessionHas('success');
+
+    $expenseOp = DB::table('expenses')
+        ->where('school_id', $schoolId)
+        ->where('expense_name', 'Konsumsi Rapat Komite Bulanan')
+        ->first();
+    expect($expenseOp)->not->toBeNull()
+        ->and($expenseOp->status)->toBe('pending');
+
+    // 3. Submit BOS Expense with Document Checklists (Page 32-33)
+    $this->post(route('bos.belanja.store'), [
+        'category' => 'BOS',
+        'source_funding' => 'BOS',
+        'academic_year_id' => $academicYearId,
+        'budget_category_id' => $budgetCatId,
+        'expense_name' => 'Pengadaan Kertas & ATK Ujian',
+        'amount' => 2500000,
+        'transaction_date' => '2026-07-29',
+        'payment_method' => 'Transfer',
+        'recipient_name' => 'CV. Graha Media',
+        'tax_type' => 'PPN',
+        'tax_amount' => 275000,
+        'document_checklist' => ['Kuitansi', 'Faktur/Nota', 'BAST'],
+    ])->assertRedirect()->assertSessionHas('success');
+
+    $expenseBos = DB::table('expenses')
+        ->where('school_id', $schoolId)
+        ->where('expense_name', 'Pengadaan Kertas & ATK Ujian')
+        ->first();
+    expect($expenseBos)->not->toBeNull()
+        ->and($expenseBos->status)->toBe('pending');
+});
+
+it('implements Flow Tutup Buku Komite and BOS matching Menu Bendahara page 34-37', function () {
+    $schoolId = makeFinanceRouteSchool('Sekolah Tutup Buku');
+    $user = makeFinanceRouteUser($schoolId);
+    $this->actingAs($user)->withSession(['active_school_id' => $schoolId]);
+
+    // 1. Visit /finance/closing
+    $resp = $this->get(route('finance.closing'))->assertOk();
+    $resp->assertSee('Tutup Buku &amp; Penguncian Periode', false);
+    $resp->assertSee('Pemeriksaan Kesiapan Tutup Buku', false);
+
+    // 2. Perform Closing when all 8 conditions are met
+    $this->post(route('finance.closing.store'), [
+        'type' => 'monthly',
+        'period' => '2026-07',
+    ])->assertRedirect()->assertSessionHas('success', 'Periode finance berhasil ditutup dan saldo telah dikunci.');
+
+    $closingMonthly = DB::table('book_closings')
+        ->where('school_id', $schoolId)
+        ->where('type', 'monthly')
+        ->where('period', '2026-07')
+        ->first();
+    expect($closingMonthly)->not->toBeNull()
+        ->and($closingMonthly->status)->toBe('closed');
+
+    // 3. Perform Tutup Buku BOS (Page 35-36)
+    $this->post(route('finance.closing.store'), [
+        'type' => 'bos',
+        'bos_type' => 'BOS Reguler',
+        'period' => '2026-07',
+    ])->assertRedirect()->assertSessionHas('success', 'Periode finance berhasil ditutup dan saldo telah dikunci.');
+
+    $closingBos = DB::table('book_closings')
+        ->where('school_id', $schoolId)
+        ->where('type', 'bos')
+        ->first();
+    expect($closingBos)->not->toBeNull()
+        ->and($closingBos->status)->toBe('closed');
+});
+
+it('implements Flow Revisi Anggaran according to workflow specification and places Dompet Virtual under Master Data Keuangan', function () {
+    $schoolId = makeFinanceRouteSchool('SMK Revisi Anggaran');
+    $user = makeFinanceRouteUser($schoolId);
+    $this->actingAs($user);
+
+    // 1. Sidebar menu verification: Dompet Virtual is in Master Data Keuangan, not a standalone single menu
+    $navItems = collect(MenuHelper::getMainNavItems());
+    $topLevelVirtualWallets = $navItems->filter(fn ($item) => ($item['name'] ?? '') === 'Dompet Virtual');
+    expect($topLevelVirtualWallets->count())->toBe(0);
+
+    $masterKeuangan = $navItems->firstWhere('name', 'Master Data Keuangan');
+    expect($masterKeuangan)->not->toBeNull();
+    $masterSubItems = collect($masterKeuangan['subItems'] ?? []);
+    expect($masterSubItems->firstWhere('name', 'Dompet Virtual'))->not->toBeNull();
+
+    // 2. Budget Year and Budget Plan setup
+    $yearId = DB::table('budget_years')->insertGetId([
+        'school_id' => $schoolId,
+        'name' => 'Tahun Ajaran 2026/2027',
+        'start_date' => '2026-07-01',
+        'end_date' => '2027-06-30',
+        'status' => 'active',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $planId = DB::table('budget_plans')->insertGetId([
+        'school_id' => $schoolId,
+        'budget_year_id' => $yearId,
+        'source_funding' => 'BOS Reguler',
+        'program_name' => 'Program Pembelajaran',
+        'activity_name' => 'Pengadaan Buku Pelajaran',
+        'amount' => 50000000,
+        'status' => 'approved',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    // 3. Revisi Anggaran page render & elements check
+    $resp = $this->get(route('finance.budgets.revisions', ['budget_year_id' => $yearId]))->assertOk();
+    $resp->assertSee('Revisi Anggaran');
+    $resp->assertSee('Hanya tahun anggaran yang berstatus aktif yang dapat direvisi.');
+    $resp->assertSee('Daftar Program dan Kegiatan');
+    $resp->assertSee('Program Pembelajaran');
+    $resp->assertSee('Pengadaan Buku Pelajaran');
+    $resp->assertSee('BOS Reguler');
+    $resp->assertSee('data-table');
+
+    // 4. Store revision
+    $this->post(route('finance.budgets.revisions.store', $planId), [
+        'new_amount' => 70000000,
+        'reason' => 'Penambahan jumlah buku sesuai kebutuhan siswa tahun ajaran 2026/2027.',
+    ])->assertRedirect()->assertSessionHas('success', 'Revisi anggaran disimpan');
+
+    $revision = DB::table('budget_plan_revisions')->where('budget_plan_id', $planId)->first();
+    expect($revision)->not->toBeNull()
+        ->and((float) $revision->new_amount)->toEqual(70000000.0)
+        ->and($revision->status)->toBe('pending');
+});
+
+it('implements Flow Buat Tagihan Baru matching the 10-step workflow specification', function () {
+    $schoolId = makeFinanceRouteSchool('SMA Al-Falah Tagihan');
+    $user = makeFinanceRouteUser($schoolId);
+    $this->actingAs($user);
+
+    $ayId = DB::table('academic_years')->insertGetId([
+        'school_id' => $schoolId,
+        'year' => '2025/2026',
+        'semester' => 'Ganjil',
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $incId = DB::table('income_types')->insertGetId([
+        'school_id' => $schoolId,
+        'code' => 'JP009',
+        'name' => 'SPP Komite Bulanan',
+        'category' => 'Komite',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $classId = DB::table('school_classes')->insertGetId([
+        'school_id' => $schoolId,
+        'academic_year_id' => $ayId,
+        'name' => 'TKJ 1',
+        'grade' => 10,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $studentId = DB::table('students')->insertGetId([
+        'school_id' => $schoolId,
+        'name' => 'Andi Pratama',
+        'nis' => '250001',
+        'nisn' => '0098765432',
+        'gender' => 'L',
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    DB::table('class_students')->insert([
+        'school_class_id' => $classId,
+        'student_id' => $studentId,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    // 1. Visit /finance/billing: check elements
+    $resp = $this->get(route('finance.billing'))->assertOk();
+    $resp->assertSee('Tagihan Komite');
+    $resp->assertSee('Buat Tagihan Baru');
+    $resp->assertSee('Semua Tahun Ajaran');
+    $resp->assertSee('Semua Status');
+    $resp->assertSee('Catatan Penting Pengaturan Tagihan:');
+    $resp->assertSee('data-table');
+
+    // 2. Generate Tagihan (Step 4-7)
+    $this->post(route('finance.billing.store'), [
+        'income_type_id' => $incId,
+        'academic_year_id' => $ayId,
+        'name' => 'SPP Komite 2025/2026',
+        'amount' => 300000,
+        'allow_installment' => 'ya',
+        'minimum_installment' => 100000,
+        'has_late_fee' => 'ya',
+        'late_fee_per_day' => 5000,
+        'late_fee_maximum' => 100000,
+        'billing_frequency' => 'Bulanan',
+        'billing_day' => 5,
+        'due_day' => 25,
+        'target_type' => 'pilihan',
+        'target_class_id' => $classId,
+    ])->assertRedirect()->assertSessionHas('success_modal', true)
+      ->assertSessionHas('success', 'Tagihan berhasil disimpan.');
+
+    $bill = DB::table('billing_items')->where('school_id', $schoolId)->where('name', 'SPP Komite 2025/2026')->first();
+    expect($bill)->not->toBeNull()
+        ->and((float) $bill->amount)->toEqual(300000.0)
+        ->and((bool) $bill->allow_installment)->toBeTrue()
+        ->and((float) $bill->minimum_installment)->toEqual(100000.0);
+
+    // Verify student invoice was generated
+    $studentInvoice = DB::table('invoices')
+        ->where('school_id', $schoolId)
+        ->where('student_id', $studentId)
+        ->first();
+    expect($studentInvoice)->not->toBeNull()
+        ->and((float) $studentInvoice->total_amount)->toEqual(300000.0);
+
+    // 3. Safeguard: After invoice is paid, billing cannot be deleted
+    DB::table('invoices')->where('id', $studentInvoice->id)->update([
+        'status' => 'Lunas',
+    ]);
+
+    $this->delete(route('finance.billing.destroy', $bill->id))
+        ->assertRedirect()
+        ->assertSessionHas('error');
+    expect(DB::table('billing_items')->where('id', $bill->id)->count())->toBe(1);
+});
+
+it('implements Flow Lihat Tunggakan Siswa dan Pembayaran matching the 10-step workflow', function () {
+    $schoolId = makeFinanceRouteSchool('SMP Arrears Workflow School');
+    $user = makeFinanceRouteUser($schoolId);
+    $this->actingAs($user)->withSession(['active_school_id' => $schoolId]);
+
+    $ayId = DB::table('academic_years')->insertGetId([
+        'school_id' => $schoolId,
+        'year' => '2025/2026',
+        'semester' => 'Ganjil',
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $classId = DB::table('school_classes')->insertGetId([
+        'school_id' => $schoolId,
+        'academic_year_id' => $ayId,
+        'name' => 'VII-A',
+        'grade' => 7,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $studentId = DB::table('students')->insertGetId([
+        'school_id' => $schoolId,
+        'name' => 'Budi Arrears Santoso',
+        'nis' => '998877',
+        'nisn' => '0011223344',
+        'gender' => 'L',
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    DB::table('class_students')->insert([
+        'school_class_id' => $classId,
+        'student_id' => $studentId,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $walletId = DB::table('virtual_wallets')->insertGetId([
+        'school_id' => $schoolId,
+        'name' => 'Dompet SPP',
+        'nominal' => 0,
+        'status' => 'active',
+        'source' => 'komite',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $accountId = DB::table('school_accounts')->insertGetId([
+        'school_id' => $schoolId,
+        'name' => 'Bank BRI Komite',
+        'account_number' => '1234567890',
+        'bank_name' => 'BRI',
+        'type' => 'bank',
+        'opening_balance' => 1000000,
+        'current_balance' => 1000000,
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $incId = DB::table('income_types')->insertGetId([
+        'school_id' => $schoolId,
+        'name' => 'SPP Bulanan',
+        'code' => 'SPP-01',
+        'category' => 'Komite',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    // Setup automatic virtual wallet allocation (20% dari setiap pembayaran)
+    DB::table('fund_allocations')->insert([
+        'school_id' => $schoolId,
+        'income_type_id' => $incId,
+        'virtual_wallet_id' => $walletId,
+        'name' => 'Alokasi Sarpras SPP',
+        'method' => 'persentase',
+        'amount' => 20,
+        'status' => 'active',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $billId = DB::table('billing_items')->insertGetId([
+        'school_id' => $schoolId,
+        'income_type_id' => $incId,
+        'academic_year_id' => $ayId,
+        'name' => 'Tagihan SPP Juli 2025',
+        'amount' => 500000,
+        'allow_installment' => true,
+        'minimum_installment' => 100000,
+        'billing_frequency' => 'Bulanan',
+        'due_date' => now()->subDays(5)->toDateString(), // Past due -> Menunggak
+        'status' => 'active',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $invId = DB::table('invoices')->insertGetId([
+        'school_id' => $schoolId,
+        'student_id' => $studentId,
+        'academic_year_id' => $ayId,
+        'invoice_number' => 'INV-2025-07-001',
+        'total_amount' => 500000,
+        'status' => 'Belum Lunas',
+        'due_date' => now()->subDays(5)->toDateString(),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    DB::table('invoice_items')->insert([
+        'invoice_id' => $invId,
+        'name' => 'SPP Bulanan Juli 2025',
+        'amount' => 500000,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    // 1. Visit /finance/billing?tab=arrears (Step 1 - Step 3)
+    $resp = $this->get(route('finance.billing', ['tab' => 'arrears']))->assertOk();
+    $resp->assertSee('Tunggakan Siswa');
+    $resp->assertSee('Data tunggakan selalu real-time');
+    $resp->assertSee('Budi Arrears Santoso');
+    $resp->assertSee('998877');
+    $resp->assertSee('VII-A');
+    $resp->assertSee('Saldo Kas / Bank Sekolah Diperbarui');
+    $resp->assertSee('Pembagian ke Dompet Virtual');
+    $resp->assertSee('Notifikasi WhatsApp ke Orang Tua');
+    $resp->assertSee('Panduan Status Pembayaran Siswa');
+    $resp->assertSee('Setelah disimpan, sistem akan:');
+    $resp->assertSee('Mengupdate saldo kas/rekening sekolah');
+    // Karena tagihan sudah melewati jatuh tempo (due_date in the past), status awal adalah Menunggak
+    $resp->assertSee('Menunggak');
+
+    // 2. Perform partial payment (cicilan: 200,000) (Step 5 - 8)
+    $payResp = $this->post(route('spp.transaksi.pay', $invId), [
+        'amount_paid' => 200000,
+        'payment_method' => 'Transfer',
+        'account_id' => $accountId,
+        'payment_date' => now()->toDateString(),
+        'notes' => 'Cicilan pertama SPP',
+    ])->assertRedirect()->assertSessionHas('payment_success_modal', true);
+
+    $payResp->assertSessionHas('trx_number');
+    $payResp->assertSessionHas('success');
+    // User Note: Sistem mengirimkan notifikasi ke orang tua setiap ada transaksi uang masuk
+    $payResp->assertSessionHas('parent_notification_sent', true);
+
+    // Verify invoice status updated to Cicilan
+    $invAfter1 = DB::table('invoices')->where('id', $invId)->first();
+    expect($invAfter1->status)->toEqual('Cicilan');
+
+    // Verify school account balance updated (1,000,000 + 200,000 = 1,200,000)
+    $accountAfter1 = DB::table('school_accounts')->where('id', $accountId)->first();
+    expect((float) $accountAfter1->current_balance)->toEqual(1200000.0);
+
+    // User Note: Sistem otomatis bagi besaran transaksi masukkan ke Virtual wallet (20% dari 200,000 = 40,000)
+    $walletAfter1 = DB::table('virtual_wallets')->where('id', $walletId)->first();
+    expect((float) $walletAfter1->nominal)->toEqual(40000.0);
+
+    // 3. Complete remaining payment (300,000) -> status becomes Lunas
+    $payResp2 = $this->post(route('spp.transaksi.pay', $invId), [
+        'amount_paid' => 300000,
+        'payment_method' => 'Tunai',
+        'payment_date' => now()->toDateString(),
+        'notes' => 'Pelunasan SPP',
+    ])->assertRedirect()->assertSessionHas('payment_success_modal', true);
+
+    $payResp2->assertSessionHas('parent_notification_sent', true);
+
+    $invAfter2 = DB::table('invoices')->where('id', $invId)->first();
+    expect($invAfter2->status)->toEqual('Lunas');
+
+    // Virtual wallet bertambah 20% dari 300,000 = 60,000 (total: 40,000 + 60,000 = 100,000)
+    $walletAfter2 = DB::table('virtual_wallets')->where('id', $walletId)->first();
+    expect((float) $walletAfter2->nominal)->toEqual(100000.0);
+});
+
+it('allows only kepala sekolah to approve or reject penyusunan anggaran and revisi anggaran', function () {
+    $schoolId = makeFinanceRouteSchool('Sekolah Approval Kepsek');
+    $bendahara = makeFinanceRouteUser($schoolId);
+    $kepsek = User::factory()->create(['role' => 'kepsek']);
+    DB::table('school_user_roles')->insert([
+        'user_id' => $kepsek->id,
+        'school_id' => $schoolId,
+        'role' => 'kepsek',
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $activeYearId = DB::table('academic_years')->insertGetId([
+        'school_id' => $schoolId,
+        'year' => '2026/2027',
+        'semester' => 'Ganjil',
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $budgetYear = app(FinanceService::class)->createBudgetYear($schoolId, [
+        'name' => 'TA 2026/2027',
+        'start_date' => '2026-07-01',
+        'end_date' => '2027-06-30',
+        'academic_year_id' => $activeYearId,
+    ]);
+
+    // 1. Bendahara creates a budget plan (Susun Anggaran)
+    $this->actingAs($bendahara)->withSession(['active_school_id' => $schoolId]);
+    $this->post('/finance/budgets', [
+        'budget_year_id' => $budgetYear->id,
+        'program_name' => 'Program Laboratorium Komputer',
+        'activity_name' => 'Pengadaan PC Desktop',
+        'source_funding' => 'Komite',
+        'amount' => 50000000,
+    ])->assertRedirect();
+
+    $budgetPlan = DB::table('budget_plans')->where('school_id', $schoolId)->where('program_name', 'Program Laboratorium Komputer')->first();
+    expect($budgetPlan)->not->toBeNull()
+        ->and($budgetPlan->status)->toEqual('pending');
+
+    $approvalBudget = DB::table('approval_requests')
+        ->where('school_id', $schoolId)
+        ->where('type', 'budget')
+        ->where('approvable_id', $budgetPlan->id)
+        ->first();
+    expect($approvalBudget)->not->toBeNull()
+        ->and($approvalBudget->status)->toEqual('pending');
+
+    // Verify view /finance/approvals as bendahara shows notification that only Kepsek can approve
+    $bendaharaView = $this->actingAs($bendahara)->withSession(['active_school_id' => $schoolId])
+        ->get('/finance/approvals')->assertOk();
+    $bendaharaView->assertSee('Antrian Approval Keuangan');
+    $bendaharaView->assertSee('Rencana Anggaran');
+
+    // Bendahara attempts to approve budget plan -> MUST be 403 Forbidden
+    $this->actingAs($bendahara)->withSession(['active_school_id' => $schoolId])
+        ->post("/approvals/{$approvalBudget->id}/approve")
+        ->assertForbidden();
+
+    // Bendahara attempts to reject budget plan -> MUST be 403 Forbidden
+    $this->actingAs($bendahara)->withSession(['active_school_id' => $schoolId])
+        ->post("/approvals/{$approvalBudget->id}/reject")
+        ->assertForbidden();
+
+    // Kepsek accesses /finance/approvals -> allowed
+    $kepsekView = $this->actingAs($kepsek)->withSession(['active_school_id' => $schoolId])
+        ->get('/finance/approvals')->assertOk();
+    $kepsekView->assertSee('Antrian Approval Keuangan');
+
+    // Kepsek approves the budget plan -> successful redirect
+    $this->actingAs($kepsek)->withSession(['active_school_id' => $schoolId])
+        ->post("/approvals/{$approvalBudget->id}/approve")
+        ->assertRedirect();
+
+    $budgetPlanAfter = DB::table('budget_plans')->where('id', $budgetPlan->id)->first();
+    expect($budgetPlanAfter->status)->toEqual('approved');
+    $approvalBudgetAfter = DB::table('approval_requests')->where('id', $approvalBudget->id)->first();
+    expect($approvalBudgetAfter->status)->toEqual('approved');
+
+    // 2. Bendahara creates a budget revision (Revisi Anggaran)
+    $this->actingAs($bendahara)->withSession(['active_school_id' => $schoolId]);
+    $this->post("/finance/budgets/{$budgetPlan->id}/revisions", [
+        'new_amount' => 60000000,
+        'reason' => 'Kebutuhan upgrade spesifikasi RAM PC',
+    ])->assertRedirect();
+
+    $revision = DB::table('budget_plan_revisions')->where('budget_plan_id', $budgetPlan->id)->first();
+    expect($revision)->not->toBeNull()
+        ->and($revision->status)->toEqual('pending');
+
+    $approvalRevision = DB::table('approval_requests')
+        ->where('school_id', $schoolId)
+        ->where('type', 'budget_revision')
+        ->where('approvable_id', $revision->id)
+        ->first();
+    expect($approvalRevision)->not->toBeNull()
+        ->and($approvalRevision->status)->toEqual('pending');
+
+    // Bendahara attempts to approve budget revision -> MUST be 403 Forbidden
+    $this->actingAs($bendahara)->withSession(['active_school_id' => $schoolId])
+        ->post("/approvals/{$approvalRevision->id}/approve")
+        ->assertForbidden();
+
+    // Bendahara attempts to reject budget revision -> MUST be 403 Forbidden
+    $this->actingAs($bendahara)->withSession(['active_school_id' => $schoolId])
+        ->post("/approvals/{$approvalRevision->id}/reject")
+        ->assertForbidden();
+
+    // Kepsek approves the budget revision -> successful
+    $this->actingAs($kepsek)->withSession(['active_school_id' => $schoolId])
+        ->post("/approvals/{$approvalRevision->id}/approve")
+        ->assertRedirect();
+
+    $revisionAfter = DB::table('budget_plan_revisions')->where('id', $revision->id)->first();
+    expect($revisionAfter->status)->toEqual('approved');
+    $planAfterRevision = DB::table('budget_plans')->where('id', $budgetPlan->id)->first();
+    expect((float) $planAfterRevision->amount)->toEqual(60000000.0);
+});
+
+it('ensures nominal inputs use thousands masking and accepts dot-delimited values seamlessly', function () {
+    $schoolId = makeFinanceRouteSchool('Sekolah Masking');
+    $user = makeFinanceRouteUser($schoolId);
+    $this->actingAs($user)->withSession(['active_school_id' => $schoolId]);
+
+    // 1. Verify pages render data-mask="currency" on their nominal input fields
+    $budgetResp = $this->get('/finance/budgets')->assertOk();
+    $budgetResp->assertSee('data-mask="currency"', false);
+
+    $virtualWalletResp = $this->get('/finance/virtual-wallets')->assertOk();
+    $virtualWalletResp->assertSee('data-mask="currency"', false);
+
+    $billingResp = $this->get('/finance/billing')->assertOk();
+    $billingResp->assertSee('data-mask="currency"', false);
+
+    $transaksiResp = $this->get('/spp/transaksi')->assertOk();
+    $transaksiResp->assertSee('data-mask="currency"', false);
+
+    $belanjaResp = $this->get('/bos/belanja')->assertOk();
+    $belanjaResp->assertSee('data-mask="currency"', false);
+
+    // 2. Submit virtual wallet with dot-delimited thousands masked nominal
+    $this->post('/finance/virtual-wallets', [
+        'name' => 'Dana Praktikum',
+        'nominal' => '12.500.000',
+        'source' => 'Komite',
+        'status' => 'active',
+    ])->assertRedirect();
+
+    $wallet = DB::table('virtual_wallets')->where('school_id', $schoolId)->where('name', 'Dana Praktikum')->first();
+    expect($wallet)->not->toBeNull()
+        ->and((float) $wallet->nominal)->toEqual(12500000.0);
+
+    // 3. Submit budget plan with dot-delimited thousands in array activities
+    $activeYearId = DB::table('academic_years')->insertGetId([
+        'school_id' => $schoolId,
+        'year' => '2026/2027',
+        'semester' => 'Ganjil',
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $budgetYear = app(FinanceService::class)->createBudgetYear($schoolId, [
+        'name' => 'TA 2026/2027 Mask',
+        'start_date' => '2026-07-01',
+        'end_date' => '2027-06-30',
+        'academic_year_id' => $activeYearId,
+    ]);
+
+    $this->post('/finance/budgets', [
+        'budget_year_id' => $budgetYear->id,
+        'source_funding' => 'BOS',
+        'programs' => [
+            [
+                'name' => 'Program Sarpras',
+                'activities' => [
+                    ['name' => 'Pengadaan Proyektor', 'amount' => '4.750.000'],
+                    ['name' => 'Kabel HDMI', 'amount' => '250.000'],
+                ],
+            ],
+        ],
+    ])->assertRedirect();
+
+    $plan1 = DB::table('budget_plans')->where('school_id', $schoolId)->where('activity_name', 'Pengadaan Proyektor')->first();
+    expect($plan1)->not->toBeNull()
+        ->and((float) $plan1->amount)->toEqual(4750000.0);
+
+    $plan2 = DB::table('budget_plans')->where('school_id', $schoolId)->where('activity_name', 'Kabel HDMI')->first();
+    expect($plan2)->not->toBeNull()
+        ->and((float) $plan2->amount)->toEqual(250000.0);
+});
+
+
+
 

@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
 use App\Models\ApprovalRequest;
 use App\Models\BudgetCategory;
+use App\Models\BudgetPlan;
 use App\Models\Expense;
+use App\Models\ExpenseType;
 use App\Models\IncomeType;
-use App\Models\AcademicYear;
+use App\Models\SchoolAccount;
 use App\Models\Transaction;
+use App\Models\VirtualWallet;
 use App\Services\FinanceLedgerService;
 use App\Services\FinanceService;
 use App\Services\SchoolContext;
@@ -208,21 +212,34 @@ class BosController extends Controller
     public function belanja(SchoolContext $schoolContext)
     {
         $schoolId = $schoolContext->activeSchoolId();
-        $expenses = Expense::with(['budgetCategory', 'academicYear'])
+        $expenses = Expense::with(['budgetCategory', 'academicYear', 'expenseType', 'virtualWallet', 'account'])
             ->where('school_id', $schoolId)
             ->orderBy('transaction_date', 'desc')
             ->get();
             
         $categories = BudgetCategory::where('is_active', true)->orderBy('code')->get();
-        $academicYears = AcademicYear::where('school_id', $schoolId)->get();
-        $activeYear = AcademicYear::where('school_id', $schoolId)->where('is_active', true)->first();
+        $academicYears = AcademicYear::where(function ($q) use ($schoolId) {
+            $q->where('school_id', $schoolId)->orWhereNull('school_id');
+        })->get();
+        $activeYear = AcademicYear::where(function ($q) use ($schoolId) {
+            $q->where('school_id', $schoolId)->orWhereNull('school_id');
+        })->where('is_active', true)->first();
+
+        $expenseTypes = ExpenseType::where('school_id', $schoolId)->orderBy('name')->get();
+        $virtualWallets = VirtualWallet::where('school_id', $schoolId)->where('status', 'active')->get();
+        $schoolAccounts = SchoolAccount::where('school_id', $schoolId)->where('is_active', true)->get();
+        $bosBudgets = BudgetPlan::where('school_id', $schoolId)->where('source_funding', 'BOS')->get();
 
         return view('pages.keuangan.bos.belanja', [
             'title' => 'Pencatatan Belanja & Operasional Sekolah',
             'expenses' => $expenses,
             'categories' => $categories,
             'academicYears' => $academicYears,
-            'activeYear' => $activeYear
+            'activeYear' => $activeYear,
+            'expenseTypes' => $expenseTypes,
+            'virtualWallets' => $virtualWallets,
+            'schoolAccounts' => $schoolAccounts,
+            'bosBudgets' => $bosBudgets,
         ]);
     }
 
@@ -232,8 +249,12 @@ class BosController extends Controller
     public function storeBelanja(Request $request, SchoolContext $schoolContext, FinanceService $finance)
     {
         $validated = $request->validate([
+            'category' => 'nullable|string',
             'budget_category_id' => 'nullable|exists:budget_categories,id',
-            'academic_year_id' => 'required|exists:academic_years,id',
+            'expense_type_id' => 'nullable|exists:expense_types,id',
+            'virtual_wallet_id' => 'nullable|exists:virtual_wallets,id',
+            'account_id' => 'nullable|exists:school_accounts,id',
+            'academic_year_id' => 'nullable|exists:academic_years,id',
             'expense_name' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0',
             'transaction_date' => 'required|date',
@@ -243,10 +264,20 @@ class BosController extends Controller
             'recipient_name' => 'nullable|string',
             'tax_type' => 'nullable|string',
             'tax_amount' => 'nullable|numeric|min:0',
-            'is_tax_paid' => 'nullable|boolean'
+            'is_tax_paid' => 'nullable|boolean',
+            'proof' => 'nullable|file|mimes:pdf,jpg,jpeg,png,heic|max:10240',
+            'document_checklist' => 'nullable|array',
         ]);
 
-        // Default tax amount if null
+        if (empty($validated['academic_year_id'])) {
+            $activeYear = AcademicYear::where('is_active', true)->first();
+            $validated['academic_year_id'] = $activeYear?->id;
+        }
+
+        if ($request->hasFile('proof')) {
+            $validated['proof_path'] = $request->file('proof')->store('finance/expenses', 'public');
+        }
+
         $validated['tax_amount'] = $request->has('tax_amount') ? $request->input('tax_amount') : 0.00;
         $validated['is_tax_paid'] = $request->has('is_tax_paid') ? (bool) $request->input('is_tax_paid') : false;
 
