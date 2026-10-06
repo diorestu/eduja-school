@@ -79,9 +79,9 @@ class FinanceHealthService
     private function arrearsHealth(float $percentage): array
     {
         foreach ([
-            [0, 5, 'Sangat Terkendali', 'Pembayaran siswa sangat tertib.', 'Hanya sebagian kecil tagihan yang masih tertunggak. Kondisi tunggakan sekolah sangat terkendali.', 'green'],
+            [0, 5, 'Sangat Terkendali', 'Pembayaran murid sangat tertib.', 'Hanya sebagian kecil tagihan yang masih tertunggak. Kondisi tunggakan sekolah sangat terkendali.', 'green'],
             [5, 10, 'Terkendali', 'Sebagian besar pembayaran berjalan tertib.', 'Tunggakan masih berada pada tingkat yang relatif terkendali. Tetap pantau tagihan yang mulai melewati jatuh tempo.', 'green'],
-            [10, 15, 'Mulai Meningkat', 'Beberapa tunggakan mulai membutuhkan perhatian.', 'EDUJA menemukan peningkatan jumlah tagihan yang belum terselesaikan. Periksa siswa dengan tunggakan terbesar atau terlama.', 'yellow'],
+            [10, 15, 'Mulai Meningkat', 'Beberapa tunggakan mulai membutuhkan perhatian.', 'EDUJA menemukan peningkatan jumlah tagihan yang belum terselesaikan. Periksa murid dengan tunggakan terbesar atau terlama.', 'yellow'],
             [15, 25, 'Perlu Ditangani', 'Tunggakan mulai berpengaruh pada arus pemasukan.', 'Sebagian tagihan belum terselesaikan. EDUJA menyarankan peninjauan daftar tunggakan dan tindak lanjut pembayaran.', 'orange'],
             [25, 40, 'Tinggi', 'Cukup banyak tagihan masih tertunda.', 'Tingkat tunggakan sudah cukup tinggi dan dapat menghambat arus kas sekolah. Prioritaskan tagihan yang telah lama tertunda.', 'red'],
             [40, INF, 'Sangat Tinggi', 'Porsi tagihan tertunda sangat besar.', 'Sebagian besar tagihan belum terselesaikan. EDUJA menyarankan bendahara memprioritaskan penanganan tunggakan dan memantau arus kas sekolah.', 'red'],

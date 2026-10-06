@@ -258,7 +258,7 @@
                                             x-model="alloc.amount" :name="'allocations[' + index + '][amount]'"
                                             :required="usesAllocation == '1'" :disabled="usesAllocation != '1'"
                                             :placeholder="alloc.method === 'persentase' ? '50' : '500.000'"
-                                            class="text-xs py-1.5 pl-2 pr-6 min-h-[36px] tabular-nums"
+                                            class="text-xs py-1.5 pl-3 pr-8 min-h-[36px] tabular-nums"
                                             :class="alloc.method === 'nominal' ? 'mask-currency' : ''">
                                         <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400" x-text="alloc.method === 'persentase' ? '%' : 'Rp'"></span>
                                     </div>
@@ -488,7 +488,7 @@
                                             x-model="alloc.amount" :name="'allocations[' + index + '][amount]'"
                                             :required="editUsesAllocation == '1'" :disabled="editUsesAllocation != '1'"
                                             :placeholder="alloc.method === 'persentase' ? '50' : '500.000'"
-                                            class="text-xs py-1.5 pl-2 pr-6 min-h-[36px] tabular-nums"
+                                            class="text-xs py-1.5 pl-3 pr-8 min-h-[36px] tabular-nums"
                                             :class="alloc.method === 'nominal' ? 'mask-currency' : ''">
                                         <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400" x-text="alloc.method === 'persentase' ? '%' : 'Rp'"></span>
                                     </div>

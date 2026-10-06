@@ -244,8 +244,11 @@
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="work-field">
-                            <label for="create-op-amount">Nominal (Rp) <span class="text-red-500">*</span></label>
-                            <input id="create-op-amount" name="amount" type="text" inputmode="numeric" data-mask="currency" required placeholder="Contoh: 750.000" class="mask-currency">
+                            <label for="create-op-amount">Nominal <span class="text-red-500">*</span></label>
+                            <div class="relative flex items-center">
+                                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-semibold text-gray-500 pointer-events-none select-none z-10">Rp</span>
+                                <input id="create-op-amount" name="amount" type="text" inputmode="numeric" data-mask="currency" required placeholder="Contoh: 750.000" class="w-full !pl-11 pr-3 py-2 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white tabular-nums mask-currency" style="padding-left: 2.75rem !important;">
+                            </div>
                         </div>
                         <div class="work-field">
                             <label for="create-op-recipient">Penerima Dana</label>
@@ -336,8 +339,11 @@
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="work-field">
-                            <label for="create-bos-amount">Nominal (Rp) <span class="text-red-500">*</span></label>
-                            <input id="create-bos-amount" name="amount" type="text" inputmode="numeric" data-mask="currency" x-model="createAmount" @input="calculateCreateTax()" required placeholder="Contoh: 4.500.000" class="mask-currency">
+                            <label for="create-bos-amount">Nominal <span class="text-red-500">*</span></label>
+                            <div class="relative flex items-center">
+                                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-semibold text-gray-500 pointer-events-none select-none z-10">Rp</span>
+                                <input id="create-bos-amount" name="amount" type="text" inputmode="numeric" data-mask="currency" x-model="createAmount" @input="calculateCreateTax()" required placeholder="Contoh: 4.500.000" class="w-full !pl-11 pr-3 py-2 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white tabular-nums mask-currency" style="padding-left: 2.75rem !important;">
+                            </div>
                         </div>
                         <div class="work-field">
                             <label for="create-bos-date">Tanggal Transaksi <span class="text-red-500">*</span></label>
@@ -444,8 +450,11 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div class="work-field">
-                    <label for="edit-amount">Jumlah Belanja (Rp) <span class="text-red-500">*</span></label>
-                    <input id="edit-amount" name="amount" type="text" inputmode="numeric" data-mask="currency" x-model="editAmount" required class="mask-currency">
+                    <label for="edit-amount">Jumlah Belanja <span class="text-red-500">*</span></label>
+                    <div class="relative flex items-center">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-semibold text-gray-500 pointer-events-none select-none z-10">Rp</span>
+                        <input id="edit-amount" name="amount" type="text" inputmode="numeric" data-mask="currency" x-model="editAmount" required class="w-full !pl-11 pr-3 py-2 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white tabular-nums mask-currency" style="padding-left: 2.75rem !important;">
+                    </div>
                 </div>
                 <div class="work-field">
                     <label for="edit-date">Tanggal Belanja <span class="text-red-500">*</span></label>

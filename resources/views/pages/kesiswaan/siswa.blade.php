@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-    <x-common.page-breadcrumb pageTitle="Data Siswa" />
+    <x-common.page-breadcrumb pageTitle="Data Murid" />
 
     @if(session('success'))
         <div class="mb-6 flex items-center gap-3.5 rounded-lg border border-green-200 bg-green-50 p-4 text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-500">
@@ -14,14 +14,14 @@
         <div class="xl:col-span-1">
             <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
                 <h4 class="mb-5 font-semibold text-gray-800 text-theme-lg dark:text-white/90">
-                    Registrasi Siswa Baru
+                    Registrasi Murid Baru
                 </h4>
 
                 <form action="{{ route('siswa.store') }}" method="POST" class="space-y-4">
                     @csrf
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                            NIS (Nomor Induk Siswa)
+                            NIS (Nomor Induk Murid)
                         </label>
                         <input type="text" name="nis" placeholder="Contoh: 10024" required
                             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" />
@@ -39,7 +39,7 @@
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                             Nama Lengkap
                         </label>
-                        <input type="text" name="name" placeholder="Nama lengkap siswa" required
+                        <input type="text" name="name" placeholder="Nama lengkap murid" required
                             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" />
                     </div>
 
@@ -101,7 +101,7 @@
 
                     <button type="submit"
                         class="w-full rounded-lg bg-brand-500 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-600 focus:outline-hidden">
-                        Daftarkan Siswa
+                        Daftarkan Murid
                     </button>
                 </form>
             </div>
@@ -111,7 +111,7 @@
         <div class="xl:col-span-3">
             <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
                 <h4 class="mb-5 font-semibold text-gray-800 text-theme-lg dark:text-white/90">
-                    Daftar Siswa Aktif
+                    Daftar Murid Aktif
                 </h4>
 
                 <div class="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">

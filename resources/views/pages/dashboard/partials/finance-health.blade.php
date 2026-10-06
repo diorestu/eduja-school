@@ -33,10 +33,10 @@
             </article>
         @endforeach
         <article class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Siswa Menunggak</p>
+            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Murid Menunggak</p>
             <p class="mt-2 text-3xl font-bold text-gray-800 dark:text-white/90">{{ number_format($financeHealth['delinquentStudents']['percentage'], 1, ',', '.') }}%</p>
-            <p class="mt-3 text-sm font-semibold text-gray-800 dark:text-white/90">{{ $financeHealth['delinquentStudents']['count'] }} dari {{ $financeHealth['delinquentStudents']['total'] }} siswa aktif</p>
-            <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">Jumlah siswa dengan sisa tagihan dibanding jumlah siswa aktif di sekolah ini.</p>
+            <p class="mt-3 text-sm font-semibold text-gray-800 dark:text-white/90">{{ $financeHealth['delinquentStudents']['count'] }} dari {{ $financeHealth['delinquentStudents']['total'] }} murid aktif</p>
+            <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">Jumlah siswa dengan sisa tagihan dibanding jumlah murid aktif di sekolah ini.</p>
         </article>
     </div>
 </section>

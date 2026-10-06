@@ -188,13 +188,13 @@
 
             <div class="flex items-center gap-3">
                 <div class="relative w-full sm:w-64">
-                    <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-gray-400">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
                     </span>
                     <input type="text" x-model="searchQuery" placeholder="Cari program atau kegiatan..."
-                        class="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-brand-500" />
+                        class="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-brand-500" />
                 </div>
             </div>
         </div>
@@ -392,11 +392,12 @@
                     <label for="input_new_amount" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Nominal Baru <span class="text-red-500">*</span>
                     </label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-xs font-semibold text-gray-500 pointer-events-none">Rp</span>
+                    <div class="relative flex items-center">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-semibold text-gray-500 dark:text-gray-400 pointer-events-none select-none z-10">Rp</span>
                         <input id="input_new_amount" name="new_amount" type="text" inputmode="numeric" data-mask="currency" x-model="revisionAmount"
                             :class="formErrors.amount ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 dark:border-gray-700 focus:ring-brand-500 focus:border-brand-500'"
-                            class="w-full pl-9 pr-3 py-2 text-xs rounded-lg border bg-white dark:bg-gray-800 text-gray-900 dark:text-white tabular-nums focus:outline-hidden focus:ring-1 mask-currency"
+                            class="w-full !pl-11 pr-3 py-2 text-xs rounded-lg border bg-white dark:bg-gray-800 text-gray-900 dark:text-white tabular-nums focus:outline-hidden focus:ring-1 mask-currency"
+                            style="padding-left: 2.75rem !important;"
                             placeholder="Masukkan nominal baru (contoh: 70.000.000)">
                     </div>
                     <template x-if="formErrors.amount">

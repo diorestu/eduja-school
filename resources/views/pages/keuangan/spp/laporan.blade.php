@@ -67,7 +67,7 @@
                         <thead>
                             <tr class="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/20">
                                 <th class="px-5 py-3 text-left">
-                                    <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Siswa / NIS</p>
+                                    <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Murid / NIS</p>
                                 </th>
                                 <th class="px-5 py-3 text-left">
                                     <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Kelas</p>
@@ -123,7 +123,7 @@
                             @empty
                                 <tr>
                                     <td colspan="6" class="px-5 py-10 text-center text-gray-400 text-sm">
-                                        Luar biasa! Tidak ada siswa yang menunggak tagihan saat ini.
+                                        Luar biasa! Tidak ada murid yang menunggak tagihan saat ini.
                                     </td>
                                 </tr>
                             @endforelse
@@ -208,7 +208,7 @@
                                     <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">No. Kuitansi</p>
                                 </th>
                                 <th class="px-5 py-3 text-left">
-                                    <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Siswa / NIS</p>
+                                    <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Murid / NIS</p>
                                 </th>
                                 <th class="px-5 py-3 text-left">
                                     <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Tanggal Bayar</p>

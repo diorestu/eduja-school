@@ -30,7 +30,7 @@
     <section class="work-panel">
         <div class="work-head"><div><h2>Lembar presensi harian</h2><p class="work-muted">{{ \Carbon\Carbon::parse($selectedDate)->translatedFormat('d F Y') }}</p></div></div>
         @if($people->isEmpty())
-            <div class="work-empty"><h3>{{ !$isGtk && !$selectedClassId ? 'Pilih kelas untuk melihat daftar siswa' : 'Belum ada peserta aktif' }}</h3><p class="work-muted">{{ $isGtk ? 'Guru dan tendik aktif di sekolah ini akan tampil di sini.' : 'Periksa pilihan kelas dan data siswa aktif di sekolah ini.' }}</p></div>
+            <div class="work-empty"><h3>{{ !$isGtk && !$selectedClassId ? 'Pilih kelas untuk melihat daftar murid' : 'Belum ada peserta aktif' }}</h3><p class="work-muted">{{ $isGtk ? 'Guru dan tendik aktif di sekolah ini akan tampil di sini.' : 'Periksa pilihan kelas dan data murid aktif di sekolah ini.' }}</p></div>
         @elseif(! $canEdit)
             <p class="work-notice">Akses lihat presensi. Pencatatan dilakukan oleh petugas administrasi sekolah.</p>
             @foreach($people as $person)

@@ -500,10 +500,14 @@
                                                         </template>
                                                     </td>
                                                     <td class="px-2.5 py-2">
-                                                        <input type="text" inputmode="numeric" data-mask="currency" :name="'programs[' + pIdx + '][activities][' + aIdx + '][amount]'" x-model="act.amount" required
-                                                            placeholder="0"
-                                                            :class="hasAttemptedSubmit && (!act.amount || Number(String(act.amount).replace(/\D/g, '')) <= 0) ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'"
-                                                            class="w-full text-xs rounded-lg border bg-gray-50 dark:bg-gray-900 px-2.5 py-1.5 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-brand-500 text-right tabular-nums mask-currency">
+                                                        <div class="relative flex items-center">
+                                                            <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center text-[11px] font-semibold text-gray-500 dark:text-gray-400 pointer-events-none select-none z-10">Rp</span>
+                                                            <input type="text" inputmode="numeric" data-mask="currency" :name="'programs[' + pIdx + '][activities][' + aIdx + '][amount]'" x-model="act.amount" required
+                                                                placeholder="0"
+                                                                :class="hasAttemptedSubmit && (!act.amount || Number(String(act.amount).replace(/\D/g, '')) <= 0) ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'"
+                                                                class="w-full text-xs rounded-lg border bg-gray-50 dark:bg-gray-900 !pl-8 pr-2.5 py-1.5 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-brand-500 text-right tabular-nums mask-currency"
+                                                                style="padding-left: 2rem !important;">
+                                                        </div>
                                                     </td>
                                                     <td class="px-2.5 py-2 text-center">
                                                         <button type="button" @click="removeActivity(pIdx, aIdx)" :disabled="prog.activities.length <= 1"
@@ -639,8 +643,11 @@
                 @csrf
 
                 <div class="work-field">
-                    <label for="rev-amount">Nominal Anggaran Baru (Rp) <span class="text-red-500">*</span></label>
-                    <input id="rev-amount" name="new_amount" x-model="revisionAmount" type="text" inputmode="numeric" data-mask="currency" required placeholder="Contoh: 18.000.000" class="mask-currency">
+                    <label for="rev-amount">Nominal Anggaran Baru <span class="text-red-500">*</span></label>
+                    <div class="relative flex items-center">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-semibold text-gray-500 dark:text-gray-400 pointer-events-none select-none z-10">Rp</span>
+                        <input id="rev-amount" name="new_amount" x-model="revisionAmount" type="text" inputmode="numeric" data-mask="currency" required placeholder="Contoh: 18.000.000" class="w-full !pl-11 pr-3 py-2 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white tabular-nums mask-currency" style="padding-left: 2.75rem !important;">
+                    </div>
                 </div>
 
                 <div class="work-field">
@@ -700,8 +707,11 @@
                 </div>
 
                 <div class="work-field">
-                    <label for="edit-amount">Nominal Anggaran (Rp) <span class="text-red-500">*</span></label>
-                    <input id="edit-amount" name="amount" x-model="editAmount" type="text" inputmode="numeric" data-mask="currency" required placeholder="Contoh: 25.000.000" class="mask-currency">
+                    <label for="edit-amount">Nominal Anggaran <span class="text-red-500">*</span></label>
+                    <div class="relative flex items-center">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-semibold text-gray-500 dark:text-gray-400 pointer-events-none select-none z-10">Rp</span>
+                        <input id="edit-amount" name="amount" x-model="editAmount" type="text" inputmode="numeric" data-mask="currency" required placeholder="Contoh: 25.000.000" class="w-full !pl-11 pr-3 py-2 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white tabular-nums mask-currency" style="padding-left: 2.75rem !important;">
+                    </div>
                 </div>
 
                 <div class="account-dialog-actions mt-4">

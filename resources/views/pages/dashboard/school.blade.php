@@ -62,7 +62,7 @@
                 <div class="flex items-center justify-center w-10 h-10 bg-blue-50 rounded-xl dark:bg-blue-500/10 mb-3 text-blue-600 dark:text-blue-500 text-lg">
                     <i class="bx bxs-graduation"></i>
                 </div>
-                <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Siswa Aktif</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Murid Aktif</span>
                 <h4 class="mt-1.5 font-bold text-gray-800 text-xl dark:text-white/90">
                     {{ $totalStudents }} <span class="text-xs font-normal text-gray-400">siswa</span>
                 </h4>
@@ -109,7 +109,7 @@
                 <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-gray-100 dark:border-gray-800/60">
                     <div>
                         <h4 class="font-semibold text-gray-800 dark:text-white/90">Kehadiran 6 Bulan Terakhir</h4>
-                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Rekap hadir siswa, guru, dan tendik.</p>
+                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Rekap hadir murid, guru, dan tendik.</p>
                     </div>
                     <div class="flex items-center gap-3 text-xs">
                         <span class="inline-flex items-center gap-1.5 font-medium text-gray-600 dark:text-gray-300">
@@ -526,7 +526,7 @@
                             element: '#tour-operational-metrics', 
                             popover: { 
                                 title: 'Metrik Operasional Sekolah', 
-                                description: 'Pantau jumlah siswa aktif, rombongan belajar/kelas, dan total guru/staf secara real-time.', 
+                                description: 'Pantau jumlah murid aktif, rombongan belajar/kelas, dan total guru/staf secara real-time.', 
                                 side: 'bottom', 
                                 align: 'center' 
                             } 
@@ -535,7 +535,7 @@
                             element: '#tour-financial-metrics', 
                             popover: { 
                                 title: 'Metrik Finansial Terpadu', 
-                                description: 'Pantau total penerimaan SPP, realisasi belanja operasional, sisa tunggakan SPP siswa, dan saldo kas Buku Kas Umum (BKU).', 
+                                description: 'Pantau total penerimaan SPP, realisasi belanja operasional, sisa tunggakan SPP murid, dan saldo kas Buku Kas Umum (BKU).', 
                                 side: 'bottom', 
                                 align: 'center' 
                             } 

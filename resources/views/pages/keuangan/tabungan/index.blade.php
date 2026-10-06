@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
 @section('content')
-    <x-common.page-breadcrumb pageTitle="Simpanan / Tabungan Siswa" />
+    <x-common.page-breadcrumb pageTitle="Simpanan / Tabungan Murid" />
 
     <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
             <div>
                 <h4 class="font-semibold text-gray-800 text-theme-lg dark:text-white/90">
-                    Buku Induk Tabungan Siswa
+                    Buku Induk Tabungan Murid
                 </h4>
                 <p class="text-xs text-gray-400 mt-1">Tahun Ajaran Aktif: {{ $activeYear?->year ?? '-' }}</p>
             </div>
@@ -15,8 +15,8 @@
             <!-- Search bar -->
             <form action="{{ route('tabungan.index') }}" method="GET" class="w-full sm:w-72">
                 <div class="relative">
-                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari siswa / NIS..."
-                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-10 w-full rounded-lg border border-gray-300 bg-transparent pl-10 pr-4 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />
+                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari murid / NIS..."
+                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-10 w-full rounded-lg border border-gray-300 bg-transparent pl-11 pr-4 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />
                     <span class="absolute top-1/2 left-3.5 -translate-y-1/2 text-gray-400">
                         <i class="bx bx-search text-lg"></i>
                     </span>
@@ -33,7 +33,7 @@
                                 <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">NIS</p>
                             </th>
                             <th class="px-5 py-3 text-left">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Nama Siswa</p>
+                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Nama Murid</p>
                             </th>
                             <th class="px-5 py-3 text-left">
                                 <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Kelas / Rombel</p>
@@ -79,7 +79,7 @@
                         @empty
                             <tr>
                                 <td colspan="5" class="px-5 py-8 text-center text-gray-400 text-sm">
-                                    Tidak ada data siswa ditemukan.
+                                    Tidak ada data murid ditemukan.
                                 </td>
                             </tr>
                         @endforelse

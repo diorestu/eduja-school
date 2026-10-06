@@ -41,8 +41,8 @@
                 </p>
                 <ul class="space-y-3 mb-8">
                     @foreach([
-                        'Buat tagihan otomatis untuk seluruh siswa per kelas dalam hitungan detik',
-                        'Lacak tunggakan per siswa secara real-time tanpa perlu hitung manual',
+                        'Buat tagihan otomatis untuk seluruh murid per kelas dalam hitungan detik',
+                        'Lacak tunggakan per murid secara real-time tanpa perlu hitung manual',
                         'Cetak kuitansi profesional langsung dari sistem',
                         'Rekap penerimaan SPP per periode, kelas, atau tahun ajaran',
                         'Dukungan pembayaran angsuran untuk siswa dengan cicilan',
@@ -232,7 +232,7 @@
                 </div>
             </div>
             <div>
-                <span class="section-tag mb-5 inline-flex"><i class="bx bx-wallet"></i> Modul 04 — Tabungan Siswa</span>
+                <span class="section-tag mb-5 inline-flex"><i class="bx bx-wallet"></i> Modul 04 — Tabungan Murid</span>
                 <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight mb-5">
                     Tabungan siswa yang<br>aman dan transparan.
                 </h2>
@@ -241,8 +241,8 @@
                 </p>
                 <ul class="space-y-3 mb-8">
                     @foreach([
-                        'Pencatatan setoran dan penarikan per siswa secara digital',
-                        'Rekap saldo tabungan seluruh siswa per kelas',
+                        'Pencatatan setoran dan penarikan per murid secara digital',
+                        'Rekap saldo tabungan seluruh murid per kelas',
                         'Portal orang tua untuk memantau saldo tanpa perlu ke sekolah',
                         'Laporan tabungan kolektif per semester',
                         'Keamanan data ganda dengan audit trail setiap transaksi',
@@ -276,7 +276,7 @@
                         'Buat pengumuman sekolah profesional dengan satu prompt',
                         'Bantuan penulisan surat dinas dan surat resmi',
                         'Ringkasan laporan bulanan operasional otomatis',
-                        'Saran komunikasi kepada orang tua siswa',
+                        'Saran komunikasi kepada orang tua murid',
                         'Tersedia langsung di dalam platform tanpa aplikasi tambahan',
                     ] as $feat)
                     <li class="flex items-start gap-3 text-sm text-gray-600 dark:text-gray-300">
@@ -297,7 +297,7 @@
                 </div>
                 <div class="bg-gray-100 dark:bg-white/5 rounded-xl p-4 text-xs text-gray-700 dark:text-gray-300 select-none">
                     <p class="font-semibold text-gray-500 dark:text-gray-400 text-[10px] uppercase mb-2">Prompt kamu:</p>
-                    <p class="italic">"Buatkan pengumuman libur akhir semester untuk orang tua siswa."</p>
+                    <p class="italic">"Buatkan pengumuman libur akhir semester untuk orang tua murid."</p>
                 </div>
                 <div class="bg-brand-500/8 dark:bg-brand-500/12 rounded-xl p-4 text-xs text-gray-700 dark:text-gray-300 leading-relaxed select-none border border-brand-500/15">
                     <p class="font-semibold text-brand-500 dark:text-brand-400 text-[10px] uppercase mb-2">Hasil AI:</p>

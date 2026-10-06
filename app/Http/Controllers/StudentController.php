@@ -20,7 +20,7 @@ class StudentController extends Controller
         $classes = SchoolClass::where('school_id', $schoolId)->with('academicYear')->get();
 
         return view('pages.kesiswaan.siswa', [
-            'title' => 'Data Siswa',
+            'title' => 'Data Murid',
             'students' => $students,
             'classes' => $classes,
         ]);
@@ -53,7 +53,7 @@ class StudentController extends Controller
                 $request->user()?->id,
             );
 
-            return back()->with('success', 'Status siswa berhasil diperbarui.');
+            return back()->with('success', 'Status murid berhasil diperbarui.');
         }
 
         $validated = $request->validate([
@@ -81,6 +81,6 @@ class StudentController extends Controller
             'school_class_id' => $validated['school_class_id'],
         ]);
 
-        return redirect()->route('siswa.index')->with('success', 'Siswa berhasil ditambahkan.');
+        return redirect()->route('siswa.index')->with('success', 'Murid berhasil ditambahkan.');
     }
 }

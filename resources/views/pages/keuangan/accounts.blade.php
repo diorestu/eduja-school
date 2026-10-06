@@ -191,10 +191,13 @@
             {{-- Nominal Saldo Saat Ini --}}
             <div class="work-field">
                 <label for="account-opening_balance">Nominal saat ini (Saldo awal) <span aria-hidden="true">*</span></label>
-                <input id="account-opening_balance" name="opening_balance" value="{{ old('opening_balance') ? number_format((float)old('opening_balance'), 0, ',', '.') : '0' }}" type="text" inputmode="numeric" data-mask="currency" required placeholder="0" class="mask-currency"
-                    aria-describedby="balance-help{{ $errors->has('opening_balance') ? ' error-opening_balance' : '' }}"
-                    @if($firstError === 'opening_balance') autofocus @endif
-                    @if($errors->has('opening_balance')) aria-invalid="true" @endif>
+                <div class="relative flex items-center">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-semibold text-gray-500 pointer-events-none select-none z-10">Rp</span>
+                    <input id="account-opening_balance" name="opening_balance" value="{{ old('opening_balance') ? number_format((float)old('opening_balance'), 0, ',', '.') : '0' }}" type="text" inputmode="numeric" data-mask="currency" required placeholder="0" class="w-full !pl-11 pr-3 py-2 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white tabular-nums mask-currency" style="padding-left: 2.75rem !important;"
+                        aria-describedby="balance-help{{ $errors->has('opening_balance') ? ' error-opening_balance' : '' }}"
+                        @if($firstError === 'opening_balance') autofocus @endif
+                        @if($errors->has('opening_balance')) aria-invalid="true" @endif>
+                </div>
                 <p id="balance-help" class="work-muted">Dalam rupiah. Nominal ini menjadi saldo awal rekening.</p>
                 @error('opening_balance')<p id="error-opening_balance" class="work-muted work-error">{{ $message }}</p>@enderror
             </div>

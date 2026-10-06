@@ -130,7 +130,7 @@ class SppTransactionController extends Controller
         })->with(['student', 'schoolClass'])->get();
 
         if ($classStudents->isEmpty()) {
-            return redirect()->route('spp.transaksi.index')->with('error', 'Tidak ada siswa yang terdaftar di kelas aktif pada tahun ajaran ini.');
+            return redirect()->route('spp.transaksi.index')->with('error', 'Tidak ada murid yang terdaftar di kelas aktif pada tahun ajaran ini.');
         }
 
         $generatedCount = 0;
@@ -297,7 +297,7 @@ class SppTransactionController extends Controller
             $statusNotification = $newRemaining <= 0 ? 'Lunas' : 'Cicilan (Sisa: ' . $newRemainingFormatted . ')';
 
             $notificationMessage = "Yth. Bpk/Ibu {$parentName},\n"
-                . "Pembayaran untuk siswa {$student?->name} (NIS: {$student?->nis}) telah berhasil diterima pada " . $paymentDate->translatedFormat('d F Y') . ".\n"
+                . "Pembayaran untuk murid {$student?->name} (NIS: {$student?->nis}) telah berhasil diterima pada " . $paymentDate->translatedFormat('d F Y') . ".\n"
                 . "No. Transaksi: {$rcpNumber}\n"
                 . "Nominal: {$formattedAmount}\n"
                 . "Metode: {$validated['payment_method']}\n"

@@ -38,7 +38,7 @@ class FinanceClosingService
             $errorMessages[] = "{$pendingApprovals} transaksi belum approval Kepala Sekolah.";
         }
         if ($pendingPayments > 0) {
-            $errorMessages[] = "{$pendingPayments} verifikasi transfer pembayaran siswa masih pending.";
+            $errorMessages[] = "{$pendingPayments} verifikasi transfer pembayaran murid masih pending.";
         }
         if ($pendingExpenses > 0) {
             $errorMessages[] = "{$pendingExpenses} pengeluaran belanja berstatus pending.";

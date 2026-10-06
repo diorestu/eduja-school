@@ -98,7 +98,7 @@ class AttendanceController extends Controller
 
         if (array_diff($submittedStudentIds, $validStudentIds)) {
             return redirect()->back()->withErrors([
-                'attendances' => 'Data presensi memuat siswa yang tidak terdaftar di kelas ini.',
+                'attendances' => 'Data presensi memuat murid yang tidak terdaftar di kelas ini.',
             ]);
         }
 
@@ -116,7 +116,7 @@ class AttendanceController extends Controller
             }
         });
 
-        return redirect()->back()->with('success', 'Presensi siswa berhasil disimpan!');
+        return redirect()->back()->with('success', 'Presensi murid berhasil disimpan!');
     }
 
     /**

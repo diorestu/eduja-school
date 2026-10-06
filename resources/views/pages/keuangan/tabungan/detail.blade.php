@@ -7,7 +7,7 @@
         </a>
     </div>
 
-    <x-common.page-breadcrumb pageTitle="Buku Tabungan Siswa" />
+    <x-common.page-breadcrumb pageTitle="Buku Tabungan Murid" />
 
     <!-- Error/Success Alerts -->
     @if(session('success'))
@@ -81,10 +81,13 @@
 
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                            Jumlah Nominal (Rp)
+                            Jumlah Nominal <span class="text-red-500">*</span>
                         </label>
-                        <input type="text" inputmode="numeric" data-mask="currency" name="amount" placeholder="Contoh: 50.000" required
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 mask-currency" />
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-sm font-semibold text-gray-500 pointer-events-none">Rp</span>
+                            <input type="text" inputmode="numeric" data-mask="currency" name="amount" placeholder="Contoh: 50.000" required
+                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent pl-11 pr-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 mask-currency" />
+                        </div>
                     </div>
 
                     <div>
@@ -171,7 +174,7 @@
                                 @empty
                                     <tr>
                                         <td colspan="5" class="px-5 py-8 text-center text-gray-400 font-sans text-sm">
-                                            Belum ada riwayat transaksi tabungan untuk siswa ini.
+                                            Belum ada riwayat transaksi tabungan untuk murid ini.
                                         </td>
                                     </tr>
                                 @endforelse

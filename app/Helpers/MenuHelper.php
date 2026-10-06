@@ -18,10 +18,10 @@ class MenuHelper
                 'subItems' => [
                     ['name' => 'Tahun Akademik', 'path' => '/akademik', 'permission' => 'academic_years.view', 'roles' => ['super_admin', 'kepsek', 'staf_tu'], 'pro' => false],
                     ['name' => 'Data Kelas', 'path' => '/kelas', 'permission' => 'classes.view', 'roles' => ['super_admin', 'kepsek', 'staf_tu'], 'pro' => false],
-                    ['name' => 'Data Siswa', 'path' => '/siswa', 'permission' => 'students.view', 'roles' => ['super_admin', 'staf_tu'], 'pro' => false],
+                    ['name' => 'Data Murid', 'path' => '/siswa', 'permission' => 'students.view', 'roles' => ['super_admin', 'staf_tu'], 'pro' => false],
                     ['name' => 'Data GTK (Guru/Staf)', 'path' => '/guru', 'permission' => 'teachers.view', 'roles' => ['super_admin', 'staf_tu'], 'pro' => false],
                     ['name' => 'Struktur Organisasi', 'path' => '/struktur', 'permission' => 'organization.view', 'roles' => ['super_admin', 'staf_tu'], 'pro' => false],
-                    ['name' => 'Presensi Siswa', 'path' => '/presensi/siswa', 'permission' => 'student_attendance.view', 'roles' => ['super_admin', 'kepsek', 'pic_sekolah', 'wakasek', 'tu', 'staf_tu'], 'pro' => false],
+                    ['name' => 'Presensi Murid', 'path' => '/presensi/siswa', 'permission' => 'student_attendance.view', 'roles' => ['super_admin', 'kepsek', 'pic_sekolah', 'wakasek', 'tu', 'staf_tu'], 'pro' => false],
                     ['name' => 'Presensi GTK', 'path' => '/presensi/gtk', 'permission' => 'teacher_attendance.view', 'roles' => ['super_admin', 'kepsek', 'pic_sekolah', 'wakasek', 'tu', 'staf_tu'], 'pro' => false],
                 ],
             ],
@@ -32,7 +32,7 @@ class MenuHelper
                     ['name' => 'Tarif Biaya', 'path' => '/spp/tarif', 'permission' => 'spp.tariffs', 'roles' => ['super_admin', 'kepsek'], 'pro' => false],
                     ['name' => 'Transaksi SPP', 'path' => '/spp/transaksi', 'permission' => 'spp.transactions', 'roles' => ['super_admin', 'kepsek'], 'pro' => false],
                     ['name' => 'Laporan SPP', 'path' => '/spp/laporan', 'permission' => 'spp.reports', 'roles' => ['super_admin', 'kepsek'], 'pro' => false],
-                    ['name' => 'Tabungan Siswa', 'path' => '/tabungan', 'permission' => 'student_savings.view', 'roles' => ['super_admin', 'kepsek'], 'pro' => false],
+                    ['name' => 'Tabungan Murid', 'path' => '/tabungan', 'permission' => 'student_savings.view', 'roles' => ['super_admin', 'kepsek'], 'pro' => false],
                 ],
             ],
             [
@@ -121,7 +121,7 @@ class MenuHelper
                 'name' => 'Portal',
                 'subItems' => [
                     ['name' => 'Portal Guru', 'path' => '/portal/guru', 'permission' => 'portal.teacher', 'roles' => ['super_admin', 'guru', 'wali_kelas', 'kepsek'], 'pro' => false],
-                    ['name' => 'Portal Siswa', 'path' => '/portal/siswa', 'permission' => 'portal.student', 'roles' => ['super_admin', 'siswa'], 'pro' => false],
+                    ['name' => 'Portal Murid', 'path' => '/portal/siswa', 'permission' => 'portal.student', 'roles' => ['super_admin', 'siswa'], 'pro' => false],
                     ['name' => 'Portal Orang Tua', 'path' => '/portal/orang-tua', 'permission' => 'portal.parent', 'roles' => ['super_admin', 'orang_tua'], 'pro' => false],
                 ],
             ],

@@ -700,7 +700,7 @@ it('renders modern data-table on tagihan, pemasukan, pengeluaran, and approvals 
     ]);
 
     $respBilling = $this->get('/finance/billing')->assertOk();
-    $respBilling->assertSee('Tagihan Siswa &amp; Komite', false);
+    $respBilling->assertSee('Tagihan Murid &amp; Komite', false);
     $respBilling->assertSee('SPP Kelas X Oktober', false);
     $respBilling->assertSee('SPP Reguler', false);
     $respBilling->assertSee('data-table', false);
@@ -1056,7 +1056,7 @@ it('implements Flow Perencanaan Anggaran actions according to Menu Bendahara pag
     expect(DB::table('budget_years')->where('id', $year->id)->count())->toBe(0);
 });
 
-it('implements Flow Buat Tagihan Baru and Flow Lihat Tunggakan Siswa matching Menu Bendahara page 16-22', function () {
+it('implements Flow Buat Tagihan Baru and Flow Lihat Tunggakan Murid matching Menu Bendahara page 16-22', function () {
     $schoolId = makeFinanceRouteSchool('Sekolah Tagihan & Tunggakan');
     $user = makeFinanceRouteUser($schoolId);
     $this->actingAs($user)->withSession(['active_school_id' => $schoolId]);
@@ -1153,7 +1153,7 @@ it('implements Flow Buat Tagihan Baru and Flow Lihat Tunggakan Siswa matching Me
         ->and((bool) $bill->has_late_fee)->toBeTrue()
         ->and((float) $bill->late_fee_per_day)->toEqual(2000.0);
 
-    // 2. Flow Lihat Tunggakan Siswa (Page 18-20)
+    // 2. Flow Lihat Tunggakan Murid (Page 18-20)
     $invoiceId = DB::table('invoices')->insertGetId([
         'school_id' => $schoolId,
         'student_id' => $studentId,
@@ -1179,7 +1179,7 @@ it('implements Flow Buat Tagihan Baru and Flow Lihat Tunggakan Siswa matching Me
     $respBilling->assertSee('102938', false);
     $respBilling->assertSee('data-table', false);
 
-    // 3. Bayar Tagihan Tunggakan Siswa (Page 19-20 & 21-22)
+    // 3. Bayar Tagihan Tunggakan Murid (Page 19-20 & 21-22)
     $this->post("/spp/transaksi/{$invoiceId}/bayar", [
         'amount_paid' => 300000,
         'payment_method' => 'Transfer Bank',
@@ -1565,7 +1565,7 @@ it('implements Flow Buat Tagihan Baru matching the 10-step workflow specificatio
     expect(DB::table('billing_items')->where('id', $bill->id)->count())->toBe(1);
 });
 
-it('implements Flow Lihat Tunggakan Siswa dan Pembayaran matching the 10-step workflow', function () {
+it('implements Flow Lihat Tunggakan Murid dan Pembayaran matching the 10-step workflow', function () {
     $schoolId = makeFinanceRouteSchool('SMP Arrears Workflow School');
     $user = makeFinanceRouteUser($schoolId);
     $this->actingAs($user)->withSession(['active_school_id' => $schoolId]);
@@ -1687,8 +1687,8 @@ it('implements Flow Lihat Tunggakan Siswa dan Pembayaran matching the 10-step wo
     ]);
 
     // 1. Visit /finance/billing?tab=arrears (Step 1 - Step 3)
-    $resp = $this->get(route('finance.billing', ['tab' => 'arrears']))->assertOk();
-    $resp->assertSee('Tunggakan Siswa');
+    $resp = $this->get(route('spp.transaksi.index', ['tab' => 'tunggakan']))->assertOk();
+    $resp->assertSee('Tunggakan Murid');
     $resp->assertSee('Data tunggakan selalu real-time');
     $resp->assertSee('Budi Arrears Santoso');
     $resp->assertSee('998877');
@@ -1696,7 +1696,7 @@ it('implements Flow Lihat Tunggakan Siswa dan Pembayaran matching the 10-step wo
     $resp->assertSee('Saldo Kas / Bank Sekolah Diperbarui');
     $resp->assertSee('Pembagian ke Dompet Virtual');
     $resp->assertSee('Notifikasi WhatsApp ke Orang Tua');
-    $resp->assertSee('Panduan Status Pembayaran Siswa');
+    $resp->assertSee('Panduan Status Pembayaran Murid');
     $resp->assertSee('Setelah disimpan, sistem akan:');
     $resp->assertSee('Mengupdate saldo kas/rekening sekolah');
     // Karena tagihan sudah melewati jatuh tempo (due_date in the past), status awal adalah Menunggak

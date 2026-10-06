@@ -71,7 +71,7 @@
     });
 @endphp
 
-<x-common.page-breadcrumb pageTitle="Tagihan Siswa & Komite" label="Tagihan" />
+<x-common.page-breadcrumb pageTitle="Tagihan Murid & Komite" label="Tagihan" />
 
 <div class="work work-stack"
     x-data="{
@@ -383,10 +383,10 @@
 
         getTargetSummaryText() {
             if (this.newBill.target_type === 'school') {
-                return 'Satu Sekolah (Seluruh Siswa)';
+                return 'Satu Sekolah (Seluruh Murid)';
             }
             if (this.newBill.target_student_id) {
-                return 'Siswa Tertentu';
+                return 'Murid Tertentu';
             }
             if (this.newBill.target_class_ids.length > 0) {
                 return 'Rombel ' + this.newBill.target_class_ids.map(id => {
@@ -440,7 +440,7 @@
         <div role="status" class="work-notice work-error">{{ session('error') }}</div>
     @endif
 
-    {{-- TOP BANNER INFO DARI SCREENSHOT --}}
+    {{-- TOP BANNER INFO --}}
     <div class="rounded-xl border border-sky-100 bg-sky-50/70 p-4 dark:border-sky-900/40 dark:bg-sky-950/20 flex items-start gap-3.5 shadow-2xs">
         <div class="w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-900/60 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 mt-0.5">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -448,38 +448,20 @@
             </svg>
         </div>
         <div class="text-xs text-sky-900 dark:text-sky-200 leading-relaxed">
-            <strong class="font-semibold text-sky-950 dark:text-sky-100">Data tunggakan selalu real-time.</strong>
-            <span> Setiap pembayaran akan langsung memperbarui status siswa dan mengirim notifikasi ke orang tua.</span>
+            <strong class="font-semibold text-sky-950 dark:text-sky-100">Data tagihan komite selalu real-time.</strong>
+            <span> Setiap pembayaran akan langsung memperbarui status murid dan mengirim notifikasi ke orang tua.</span>
         </div>
     </div>
 
-    {{-- TAB NAVIGATION --}}
-    <div class="flex border-b border-gray-200 dark:border-gray-800 gap-6">
-        <button type="button" @click="activeTab = 'billing'; billingView = 'list'"
-            :class="activeTab === 'billing' ? 'border-brand-600 text-brand-600 dark:text-brand-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'"
-            class="py-3 px-1 border-b-2 font-semibold text-sm transition-colors flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-            Tagihan Komite
-            <span class="px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">{{ $billingItems->count() }}</span>
-        </button>
-        <button type="button" @click="activeTab = 'arrears'; arrearsView = 'list'"
-            :class="activeTab === 'arrears' ? 'border-brand-600 text-brand-600 dark:text-brand-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'"
-            class="py-3 px-1 border-b-2 font-semibold text-sm transition-colors flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            Tunggakan Siswa
-            <span class="px-2 py-0.5 rounded-full text-xs bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 font-bold">{{ $arrearsStudents->where('total_arrears', '>', 0)->count() }}</span>
-        </button>
-    </div>
-
-    {{-- TAB 1: TAGIHAN KOMITE (STEP 3, 9 & 10 DARI MENU TAGIHAN) --}}
-    <div x-show="activeTab === 'billing'" class="space-y-4">
+    {{-- TAGIHAN KOMITE --}}
+    <div class="space-y-4">
         {{-- VIEW MODE: LIST TAGIHAN --}}
         <div x-show="billingView === 'list'" class="space-y-4">
             <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                         <h2 class="text-base font-semibold text-gray-900 dark:text-white">Tagihan Komite</h2>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Kelola tagihan komite untuk siswa</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Kelola tagihan komite untuk murid</p>
                     </div>
 
                     <button type="button" @click="openCreateWizard()"
@@ -515,11 +497,11 @@
                     <div>
                         <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Pencarian</label>
                         <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-gray-400">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                             </span>
                             <input type="text" x-model="searchBillQuery" placeholder="Cari nama tagihan..."
-                                class="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-brand-500">
+                                class="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-brand-500">
                         </div>
                     </div>
                 </div>
@@ -563,7 +545,7 @@
                                         <div class="flex items-center justify-center gap-1.5">
                                             <button type="button" @click="viewBillingDetail(item)"
                                                 class="p-1 rounded-md text-brand-600 hover:text-brand-800 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-950/50 transition-colors"
-                                                title="Lihat status tagihan di siswa">
+                                                title="Lihat status tagihan di murid">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                             </button>
 
@@ -611,7 +593,7 @@
             <div class="rounded-xl border border-sky-200/80 bg-sky-50/50 p-4 dark:border-sky-900/50 dark:bg-sky-950/20 text-xs">
                 <div class="font-semibold text-sky-900 dark:text-sky-200 mb-2">Catatan Penting Pengaturan Tagihan:</div>
                 <ol class="list-decimal list-inside space-y-1 text-sky-800 dark:text-sky-300">
-                    <li>Tagihan yang sudah digenerate akan otomatis muncul di portal orang tua / siswa.</li>
+                    <li>Tagihan yang sudah digenerate akan otomatis muncul di portal orang tua / murid.</li>
                     <li>Denda keterlambatan dihitung otomatis oleh sistem per hari setelah jatuh tempo.</li>
                     <li>Cicilan hanya berlaku untuk tagihan yang mengaktifkan opsi cicilan.</li>
                     <li>Perubahan nominal setelah tagihan digenerate hanya berlaku untuk periode berikutnya.</li>
@@ -619,7 +601,7 @@
             </div>
         </div>
 
-        {{-- VIEW MODE: DETAIL TAGIHAN DI SISWA --}}
+        {{-- VIEW MODE: DETAIL TAGIHAN DI MURID --}}
         <div x-show="billingView === 'detail'" x-cloak class="space-y-4">
             <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -630,7 +612,7 @@
                         </button>
                         <h2 class="text-base font-bold text-gray-900 dark:text-white"
                             x-text="'Detail Tagihan - ' + (selectedBilling?.name || 'SPP Komite') + ' (' + (selectedBilling?.academic_year_name || '') + ')'"></h2>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Status pembayaran siswa untuk tagihan ini.</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Status pembayaran murid untuk tagihan ini.</p>
                     </div>
 
                     <div class="flex items-center gap-2">
@@ -665,27 +647,27 @@
                     </div>
 
                     <div>
-                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Pencarian Siswa</label>
+                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Pencarian Murid</label>
                         <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-gray-400">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                             </span>
-                            <input type="text" x-model="detailSearchQuery" placeholder="Cari nama siswa..."
-                                class="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-brand-500">
+                            <input type="text" x-model="detailSearchQuery" placeholder="Cari nama murid..."
+                                class="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-brand-500">
                         </div>
                     </div>
                 </div>
             </div>
 
             {{-- DETAIL TABLE --}}
-            <section class="rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900 overflow-hidden" aria-label="Status Tagihan Siswa">
+            <section class="rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900 overflow-hidden" aria-label="Status Tagihan Murid">
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-xs text-gray-700 dark:text-gray-300">
                         <thead class="bg-gray-50/75 dark:bg-gray-800/60 text-[11px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-800">
                             <tr>
                                 <th class="py-3 px-4 w-12 text-center">No</th>
                                 <th class="py-3 px-4 w-28">NIS</th>
-                                <th class="py-3 px-4">Nama Siswa</th>
+                                <th class="py-3 px-4">Nama Murid</th>
                                 <th class="py-3 px-4 w-28">Rombel</th>
                                 <th class="py-3 px-4 w-32">Nominal</th>
                                 <th class="py-3 px-4 w-24 text-center">Status</th>
@@ -703,15 +685,15 @@
                                     <td class="py-3 px-4 font-semibold text-gray-900 dark:text-white tabular-nums" x-text="formatRupiah(s.amount)"></td>
                                     <td class="py-3 px-4 text-center">
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold"
-                                            :class="s.status === 'Paid' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300'"
+                                            :class="s.status === 'Paid' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'"
                                             x-text="s.status"></span>
                                     </td>
                                     <td class="py-3 px-4 text-center text-gray-600 dark:text-gray-400" x-text="s.payment_date"></td>
                                     <td class="py-3 px-4 text-center">
-                                        <button type="button" @click="activeTab = 'arrears'; openStudentDetail({id: s.id, name: s.name, nis: s.nis, nisn: '-', class_name: s.class_name, total_arrears: s.amount, status: s.status, invoices: [], payments: []})"
+                                        <a href="{{ route('spp.transaksi.index', ['tab' => 'tunggakan']) }}"
                                             class="inline-flex items-center px-2 py-1 rounded text-xs font-semibold text-brand-600 hover:text-brand-800 hover:bg-brand-50 transition-colors">
-                                            Lihat
-                                        </button>
+                                            Lihat di Pembayaran
+                                        </a>
                                     </td>
                                 </tr>
                             </template>
@@ -719,7 +701,7 @@
                             <template x-if="filteredDetailStudents().length === 0">
                                 <tr>
                                     <td colspan="8" class="py-8 text-center text-xs text-gray-500 dark:text-gray-400">
-                                        Tidak ada siswa yang sesuai filter.
+                                        Tidak ada murid yang sesuai filter.
                                     </td>
                                 </tr>
                             </template>
@@ -728,700 +710,11 @@
                 </div>
 
                 <div class="p-3.5 bg-gray-50/60 dark:bg-gray-800/40 border-t border-gray-200 dark:border-gray-800 text-[11px] text-gray-500 dark:text-gray-400">
-                    Status tagihan pada tiap siswa, baik sudah dibayar (Paid) maupun belum (Unpaid). Jika sudah melewati deadline dan belum dibayar, tagihan tetap tercatat sebagai piutang.
+                    Status tagihan pada tiap murid, baik sudah dibayar (Paid) maupun belum (Unpaid). Jika sudah melewati deadline dan belum dibayar, tagihan tetap tercatat sebagai piutang.
                 </div>
             </section>
         </div>
     </div>
-
-    {{-- TAB 2: TUNGGAKAN SISWA (FLOW LIHAT TUNGGAKAN SISWA & PEMBAYARAN SESUAI SCREENSHOT) --}}
-    <div x-show="activeTab === 'arrears'" x-cloak class="space-y-4">
-        {{-- STEP 3: DAFTAR TUNGGAKAN SISWA (LIST VIEW) --}}
-        <div x-show="arrearsView === 'list'" class="space-y-4">
-            <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div>
-                        <h2 class="text-base font-semibold text-gray-900 dark:text-white">Tunggakan Siswa</h2>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Menampilkan daftar siswa yang memiliki tunggakan pembayaran.</p>
-                    </div>
-
-                    <a href="{{ route('finance.reports') }}"
-                        class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-xs transition-colors">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-                        <span>Export Excel</span>
-                    </a>
-                </div>
-
-                {{-- FILTERS STEP 3 --}}
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-                    {{-- Pencarian --}}
-                    <div>
-                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Pencarian</label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-gray-400">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                            </span>
-                            <input type="text" x-model="arrearsSearchQuery" placeholder="Cari nama, NIS, atau NISN..."
-                                class="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-brand-500">
-                        </div>
-                    </div>
-
-                    {{-- Tahun Ajaran --}}
-                    <div>
-                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Tahun Ajaran</label>
-                        <select x-model="arrearsYearFilter"
-                            class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs">
-                            <option value="">Semua Tahun Ajaran</option>
-                            @foreach($academicYears as $ay)
-                                <option value="{{ $ay->year }}">{{ $ay->year }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    {{-- Kelas --}}
-                    <div>
-                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Kelas</label>
-                        <select x-model="arrearsClassFilter"
-                            class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs">
-                            <option value="">Semua Kelas</option>
-                            @foreach($classes as $c)
-                                <option value="{{ $c->name }}">{{ $c->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    {{-- Urutkan --}}
-                    <div>
-                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Urutkan</label>
-                        <select x-model="arrearsSortFilter"
-                            class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs">
-                            <option value="desc">Tunggakan Terbesar</option>
-                            <option value="asc">Tunggakan Terkecil</option>
-                            <option value="name">Nama Siswa (A-Z)</option>
-                            <option value="nis">NIS (Urut)</option>
-                        </select>
-                    </div>
-
-                    {{-- Bulan --}}
-                    <div>
-                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Bulan</label>
-                        <select x-model="arrearsMonthFilter"
-                            class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs">
-                            <option value="">Semua Bulan</option>
-                            @foreach(['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'] as $m)
-                                <option value="{{ $m }}">{{ $m }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    {{-- Tahun --}}
-                    <div>
-                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Tahun</label>
-                        <select x-model="arrearsYearNumFilter"
-                            class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs">
-                            <option value="">Semua Tahun</option>
-                            @for($y = date('Y') + 1; $y >= 2024; $y--)
-                                <option value="{{ $y }}">{{ $y }}</option>
-                            @endfor
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            {{-- TABLE TUNGGAKAN SISWA (SECTION CLASS DATA-TABLE) --}}
-            <section class="data-table rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900 overflow-hidden" aria-label="Daftar Tunggakan Siswa">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-xs text-gray-700 dark:text-gray-300">
-                        <thead class="bg-gray-50/75 dark:bg-gray-800/60 text-[11px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-800">
-                            <tr>
-                                <th class="py-3 px-4 w-12 text-center">No</th>
-                                <th class="py-3 px-4 w-14 text-center">Foto</th>
-                                <th class="py-3 px-4">Nama Siswa</th>
-                                <th class="py-3 px-4 w-28">Kelas</th>
-                                <th class="py-3 px-4 w-40">Nominal Tunggakan</th>
-                                <th class="py-3 px-4 w-28 text-center">Status</th>
-                                <th class="py-3 px-4 w-24 text-center">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-                            {{-- BLADE FOREACH RENDERS REAL NAMES AND NIS FOR DIRECT TEST ASSERTIONS --}}
-                            @forelse($arrearsStudents as $bIndex => $st)
-                                <tr class="hover:bg-gray-50/70 dark:hover:bg-gray-800/30 transition-colors"
-                                    x-show="filteredArrearsStudents().some(s => s.id === {{ $st['id'] }})">
-                                    <td class="py-3 px-4 text-center text-gray-400">{{ $bIndex + 1 }}</td>
-                                    <td class="py-3 px-4 text-center">
-                                        <div class="w-8 h-8 rounded-full bg-brand-100 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 flex items-center justify-center font-bold text-xs mx-auto">
-                                            {{ strtoupper(substr($st['name'], 0, 1)) }}
-                                        </div>
-                                    </td>
-                                    <td class="py-3 px-4">
-                                        <div class="font-semibold text-gray-900 dark:text-white">{{ $st['name'] }}</div>
-                                        <div class="text-[11px] text-gray-500 font-mono">NIS: {{ $st['nis'] }}</div>
-                                    </td>
-                                    <td class="py-3 px-4 font-medium text-gray-700 dark:text-gray-300">{{ $st['class_name'] }}</td>
-                                    <td class="py-3 px-4 font-bold text-gray-900 dark:text-white tabular-nums">
-                                        Rp {{ number_format($st['total_arrears'], 0, ',', '.') }}
-                                    </td>
-                                    <td class="py-3 px-4 text-center">
-                                        @php
-                                            $stStatus = strtolower($st['status']);
-                                        @endphp
-                                        @if($stStatus === 'menunggak')
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300">Menunggak</span>
-                                        @elseif($stStatus === 'cicil')
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">Cicil</span>
-                                        @elseif($stStatus === 'lunas')
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">Lunas</span>
-                                        @else
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300">Belum Bayar</span>
-                                        @endif
-                                    </td>
-                                    <td class="py-3 px-4 text-center">
-                                        <button type="button" @click="openStudentDetail(@js($st))"
-                                            class="inline-flex items-center px-3 py-1 rounded-md text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white shadow-2xs transition-colors">
-                                            Lihat
-                                        </button>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="7" class="py-8 text-center text-xs text-gray-500 dark:text-gray-400">
-                                        Tidak ada siswa dengan tunggakan pembayaran.
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-
-                {{-- INFO FOOTER SESUAI SCREENSHOT STEP 3 --}}
-                <div class="p-3.5 bg-gray-50/60 dark:bg-gray-800/40 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                    <span>Sistem menampilkan daftar siswa yang memiliki tunggakan dengan fitur pencarian dan filter sesuai kebutuhan.</span>
-                    <span x-text="'Menampilkan 1 - ' + filteredArrearsStudents().length + ' siswa'"></span>
-                </div>
-            </section>
-        </div>
-
-        {{-- STEP 4: DETAIL TAGIHAN SISWA --}}
-        <div x-show="arrearsView === 'detail'" x-cloak class="space-y-4">
-            {{-- PROFILE HEADER CARD --}}
-            <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div class="flex items-center gap-4">
-                        <div class="w-14 h-14 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-xl shadow-xs">
-                            <span x-text="selectedArrearsStudent ? selectedArrearsStudent.name.charAt(0).toUpperCase() : 'S'"></span>
-                        </div>
-                        <div>
-                            <h2 class="text-lg font-bold text-gray-900 dark:text-white" x-text="selectedArrearsStudent?.name"></h2>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                <span x-text="'NIS ' + (selectedArrearsStudent?.nis || '-')"></span>
-                                <span class="mx-1">&bull;</span>
-                                <span x-text="'NISN ' + (selectedArrearsStudent?.nisn || '-')"></span>
-                            </p>
-                            <p class="text-xs font-semibold text-brand-600 dark:text-brand-400 mt-0.5" x-text="selectedArrearsStudent?.class_name"></p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        <button type="button" @click="backToArrearsList()"
-                            class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                            <span>Kembali ke Daftar</span>
-                        </button>
-                        <button type="button"
-                            class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 transition-colors">
-                            <span>Lihat Profil</span>
-                        </button>
-                    </div>
-                </div>
-
-                {{-- SUB-TABS: DAFTAR TAGIHAN VS RIWAYAT PEMBAYARAN --}}
-                <div class="flex border-b border-gray-200 dark:border-gray-800 gap-6 mt-6">
-                    <button type="button" @click="arrearsDetailTab = 'bills'"
-                        :class="arrearsDetailTab === 'bills' ? 'border-brand-600 text-brand-600 dark:text-brand-400 font-bold' : 'border-transparent text-gray-500 hover:text-gray-700'"
-                        class="pb-2.5 px-1 border-b-2 text-xs transition-colors">
-                        Daftar Tagihan
-                    </button>
-                    <button type="button" @click="arrearsDetailTab = 'payments'"
-                        :class="arrearsDetailTab === 'payments' ? 'border-brand-600 text-brand-600 dark:text-brand-400 font-bold' : 'border-transparent text-gray-500 hover:text-gray-700'"
-                        class="pb-2.5 px-1 border-b-2 text-xs transition-colors">
-                        Riwayat Pembayaran
-                    </button>
-                </div>
-            </div>
-
-            {{-- SUBTAB 1: DAFTAR TAGIHAN SISWA --}}
-            <div x-show="arrearsDetailTab === 'bills'" class="space-y-4">
-                <section class="rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900 overflow-hidden" aria-label="Rincian Tagihan Siswa">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-xs text-gray-700 dark:text-gray-300">
-                            <thead class="bg-gray-50/75 dark:bg-gray-800/60 text-[11px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-800">
-                                <tr>
-                                    <th class="py-3 px-4 w-12 text-center">No</th>
-                                    <th class="py-3 px-4">Jenis Tagihan</th>
-                                    <th class="py-3 px-4 w-32">Periode</th>
-                                    <th class="py-3 px-4 w-32">Nominal</th>
-                                    <th class="py-3 px-4 w-32">Terbayar</th>
-                                    <th class="py-3 px-4 w-32">Sisa</th>
-                                    <th class="py-3 px-4 w-28 text-center">Status</th>
-                                    <th class="py-3 px-4 w-24 text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-                                <template x-for="(inv, iIdx) in selectedArrearsStudent?.invoices || []" :key="inv.id">
-                                    <tr class="hover:bg-gray-50/70 dark:hover:bg-gray-800/30 transition-colors">
-                                        <td class="py-3 px-4 text-center text-gray-400" x-text="iIdx + 1"></td>
-                                        <td class="py-3 px-4 font-semibold text-gray-900 dark:text-white" x-text="inv.item_name"></td>
-                                        <td class="py-3 px-4 text-gray-600 dark:text-gray-400" x-text="inv.period"></td>
-                                        <td class="py-3 px-4 tabular-nums font-medium text-gray-900 dark:text-white" x-text="formatRupiah(inv.total_amount)"></td>
-                                        <td class="py-3 px-4 tabular-nums text-emerald-600 dark:text-emerald-400 font-medium" x-text="formatRupiah(inv.paid_amount)"></td>
-                                        <td class="py-3 px-4 tabular-nums font-bold text-rose-600 dark:text-rose-400" x-text="formatRupiah(inv.remaining_amount)"></td>
-                                        <td class="py-3 px-4 text-center">
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
-                                                :class="{
-                                                    'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300': inv.status === 'Menunggak',
-                                                    'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300': inv.status === 'Cicil',
-                                                    'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300': inv.status === 'Lunas',
-                                                    'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300': inv.status === 'Belum Bayar'
-                                                }"
-                                                x-text="inv.status"></span>
-                                        </td>
-                                        <td class="py-3 px-4 text-center">
-                                            <template x-if="inv.remaining_amount > 0">
-                                                <button type="button" @click="openPayModal(selectedArrearsStudent, inv)"
-                                                    class="inline-flex items-center px-2.5 py-1 rounded bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs transition-colors">
-                                                    Bayar
-                                                </button>
-                                            </template>
-                                            <template x-if="inv.remaining_amount <= 0">
-                                                <span class="text-gray-400">-</span>
-                                            </template>
-                                        </td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {{-- TOTAL TUNGGAKAN CARD DI POJOK KANAN BAWAH --}}
-                    <div class="p-4 bg-gray-50/80 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-3">
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Setelah klik siswa, sistem menampilkan detail tagihan siswa beserta status pembayarannya.</p>
-                        <div class="text-right">
-                            <span class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Total Tunggakan</span>
-                            <span class="text-xl font-extrabold text-red-600 dark:text-red-400 tabular-nums"
-                                x-text="formatRupiah(selectedArrearsStudent?.total_arrears)"></span>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
-            {{-- SUBTAB 2: RIWAYAT PEMBAYARAN --}}
-            <div x-show="arrearsDetailTab === 'payments'" class="space-y-4">
-                <section class="rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900 overflow-hidden" aria-label="Riwayat Pembayaran">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-xs text-gray-700 dark:text-gray-300">
-                            <thead class="bg-gray-50/75 dark:bg-gray-800/60 text-[11px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-800">
-                                <tr>
-                                    <th class="py-3 px-4 w-12 text-center">No</th>
-                                    <th class="py-3 px-4 w-40">Nomor Transaksi</th>
-                                    <th class="py-3 px-4 w-32">Tanggal</th>
-                                    <th class="py-3 px-4">Tagihan</th>
-                                    <th class="py-3 px-4 w-36">Nominal Bayar</th>
-                                    <th class="py-3 px-4 w-28">Metode</th>
-                                    <th class="py-3 px-4 w-32">Penerima</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-                                <template x-for="(tx, tIdx) in selectedArrearsStudent?.payments || []" :key="tx.id">
-                                    <tr class="hover:bg-gray-50/70 dark:hover:bg-gray-800/30">
-                                        <td class="py-3 px-4 text-center text-gray-400" x-text="tIdx + 1"></td>
-                                        <td class="py-3 px-4 font-mono font-semibold text-brand-600 dark:text-brand-400" x-text="tx.receipt_number"></td>
-                                        <td class="py-3 px-4 text-gray-600 dark:text-gray-400" x-text="tx.date"></td>
-                                        <td class="py-3 px-4 font-medium text-gray-900 dark:text-white" x-text="tx.item_name"></td>
-                                        <td class="py-3 px-4 font-bold text-emerald-600 tabular-nums" x-text="formatRupiah(tx.amount_paid)"></td>
-                                        <td class="py-3 px-4" x-text="tx.method"></td>
-                                        <td class="py-3 px-4 text-gray-500" x-text="tx.recipient"></td>
-                                    </tr>
-                                </template>
-                                <template x-if="!selectedArrearsStudent?.payments || selectedArrearsStudent.payments.length === 0">
-                                    <tr>
-                                        <td colspan="7" class="py-8 text-center text-xs text-gray-500 dark:text-gray-400">
-                                            Belum ada riwayat transaksi pembayaran untuk siswa ini.
-                                        </td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-            </div>
-        </div>
-
-        {{-- STEP 9 & 10: UPDATE SALDO & PANDUAN STATUS PEMBAYARAN --}}
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
-            {{-- STEP 9: UPDATE SALDO & NOTIFIKASI --}}
-            <div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 space-y-3">
-                <h3 class="font-bold text-gray-900 dark:text-white text-xs uppercase tracking-wider">Update Saldo &amp; Notifikasi</h3>
-                
-                <div class="space-y-2.5 text-xs">
-                    {{-- 1. Saldo Kas Sekolah Diperbarui --}}
-                    <div class="flex items-start gap-2.5 p-2.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/30">
-                        <div class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/60 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                        </div>
-                        <div>
-                            <span class="font-semibold text-emerald-900 dark:text-emerald-200 block">Saldo Kas / Bank Sekolah Diperbarui</span>
-                            <p class="text-[11px] text-emerald-800/80 dark:text-emerald-300/80">Saldo kas sekolah bertambah sesuai nominal pembayaran tunai.</p>
-                        </div>
-                    </div>
-
-                    {{-- 2. Atau Saldo Rekening Bank Diperbarui --}}
-                    <div class="flex items-start gap-2.5 p-2.5 rounded-lg bg-sky-50/70 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/30">
-                        <div class="w-7 h-7 rounded-lg bg-sky-100 text-sky-600 dark:bg-sky-900/60 dark:text-sky-400 flex items-center justify-center shrink-0">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10zm4 4v3m4-3v3m4-3v3"/></svg>
-                        </div>
-                        <div>
-                            <span class="font-semibold text-sky-900 dark:text-sky-200 block">Atau Saldo Rekening Bank Diperbarui</span>
-                            <p class="text-[11px] text-sky-800/80 dark:text-sky-300/80">Saldo rekening Komite / Bank bertambah sesuai nominal transfer.</p>
-                        </div>
-                    </div>
-
-                    {{-- 3. Pembagian ke Dompet Virtual --}}
-                    <div class="flex items-start gap-2.5 p-2.5 rounded-lg bg-purple-50/70 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/30">
-                        <div class="w-7 h-7 rounded-lg bg-purple-100 text-purple-600 dark:bg-purple-900/60 dark:text-purple-400 flex items-center justify-center shrink-0">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                        </div>
-                        <div>
-                            <span class="font-semibold text-purple-900 dark:text-purple-200 block">Pembagian ke Dompet Virtual</span>
-                            <p class="text-[11px] text-purple-800/80 dark:text-purple-300/80">Jika jenis pemasukan menggunakan alokasi dana, sistem otomatis membagi dana ke dompet virtual sesuai persentase/nominal yang telah diatur.</p>
-                        </div>
-                    </div>
-
-                    {{-- 4. Notifikasi ke Orang Tua --}}
-                    <div class="flex items-start gap-2.5 p-2.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/30">
-                        <div class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/60 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                        </div>
-                        <div>
-                            <span class="font-semibold text-emerald-900 dark:text-emerald-200 block">Notifikasi WhatsApp ke Orang Tua</span>
-                            <p class="text-[11px] text-emerald-800/80 dark:text-emerald-300/80">Notifikasi pembayaran berhasil akan dikirim ke orang tua siswa melalui WhatsApp.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <p class="text-[11px] text-gray-500 dark:text-gray-400 pt-1">
-                    Sistem otomatis memperbarui saldo kas/rekening sekolah dan mengirim notifikasi ke orang tua.
-                </p>
-            </div>
-
-            {{-- STEP 10: STATUS PEMBAYARAN --}}
-            <div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 space-y-3">
-                <h3 class="font-bold text-gray-900 dark:text-white text-xs uppercase tracking-wider">Panduan Status Pembayaran Siswa</h3>
-                
-                {{-- Section 1: Status Pembayaran Siswa --}}
-                <div class="space-y-1.5">
-                    <span class="text-[11px] font-semibold text-gray-700 dark:text-gray-300 block">Status Pembayaran Siswa</span>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                        <div class="p-2 rounded-lg border border-gray-100 dark:border-gray-800">
-                            <div class="flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-400">
-                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                <span>Lunas</span>
-                            </div>
-                            <p class="text-[11px] text-gray-500 mt-0.5">Tagihan sudah dibayar penuh.</p>
-                        </div>
-
-                        <div class="p-2 rounded-lg border border-gray-100 dark:border-gray-800">
-                            <div class="flex items-center gap-1.5 font-semibold text-amber-700 dark:text-amber-400">
-                                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-                                <span>Cicil</span>
-                            </div>
-                            <p class="text-[11px] text-gray-500 mt-0.5">Tagihan sudah dibayar sebagian.</p>
-                        </div>
-
-                        <div class="p-2 rounded-lg border border-gray-100 dark:border-gray-800">
-                            <div class="flex items-center gap-1.5 font-semibold text-red-700 dark:text-red-400">
-                                <span class="w-2 h-2 rounded-full bg-red-500"></span>
-                                <span>Menunggak</span>
-                            </div>
-                            <p class="text-[11px] text-gray-500 mt-0.5">Belum ada pembayaran dan sudah melewati deadline.</p>
-                        </div>
-
-                        <div class="p-2 rounded-lg border border-gray-100 dark:border-gray-800">
-                            <div class="flex items-center gap-1.5 font-semibold text-sky-700 dark:text-sky-400">
-                                <span class="w-2 h-2 rounded-full bg-sky-500"></span>
-                                <span>Belum Bayar</span>
-                            </div>
-                            <p class="text-[11px] text-gray-500 mt-0.5">Belum ada pembayaran, masih dalam periode.</p>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Section 2: Status Tagihan (Master) --}}
-                <div class="space-y-1.5 pt-2 border-t border-gray-100 dark:border-gray-800">
-                    <span class="text-[11px] font-semibold text-gray-700 dark:text-gray-300 block">Status Tagihan (Master)</span>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                        <div class="p-2 rounded-lg border border-gray-100 dark:border-gray-800">
-                            <div class="flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-400">
-                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                <span>Aktif</span>
-                            </div>
-                            <p class="text-[11px] text-gray-500 mt-0.5">Masih dalam periode pembayaran.</p>
-                        </div>
-
-                        <div class="p-2 rounded-lg border border-gray-100 dark:border-gray-800">
-                            <div class="flex items-center gap-1.5 font-semibold text-rose-700 dark:text-rose-400">
-                                <span class="w-2 h-2 rounded-full bg-rose-500"></span>
-                                <span>Nonaktif</span>
-                            </div>
-                            <p class="text-[11px] text-gray-500 mt-0.5">Sudah melewati deadline.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <p class="text-[11px] text-gray-500 dark:text-gray-400 pt-1">
-                    Status pembayaran siswa dan status tagihan akan otomatis diperbarui oleh sistem sesuai dengan transaksi dan periode.
-                </p>
-            </div>
-        </div>
-    </div>
-
-    {{-- STEP 5, 6, 7: MODAL PEMBAYARAN TAGIHAN & KONFIRMASI (SESUAI SCREENSHOT) --}}
-    <dialog x-ref="paymentModal" class="account-dialog work max-w-lg w-full" aria-labelledby="pay-flow-title"
-        @cancel="if (savingPay) $event.preventDefault()"
-        @click="const bounds = $el.getBoundingClientRect(); if (!savingPay && ($event.clientX < bounds.left || $event.clientX > bounds.right || $event.clientY < bounds.top || $event.clientY > bounds.bottom)) closePaymentModal()">
-        
-        <div class="account-dialog-head border-b border-gray-200 dark:border-gray-800 pb-3">
-            <div class="min-w-0">
-                <h2 id="pay-flow-title" class="text-base font-semibold text-gray-900 dark:text-white"
-                    x-text="confirmingPayment ? 'Konfirmasi Pembayaran' : 'Pembayaran Tagihan'"></h2>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5"
-                    x-text="confirmingPayment ? 'Tinjau kembali data pembayaran sebelum disimpan.' : 'Catat penerimaan pembayaran tagihan komite siswa.'"></p>
-            </div>
-            <button type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1 rounded-md" @click="closePaymentModal()" :disabled="savingPay" aria-label="Tutup form">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-        </div>
-
-        {{-- FORM PEMBAYARAN (STEP 5 & 6) --}}
-        <form x-ref="payForm" method="POST" :action="'/spp/transaksi/' + payInvoiceId + '/bayar'" class="my-4 space-y-3.5 text-xs">
-            @csrf
-
-            {{-- STUDENT CARD DARI SCREENSHOT --}}
-            <div class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/40">
-                <div class="w-10 h-10 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
-                    <span x-text="payStudent ? payStudent.name.charAt(0).toUpperCase() : 'S'"></span>
-                </div>
-                <div>
-                    <h3 class="font-bold text-gray-900 dark:text-white text-xs" x-text="payStudent?.name"></h3>
-                    <p class="text-[11px] text-gray-500" x-text="(payStudent?.class_name || '-') + ' | NIS: ' + (payStudent?.nis || '-')"></p>
-                </div>
-            </div>
-
-            {{-- STEP 5: INPUT FORM --}}
-            <div x-show="!confirmingPayment" class="space-y-3.5">
-                {{-- Pilih Tagihan --}}
-                <div class="work-field">
-                    <label for="pay-inv-select" class="block font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Pilih Tagihan <span class="text-red-500">*</span>
-                    </label>
-                    <select id="pay-inv-select" x-model="payInvoiceId" @change="onInvoiceSelectChange($event.target.value)" required
-                        class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-xs">
-                        <template x-for="inv in payStudent?.invoices?.filter(i => i.remaining_amount > 0) || []" :key="inv.id">
-                            <option :value="inv.id" x-text="inv.item_name + ' - ' + inv.period + ' (' + formatRupiah(inv.remaining_amount) + ')'"></option>
-                        </template>
-                    </select>
-
-                    {{-- Info Breakdown di Bawah Dropdown Sesuai Screenshot --}}
-                    <template x-if="paySelectedInvoice">
-                        <div class="mt-2 p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 space-y-1 text-[11px]">
-                            <div class="flex justify-between">
-                                <span class="text-gray-500">Nominal Tagihan :</span>
-                                <span class="font-semibold text-gray-900 dark:text-white" x-text="formatRupiah(paySelectedInvoice.total_amount)"></span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-500">Sudah Dibayar :</span>
-                                <span class="font-medium text-emerald-600" x-text="formatRupiah(paySelectedInvoice.paid_amount)"></span>
-                            </div>
-                            <div class="flex justify-between border-t border-gray-200 dark:border-gray-700 pt-1 mt-1">
-                                <span class="text-gray-500 font-medium">Sisa Tagihan :</span>
-                                <span class="font-bold text-rose-600" x-text="formatRupiah(paySelectedInvoice.remaining_amount)"></span>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-
-                {{-- Nominal Bayar * --}}
-                <div class="work-field">
-                    <label for="pay-amount" class="block font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Nominal Bayar <span class="text-red-500">*</span>
-                    </label>
-                    <div class="relative">
-                        <input id="pay-amount" name="amount_paid" type="text" inputmode="numeric" data-mask="currency" x-model="payAmount" required placeholder="300.000"
-                            class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 pr-14 pl-3 py-2 text-xs font-semibold tabular-nums mask-currency">
-                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-gray-400 pointer-events-none">Rupiah</span>
-                    </div>
-                </div>
-
-                {{-- Metode Pembayaran * --}}
-                <div class="work-field">
-                    <label class="block font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Metode Pembayaran <span class="text-red-500">*</span>
-                    </label>
-                    <div class="flex gap-4">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="payment_method" value="Tunai" x-model="payMethod" class="text-brand-600 focus:ring-brand-500">
-                            <span>Tunai</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="payment_method" value="Transfer" x-model="payMethod" class="text-brand-600 focus:ring-brand-500">
-                            <span>Transfer</span>
-                        </label>
-                    </div>
-                </div>
-
-                {{-- STEP 6: JIKA METODE TRANSFER (PILIH REKENING TUJUAN) --}}
-                <div x-show="payMethod === 'Transfer'" class="p-3 bg-blue-50/60 dark:bg-blue-950/20 rounded-lg border border-blue-100 dark:border-blue-900/30 space-y-1.5">
-                    <label for="pay-acc" class="block font-medium text-blue-950 dark:text-blue-200">
-                        Rekening Tujuan <span class="text-red-500">*</span>
-                    </label>
-                    <select id="pay-acc" name="account_id" x-model="payAccountId"
-                        class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-xs">
-                        <option value="">-- Pilih Rekening Komite/Bank Sekolah --</option>
-                        @foreach($schoolAccounts as $acc)
-                            <option value="{{ $acc->id }}">{{ $acc->bank_name ? $acc->bank_name . ' - ' : '' }}{{ $acc->account_number }} (Atas Nama {{ $acc->account_name }})</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                {{-- Tanggal Transaksi * --}}
-                <div class="work-field">
-                    <label for="pay-date" class="block font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Tanggal Transaksi <span class="text-red-500">*</span>
-                    </label>
-                    <input id="pay-date" name="payment_date" type="date" x-model="payDate" required
-                        class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-xs">
-                </div>
-
-                <div class="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-800">
-                    <button type="button" class="work-btn" @click="closePaymentModal()">Batal</button>
-                    <button type="button" class="work-btn work-btn-primary" @click="proceedToConfirmation()">Simpan</button>
-                </div>
-            </div>
-
-            {{-- STEP 7: KONFIRMASI DAN SIMPAN --}}
-            <div x-show="confirmingPayment" x-cloak class="space-y-4">
-                <div class="p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/40 space-y-1.5 text-xs">
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Jenis Tagihan</span>
-                        <span class="font-semibold text-gray-900 dark:text-white" x-text="': ' + (paySelectedInvoice?.item_name || 'SPP Komite')"></span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Periode</span>
-                        <span class="font-medium text-gray-900 dark:text-white" x-text="': ' + (paySelectedInvoice?.period || 'Juli 2025')"></span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Nominal Tagihan</span>
-                        <span class="font-medium text-gray-900 dark:text-white tabular-nums" x-text="': ' + formatRupiah(paySelectedInvoice?.total_amount)"></span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Nominal Bayar</span>
-                        <span class="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums" x-text="': ' + formatRupiah(payAmount)"></span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Metode Pembayaran</span>
-                        <span class="font-medium text-gray-900 dark:text-white" x-text="': ' + payMethod"></span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Tanggal Transaksi</span>
-                        <span class="font-medium text-gray-900 dark:text-white" x-text="': ' + payDate"></span>
-                    </div>
-                </div>
-
-                {{-- INFO BOX KONFIRMASI SESUAI SCREENSHOT --}}
-                <div class="p-3 rounded-xl border border-sky-100 bg-sky-50 dark:border-sky-900/40 dark:bg-sky-950/20 flex items-start gap-2.5">
-                    <svg class="w-4 h-4 text-sky-600 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
-                    <div class="text-[11px] text-sky-950 dark:text-sky-200 space-y-0.5 leading-relaxed">
-                        <p class="font-semibold">Setelah disimpan, sistem akan:</p>
-                        <p>&bull; Membuat nomor transaksi otomatis</p>
-                        <p>&bull; Memperbarui status pembayaran</p>
-                        <p>&bull; Mengupdate saldo kas/rekening sekolah</p>
-                        <p>&bull; Mengirim notifikasi ke orang tua</p>
-                    </div>
-                </div>
-
-                <div class="flex justify-between items-center pt-3 border-t border-gray-100 dark:border-gray-800">
-                    <button type="button" class="work-btn" @click="confirmingPayment = false" :disabled="savingPay">Batal</button>
-                    <button type="button" class="work-btn work-btn-primary bg-emerald-600 hover:bg-emerald-700 border-emerald-600 text-white" @click="submitPayment()" :disabled="savingPay">
-                        <span x-show="!savingPay">Simpan</span>
-                        <span x-show="savingPay" x-cloak>Menyimpan Transaksi…</span>
-                    </button>
-                </div>
-            </div>
-        </form>
-    </dialog>
-
-    {{-- STEP 8: MODAL TRANSAKSI BERHASIL (SESUAI SCREENSHOT) --}}
-    <dialog x-ref="paySuccessModal" class="account-dialog work max-w-sm w-full text-center"
-        x-init="if (showPaymentSuccessModal) { $nextTick(() => { $refs.paySuccessModal.showModal(); }); }">
-        <div class="py-3 px-2 flex flex-col items-center text-xs">
-            <div class="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3">
-                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                </svg>
-            </div>
-            <h3 class="text-base font-bold text-gray-900 dark:text-white mb-2">Transaksi berhasil disimpan</h3>
-
-            {{-- KARTU NOMOR TRANSAKSI --}}
-            <div class="w-full p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/50 mb-3 text-center">
-                <span class="text-[10px] text-gray-400 uppercase tracking-wider block">Nomor Transaksi</span>
-                <span class="text-sm font-bold font-mono text-brand-600 dark:text-brand-400">{{ session('trx_number', 'TRX' . date('Ymd0001')) }}</span>
-            </div>
-
-            {{-- DETAIL SISWA & TRANSAKSI --}}
-            <div class="w-full text-left p-3 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30 space-y-1.5 mb-3 text-[11px]">
-                <div class="font-bold text-gray-900 dark:text-white">{{ session('trx_student_name', 'Siswa') }}</div>
-                <div class="text-gray-500">{{ session('trx_class', 'Kelas X') }} | NIS: {{ session('trx_student_nis', '-') }}</div>
-                <div class="border-t border-gray-200 dark:border-gray-700 pt-1.5 mt-1.5 space-y-1">
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Jenis Tagihan :</span>
-                        <span class="font-medium text-gray-900 dark:text-white">{{ session('trx_item_name', 'SPP Komite') }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Periode :</span>
-                        <span class="text-gray-800 dark:text-gray-200">{{ session('trx_period', 'Juli 2025') }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Nominal Bayar :</span>
-                        <span class="font-bold text-emerald-600">Rp {{ number_format(session('trx_amount', 0), 0, ',', '.') }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Metode :</span>
-                        <span>{{ session('trx_method', 'Tunai') }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Tanggal :</span>
-                        <span>{{ session('trx_date', date('d F Y')) }}</span>
-                    </div>
-                </div>
-            </div>
-
-            {{-- BLUE ALERT STATUS LUNAS --}}
-            <div class="w-full p-2.5 rounded-lg border border-sky-100 bg-sky-50 dark:border-sky-900/40 dark:bg-sky-950/20 text-sky-800 dark:text-sky-300 text-[11px] mb-2 text-left flex items-center gap-2">
-                <svg class="w-4 h-4 text-sky-600 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
-                <span>Status tagihan siswa telah diperbarui secara otomatis.</span>
-            </div>
-
-            {{-- NOTIFIKASI WA TERKIRIM KE ORANG TUA --}}
-            <div class="w-full p-2.5 rounded-lg border border-emerald-100 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300 text-[11px] mb-4 text-left flex items-center gap-2">
-                <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                <span>Notifikasi WhatsApp otomatis telah dikirim ke nomor orang tua.</span>
-            </div>
-
-            <button type="button" @click="$refs.paySuccessModal.close()" class="w-full work-btn work-btn-primary py-2 text-xs font-semibold justify-center">
-                OK
-            </button>
-        </div>
-    </dialog>
 
     {{-- MODAL BUAT TAGIHAN WIZARD (STEP 4, 5, 6, 7) --}}
     <dialog x-ref="wizardModal" class="account-dialog work max-w-2xl w-full" aria-labelledby="wizard-title"
@@ -1456,7 +749,7 @@
                                 <span>2</span>
                             </template>
                         </span>
-                        <span>Target Siswa</span>
+                        <span>Target Murid</span>
                     </div>
                     <span class="text-gray-300">&rsaquo;</span>
                     <div class="flex items-center gap-1.5" :class="wizardStep === 3 ? 'text-brand-600 font-semibold' : 'text-gray-400'">
@@ -1522,10 +815,11 @@
                     <label for="wizard-amount" class="block font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Nominal <span class="text-red-500">*</span>
                     </label>
-                    <div class="relative">
+                    <div class="relative flex items-center">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-semibold text-gray-500 pointer-events-none select-none z-10">Rp</span>
                         <input id="wizard-amount" name="amount" type="text" inputmode="numeric" data-mask="currency" x-model="newBill.amount" required placeholder="300.000"
-                            class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 pr-14 pl-3 py-2 text-xs text-gray-900 dark:text-white tabular-nums mask-currency">
-                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-gray-400 pointer-events-none">Rupiah</span>
+                            class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 pr-16 !pl-11 py-2 text-xs text-gray-900 dark:text-white tabular-nums mask-currency" style="padding-left: 2.75rem !important;">
+                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-gray-400 pointer-events-none select-none">Rupiah</span>
                     </div>
                 </div>
 
@@ -1544,10 +838,11 @@
 
                     <div x-show="newBill.allow_installment === 'ya'" class="mt-2">
                         <label for="wizard-min-installment" class="block font-medium text-gray-700 dark:text-gray-300 mb-1">Minimal Cicilan *</label>
-                        <div class="relative">
+                        <div class="relative flex items-center">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-semibold text-gray-500 pointer-events-none select-none z-10">Rp</span>
                             <input id="wizard-min-installment" name="minimum_installment" type="text" inputmode="numeric" data-mask="currency" x-model="newBill.minimum_installment" placeholder="100.000"
-                                class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 pr-14 pl-3 py-2 text-xs text-gray-900 dark:text-white tabular-nums mask-currency">
-                            <span class="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-gray-400 pointer-events-none">Rupiah</span>
+                                class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 pr-16 !pl-11 py-2 text-xs text-gray-900 dark:text-white tabular-nums mask-currency" style="padding-left: 2.75rem !important;">
+                            <span class="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-gray-400 pointer-events-none select-none">Rupiah</span>
                         </div>
                     </div>
                 </div>
@@ -1571,18 +866,20 @@
                     <div x-show="newBill.has_late_fee === 'ya'" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-gray-200 dark:border-gray-700/60">
                         <div>
                             <label for="wizard-late-day" class="block font-medium text-gray-700 dark:text-gray-300 mb-1">Nominal Denda per Hari *</label>
-                            <div class="relative">
+                            <div class="relative flex items-center">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-xs font-semibold text-gray-500 pointer-events-none select-none z-10">Rp</span>
                                 <input id="wizard-late-day" name="late_fee_per_day" type="text" inputmode="numeric" data-mask="currency" x-model="newBill.late_fee_per_day" placeholder="5.000"
-                                    class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 pr-14 pl-3 py-1.5 text-xs text-gray-900 dark:text-white tabular-nums mask-currency">
-                                <span class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-xs text-gray-400 pointer-events-none">Rupiah</span>
+                                    class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 pr-16 !pl-10 py-1.5 text-xs text-gray-900 dark:text-white tabular-nums mask-currency" style="padding-left: 2.5rem !important;">
+                                <span class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-xs text-gray-400 pointer-events-none select-none">Rupiah</span>
                             </div>
                         </div>
                         <div>
                             <label for="wizard-late-max" class="block font-medium text-gray-700 dark:text-gray-300 mb-1">Nominal Denda Maksimal *</label>
-                            <div class="relative">
+                            <div class="relative flex items-center">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-xs font-semibold text-gray-500 pointer-events-none select-none z-10">Rp</span>
                                 <input id="wizard-late-max" name="late_fee_maximum" type="text" inputmode="numeric" data-mask="currency" x-model="newBill.late_fee_maximum" placeholder="100.000"
-                                    class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 pr-14 pl-3 py-1.5 text-xs text-gray-900 dark:text-white tabular-nums mask-currency">
-                                <span class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-xs text-gray-400 pointer-events-none">Rupiah</span>
+                                    class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 pr-16 !pl-10 py-1.5 text-xs text-gray-900 dark:text-white tabular-nums mask-currency" style="padding-left: 2.5rem !important;">
+                                <span class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-xs text-gray-400 pointer-events-none select-none">Rupiah</span>
                             </div>
                         </div>
                     </div>
@@ -1657,7 +954,7 @@
                             <input type="radio" name="target_type" value="school" x-model="newBill.target_type" class="mt-0.5 text-brand-600 focus:ring-brand-500">
                             <div>
                                 <strong class="font-semibold text-gray-900 dark:text-white">Satu Sekolah</strong>
-                                <p class="text-gray-500 dark:text-gray-400 text-[11px]">Terapkan ke seluruh siswa aktif di sekolah.</p>
+                                <p class="text-gray-500 dark:text-gray-400 text-[11px]">Terapkan ke seluruh murid aktif di sekolah.</p>
                             </div>
                         </label>
 
@@ -1666,7 +963,7 @@
                             <input type="radio" name="target_type" value="pilihan" x-model="newBill.target_type" class="mt-0.5 text-brand-600 focus:ring-brand-500">
                             <div>
                                 <strong class="font-semibold text-gray-900 dark:text-white">Pilihan</strong>
-                                <p class="text-gray-500 dark:text-gray-400 text-[11px]">Pilih jurusan/angkatan/rombel/siswa tertentu.</p>
+                                <p class="text-gray-500 dark:text-gray-400 text-[11px]">Pilih jurusan/angkatan/rombel/murid tertentu.</p>
                             </div>
                         </label>
                     </div>
@@ -1705,10 +1002,10 @@
                         </div>
 
                         <div>
-                            <label for="wizard-student" class="block font-medium text-gray-700 dark:text-gray-300 mb-1">Siswa</label>
+                            <label for="wizard-student" class="block font-medium text-gray-700 dark:text-gray-300 mb-1">Murid</label>
                             <select id="wizard-student" name="target_student_id" x-model="newBill.target_student_id"
                                 class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs">
-                                <option value="">Semua Siswa</option>
+                                <option value="">Semua Murid</option>
                                 @foreach($students as $st)
                                     <option value="{{ $st->id }}">{{ $st->name }} ({{ $st->nis ?? '-' }})</option>
                                 @endforeach
@@ -1718,7 +1015,7 @@
 
                     <div class="flex items-center gap-2 text-[11px] text-sky-800 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/40 p-2.5 rounded-lg border border-sky-100 dark:border-sky-900/40">
                         <svg class="w-4 h-4 text-sky-600 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
-                        <span x-text="'Tagihan akan dibuat untuk siswa target: ' + getTargetSummaryText() + '.'"></span>
+                        <span x-text="'Tagihan akan dibuat untuk murid target: ' + getTargetSummaryText() + '.'"></span>
                     </div>
                 </div>
 
@@ -1755,8 +1052,8 @@
                         <span class="text-gray-500">Target</span>
                         <span class="font-medium text-gray-800 dark:text-gray-200" x-text="': ' + getTargetSummaryText()"></span>
 
-                        <span class="text-gray-500">Jumlah Siswa</span>
-                        <span class="font-bold text-brand-600 dark:text-brand-400" x-text="': ' + calculateTargetStudents() + ' siswa'"></span>
+                        <span class="text-gray-500">Jumlah Murid</span>
+                        <span class="font-bold text-brand-600 dark:text-brand-400" x-text="': ' + calculateTargetStudents() + ' murid'"></span>
                     </div>
                 </div>
 
@@ -1791,7 +1088,7 @@
                 {{ session('success_title', 'Tagihan berhasil dibuat') }}
             </h3>
             <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-4">
-                {{ session('success_message', 'Tagihan komite untuk ' . (session('target_student_count') ?? 'seluruh') . ' siswa telah berhasil dibuat dan disimpan ke dalam sistem.') }}
+                {{ session('success_message', 'Tagihan komite untuk ' . (session('target_student_count') ?? 'seluruh') . ' murid telah berhasil dibuat dan disimpan ke dalam sistem.') }}
             </p>
 
             <div class="w-full text-left p-3 rounded-xl border border-emerald-100 bg-emerald-50/70 dark:border-emerald-900/40 dark:bg-emerald-950/20 mb-5 space-y-1">
@@ -1837,9 +1134,12 @@
             </div>
 
             <div class="work-field">
-                <label for="edit-amount" class="block font-medium text-gray-700 dark:text-gray-300 mb-1">Nominal (Rp) <span class="text-red-500">*</span></label>
-                <input id="edit-amount" name="amount" x-model="editAmount" type="text" inputmode="numeric" data-mask="currency" required placeholder="0"
-                    class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-900 dark:text-white tabular-nums mask-currency">
+                <label for="edit-amount" class="block font-medium text-gray-700 dark:text-gray-300 mb-1">Nominal <span class="text-red-500">*</span></label>
+                <div class="relative flex items-center">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-semibold text-gray-500 pointer-events-none select-none z-10">Rp</span>
+                    <input id="edit-amount" name="amount" x-model="editAmount" type="text" inputmode="numeric" data-mask="currency" required placeholder="0"
+                        class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 pr-3 !pl-11 py-1.5 text-xs text-gray-900 dark:text-white tabular-nums mask-currency" style="padding-left: 2.75rem !important;">
+                </div>
             </div>
 
             <div class="grid grid-cols-2 gap-3">

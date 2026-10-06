@@ -1023,7 +1023,7 @@ class FinanceFoundationController extends Controller
         $metrics = [
             ['label' => 'Total Item Tagihan', 'value' => $billingItems->count()],
             ['label' => 'Total Nominal', 'value' => 'Rp ' . number_format($billingItems->sum('amount'), 0, ',', '.')],
-            ['label' => 'Total Siswa Menunggak', 'value' => $arrearsStudents->where('total_arrears', '>', 0)->count() . ' siswa'],
+            ['label' => 'Total Murid Menunggak', 'value' => $arrearsStudents->where('total_arrears', '>', 0)->count() . ' murid'],
             ['label' => 'Transfer Pending', 'value' => PaymentSubmission::where('school_id', $schoolId)->where('status', 'pending')->count()],
         ];
 

@@ -131,10 +131,13 @@
 
             {{-- Nominal --}}
             <div class="work-field">
-                <label for="wallet-nominal">Nominal / Saldo Awal (Rp) <span aria-hidden="true" class="text-red-500">*</span></label>
-                <input id="wallet-nominal" name="nominal" value="{{ old('nominal') ? number_format((float)old('nominal'), 0, ',', '.') : '0' }}" type="text" inputmode="numeric" data-mask="currency" required placeholder="Contoh: 2.500.000" class="mask-currency"
-                    @if($firstError === 'nominal') autofocus @endif
-                    @if($errors->has('nominal')) aria-invalid="true" aria-describedby="error-nominal" @endif>
+                <label for="wallet-nominal">Nominal / Saldo Awal <span aria-hidden="true" class="text-red-500">*</span></label>
+                <div class="relative flex items-center">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-semibold text-gray-500 pointer-events-none select-none z-10">Rp</span>
+                    <input id="wallet-nominal" name="nominal" value="{{ old('nominal') ? number_format((float)old('nominal'), 0, ',', '.') : '0' }}" type="text" inputmode="numeric" data-mask="currency" required placeholder="Contoh: 2.500.000" class="w-full !pl-11 pr-3 py-2 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white tabular-nums mask-currency" style="padding-left: 2.75rem !important;"
+                        @if($firstError === 'nominal') autofocus @endif
+                        @if($errors->has('nominal')) aria-invalid="true" aria-describedby="error-nominal" @endif>
+                </div>
                 @error('nominal')<p id="error-nominal" class="work-muted work-error">{{ $message }}</p>@enderror
             </div>
 
@@ -207,8 +210,11 @@
 
             {{-- Nominal --}}
             <div class="work-field">
-                <label for="edit-wallet-nominal">Nominal / Saldo (Rp) <span aria-hidden="true" class="text-red-500">*</span></label>
-                <input id="edit-wallet-nominal" name="nominal" x-model="editingWallet.nominal" type="text" inputmode="numeric" data-mask="currency" required placeholder="0" class="mask-currency">
+                <label for="edit-wallet-nominal">Nominal / Saldo <span aria-hidden="true" class="text-red-500">*</span></label>
+                <div class="relative flex items-center">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-semibold text-gray-500 pointer-events-none select-none z-10">Rp</span>
+                    <input id="edit-wallet-nominal" name="nominal" x-model="editingWallet.nominal" type="text" inputmode="numeric" data-mask="currency" required placeholder="0" class="w-full !pl-11 pr-3 py-2 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white tabular-nums mask-currency" style="padding-left: 2.75rem !important;">
+                </div>
             </div>
 
             {{-- Asal Alokasi Dana --}}

@@ -132,7 +132,7 @@ it('renders operational empty states and does not show other users AI materials'
     \App\Models\AiMaterial::create(['school_id'=>$school, 'user_id'=>$other->id, 'title'=>'Materi pribadi lain', 'prompt'=>'Rahasia', 'status'=>'draft']);
     $this->actingAs($teacher)->withSession(['active_school_id'=>$school]);
     $this->get('/ai')->assertOk()->assertSee('Belum ada materi tersimpan')->assertDontSee('Materi pribadi lain');
-    $this->get('/presensi/siswa')->assertOk()->assertSee('Pilih kelas untuk melihat daftar siswa');
+    $this->get('/presensi/siswa')->assertOk()->assertSee('Pilih kelas untuk melihat daftar murid');
     $this->get('/presensi/gtk')->assertOk()->assertSee('Belum ada peserta aktif');
     $this->get('/attendance/requests')->assertOk()->assertSee('Belum ada permohonan');
     $this->get('/alumni')->assertOk()->assertSee('Belum ada alumni');
@@ -246,6 +246,6 @@ it('keeps principal attendance access read only while exposing the matching menu
         ->get('/presensi/siswa')
         ->assertOk()
         ->assertViewHas('canEdit', false)
-        ->assertSee('Presensi Siswa')
+        ->assertSee('Presensi Murid')
         ->assertSee('Presensi GTK');
 });
