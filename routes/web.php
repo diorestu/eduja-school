@@ -152,6 +152,7 @@ Route::middleware('auth')->group(function () {
             Route::middleware('permission:finance.accounts,super_admin,bendahara')->group(function () {
                 Route::get('/accounts', [FinanceFoundationController::class, 'accounts'])->name('accounts');
                 Route::post('/accounts', [FinanceFoundationController::class, 'storeAccount'])->name('accounts.store');
+                Route::post('/accounts/transfer', [FinanceFoundationController::class, 'transferAccount'])->name('accounts.transfer');
                 Route::put('/accounts/{account}', [FinanceFoundationController::class, 'updateAccount'])->name('accounts.update');
             });
             Route::middleware('permission:finance.virtual_wallets,super_admin,bendahara')->group(function () {

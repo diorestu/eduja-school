@@ -10,7 +10,7 @@
     <!-- User Button -->
     <button
         id="user-profile-menu"
-        class="flex items-center text-gray-700 dark:text-gray-400"
+        class="flex items-center text-gray-700 dark:text-gray-400 pr-1.5"
         @click.prevent="toggleDropdown()"
         type="button"
     >

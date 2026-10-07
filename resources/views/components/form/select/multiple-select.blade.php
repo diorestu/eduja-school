@@ -55,7 +55,7 @@
             </div>
 
             <!-- Dropdown Arrow -->
-            <div class="flex items-start pt-1.5">
+            <div class="flex items-start pt-1.5 pr-1">
                 <svg class="h-5 w-5 shrink-0 text-gray-500 transition-transform dark:text-gray-400"
                     :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />

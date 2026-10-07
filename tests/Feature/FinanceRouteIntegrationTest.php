@@ -1941,6 +1941,101 @@ it('ensures nominal inputs use thousands masking and accepts dot-delimited value
         ->and((float) $plan2->amount)->toEqual(250000.0);
 });
 
+it('allows transfer between school accounts and updates balances atomically', function () {
+    $schoolId = makeFinanceRouteSchool('Sekolah Transfer Akun');
+    $user = makeFinanceRouteUser($schoolId);
+    $this->actingAs($user)->withSession(['active_school_id' => $schoolId]);
 
+    $sourceAcc = app(FinanceService::class)->createAccount($schoolId, [
+        'name' => 'Bank Mandiri Utama',
+        'type' => 'Bank',
+        'bank_name' => 'Bank Mandiri',
+        'account_number' => '1234567890',
+        'opening_balance' => 10000000,
+    ]);
 
+    $destAcc = app(FinanceService::class)->createAccount($schoolId, [
+        'name' => 'Kas Tunai Bendahara',
+        'type' => 'Tunai',
+        'opening_balance' => 1500000,
+    ]);
 
+    // Perform transfer of Rp 2.500.000
+    $response = $this->post('/finance/accounts/transfer', [
+        'from_account_id' => $sourceAcc->id,
+        'to_account_id' => $destAcc->id,
+        'amount' => '2.500.000',
+        'transfer_date' => '2026-10-06',
+        'notes' => 'Tarik tunai kas operasional',
+    ]);
+
+    $response->assertRedirect('/finance/accounts');
+    $response->assertSessionHas('success');
+
+    $sourceAcc->refresh();
+    $destAcc->refresh();
+
+    expect((float) $sourceAcc->current_balance)->toEqual(7500000.0)
+        ->and((float) $destAcc->current_balance)->toEqual(4000000.0);
+});
+
+it('records expense with account_id and deducts account balance upon approval', function () {
+    $schoolId = makeFinanceRouteSchool('Sekolah Belanja Rekening');
+    $bendahara = makeFinanceRouteUser($schoolId, 'bendahara');
+    $kepsek = makeFinanceRouteUser($schoolId, 'kepsek');
+
+    $acc = app(FinanceService::class)->createAccount($schoolId, [
+        'name' => 'Rekening Operasional BNI',
+        'type' => 'Bank',
+        'bank_name' => 'Bank Negara Indonesia (BNI)',
+        'account_number' => '9876543210',
+        'opening_balance' => 5000000,
+    ]);
+
+    $academicYearId = DB::table('academic_years')->insertGetId([
+        'school_id' => $schoolId,
+        'year' => '2026/2027',
+        'semester' => 'Ganjil',
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    // Bendahara submits expense using this account
+    $this->actingAs($bendahara)->withSession(['active_school_id' => $schoolId]);
+    $response = $this->post('/bos/belanja', [
+        'category' => 'Operasional',
+        'source_funding' => 'Komite',
+        'academic_year_id' => $academicYearId,
+        'expense_name' => 'Pembelian ATK Kantor',
+        'amount' => '1.200.000',
+        'transaction_date' => '2026-10-06',
+        'payment_method' => 'Transfer',
+        'account_id' => $acc->id,
+    ]);
+
+    $response->assertRedirect();
+
+    $expense = \App\Models\Expense::where('school_id', $schoolId)->where('expense_name', 'Pembelian ATK Kantor')->first();
+    expect($expense)->not->toBeNull()
+        ->and($expense->account_id)->toEqual($acc->id)
+        ->and((float) $expense->amount)->toEqual(1200000.0);
+
+    // Balance not yet deducted while pending approval
+    $acc->refresh();
+    expect((float) $acc->current_balance)->toEqual(5000000.0);
+
+    // Kepsek approves the expense
+    $approval = \App\Models\ApprovalRequest::where('approvable_type', \App\Models\Expense::class)
+        ->where('approvable_id', $expense->id)
+        ->first();
+
+    $this->actingAs($kepsek)->withSession(['active_school_id' => $schoolId]);
+    $this->post("/approvals/{$approval->id}/approve", [
+        'note' => 'Disetujui untuk dibayarkan.',
+    ])->assertRedirect();
+
+    // After approval, account balance is decremented
+    $acc->refresh();
+    expect((float) $acc->current_balance)->toEqual(3800000.0);
+});

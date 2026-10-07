@@ -97,8 +97,8 @@
             <div class="flex items-center gap-2 2xsm:gap-3">
                 @if($headerSchools->count() > 1)
                     <div x-data="{ open: false }" class="relative hidden lg:block">
-                        <button type="button" @click="open = !open" :aria-expanded="open.toString()" class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-left text-xs font-semibold text-gray-700 shadow-theme-xs hover:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300" aria-label="Ganti sekolah aktif">
-                            <i class="bx bx-buildings text-base text-brand-500" aria-hidden="true"></i><span>Ganti sekolah</span><i class="bx bx-chevron-down text-base" aria-hidden="true"></i>
+                        <button type="button" @click="open = !open" :aria-expanded="open.toString()" class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white pl-3 pr-3.5 text-left text-xs font-semibold text-gray-700 shadow-theme-xs hover:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300" aria-label="Ganti sekolah aktif">
+                            <i class="bx bx-buildings text-base text-brand-500" aria-hidden="true"></i><span>Ganti sekolah</span><i class="bx bx-chevron-down text-base ml-0.5" aria-hidden="true"></i>
                         </button>
                         <div x-show="open" x-transition.opacity.duration.150ms @click.outside="open = false" class="absolute right-0 z-50 mt-2 w-72 rounded-xl border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-800 dark:bg-gray-900" style="display:none">
                             @foreach($headerSchools as $headerSchool)

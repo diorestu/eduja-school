@@ -102,6 +102,56 @@ class FinanceFoundationController extends Controller
         return redirect()->route('finance.accounts')->with('success', 'Rekening Sekolah berhasil diperbarui.');
     }
 
+    public function transferAccount(Request $request, SchoolContext $schoolContext): RedirectResponse
+    {
+        $schoolId = $this->activeSchoolId($request, $schoolContext);
+
+        $validated = $request->validate([
+            'from_account_id' => [
+                'required',
+                'integer',
+                Rule::exists('school_accounts', 'id')->where(fn ($query) => $query->where('school_id', $schoolId)->where('is_active', true)),
+            ],
+            'to_account_id' => [
+                'required',
+                'integer',
+                'different:from_account_id',
+                Rule::exists('school_accounts', 'id')->where(fn ($query) => $query->where('school_id', $schoolId)->where('is_active', true)),
+            ],
+            'amount' => ['required', 'numeric', 'min:1'],
+            'transfer_date' => ['required', 'date'],
+            'notes' => ['nullable', 'string', 'max:255'],
+        ], [
+            'from_account_id.required' => 'Rekening asal wajib dipilih.',
+            'from_account_id.exists' => 'Rekening asal tidak valid atau nonaktif.',
+            'to_account_id.required' => 'Rekening tujuan wajib dipilih.',
+            'to_account_id.different' => 'Rekening tujuan tidak boleh sama dengan rekening asal.',
+            'to_account_id.exists' => 'Rekening tujuan tidak valid atau nonaktif.',
+            'amount.required' => 'Nominal transfer wajib diisi.',
+            'amount.min' => 'Nominal transfer minimal Rp 1.',
+            'transfer_date.required' => 'Tanggal transfer wajib diisi.',
+        ]);
+
+        $amount = (float) $validated['amount'];
+
+        DB::transaction(function () use ($schoolId, $validated, $amount) {
+            $fromAccount = SchoolAccount::where('school_id', $schoolId)->lockForUpdate()->findOrFail($validated['from_account_id']);
+            $toAccount = SchoolAccount::where('school_id', $schoolId)->lockForUpdate()->findOrFail($validated['to_account_id']);
+
+            if ((float) $fromAccount->current_balance < $amount) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'amount' => 'Saldo rekening asal tidak mencukupi (Saldo saat ini: Rp ' . number_format($fromAccount->current_balance, 0, ',', '.') . ').',
+                ]);
+            }
+
+            $fromAccount->decrement('current_balance', $amount);
+            $toAccount->increment('current_balance', $amount);
+        });
+
+        return redirect()->route('finance.accounts')
+            ->with('success', 'Transfer antar rekening sebesar Rp ' . number_format($amount, 0, ',', '.') . ' berhasil diproses.');
+    }
+
     public function virtualWallets(SchoolContext $schoolContext): View
     {
         $schoolId = $schoolContext->activeSchoolIdFor();

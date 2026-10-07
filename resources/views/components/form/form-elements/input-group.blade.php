@@ -33,7 +33,7 @@
         <div class="relative">
             <div class="absolute">
                 <select x-model="selectedCountry" @change="phoneNumber = countryCodes[selectedCountry]"
-                    class="focus:border-brand-300 focus:ring-brand-500/10 appearance-none rounded-l-lg border-0 border-r border-gray-200 bg-transparent bg-none py-3 pr-8 pl-3.5 leading-tight text-gray-700 focus:ring-3 focus:outline-hidden dark:border-gray-800 dark:text-gray-400">
+                    class="focus:border-brand-300 focus:ring-brand-500/10 appearance-none rounded-l-lg border-0 border-r border-gray-200 bg-transparent bg-none py-3 pr-10 pl-3.5 leading-tight text-gray-700 focus:ring-3 focus:outline-hidden dark:border-gray-800 dark:text-gray-400">
                     <option value="US" class="text-gray-700 dark:bg-gray-900 dark:text-gray-400">
                         US
                     </option>
@@ -49,7 +49,7 @@
                     <!-- Add more country codes as needed -->
                 </select>
                 <div
-                    class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-700 dark:text-gray-400">
+                    class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-700 dark:text-gray-400">
                     <svg class="stroke-current" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M4.79175 7.396L10.0001 12.6043L15.2084 7.396" stroke="" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                     </svg>
@@ -77,7 +77,7 @@
         <div class="relative">
             <div class="absolute right-0">
                 <select x-model="selectedCountry" @change="phoneNumber = countryCodes[selectedCountry]"
-                    class="focus:border-brand-300 focus:ring-brand-500/10 appearance-none rounded-r-lg border-0 border-l border-gray-200 bg-transparent bg-none py-3 pr-8 pl-3.5 leading-tight text-gray-700 focus:ring-3 focus:outline-hidden dark:border-gray-800 dark:text-gray-400">
+                    class="focus:border-brand-300 focus:ring-brand-500/10 appearance-none rounded-r-lg border-0 border-l border-gray-200 bg-transparent bg-none py-3 pr-10 pl-3.5 leading-tight text-gray-700 focus:ring-3 focus:outline-hidden dark:border-gray-800 dark:text-gray-400">
                     <option value="US" class="text-gray-700 dark:bg-gray-900 dark:text-gray-400">
                         US
                     </option>
@@ -93,7 +93,7 @@
                     <!-- Add more country codes as needed -->
                 </select>
                 <div
-                    class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-700 dark:text-gray-400">
+                    class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-700 dark:text-gray-400">
                     <svg class="stroke-current" width="20" height="20" viewBox="0 0 20 20" fill="none"
                         xmlns="http://www.w3.org/2000/svg">
                         <path d="M4.79175 7.396L10.0001 12.6043L15.2084 7.396" stroke="" stroke-width="1.5"

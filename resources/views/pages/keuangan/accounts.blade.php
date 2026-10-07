@@ -111,16 +111,90 @@
     @if(session('success'))
         <div role="status" class="work-notice">{{ session('success') }}</div>
     @endif
-    <div class="work-head mb-0">
+    <div class="work-head mb-0 flex flex-wrap items-center justify-between gap-3">
         <p class="work-muted">Rekening tunai dan bank untuk sekolah yang sedang aktif.</p>
-        <button type="button" class="work-btn work-btn-primary" @click="$refs.accountModal.showModal()">
-            <svg class="w-4 h-4 mr-1.5 -ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-            Rekening Sekolah
-        </button>
+        <div class="flex items-center gap-2">
+            <button type="button" class="work-btn" @click="$refs.transferModal.showModal()">
+                <svg class="w-4 h-4 mr-1.5 -ml-0.5 text-brand-600 dark:text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                Transfer Antar Rekening
+            </button>
+            <button type="button" class="work-btn work-btn-primary" @click="$refs.accountModal.showModal()">
+                <svg class="w-4 h-4 mr-1.5 -ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Rekening Sekolah
+            </button>
+        </div>
     </div>
     <x-common.data-table :rows="$accountRows" :columns="$accountColumns" caption="Daftar rekening sekolah" search-label="Cari rekening" row-label="rekening"
         subtitle="Rekening pada sekolah aktif" :show-actions="false" :show-avatar="false" :exportable="false"
         empty-message="Belum ada rekening sekolah." empty-hint="Pilih Rekening Sekolah untuk mencatat rekening pertama." />
+
+    {{-- MODAL TRANSFER ANTAR REKENING --}}
+    <dialog x-ref="transferModal" class="account-dialog work" aria-labelledby="transfer-modal-title" aria-describedby="transfer-modal-help"
+        @close="saving = false" @cancel="if (saving) $event.preventDefault()"
+        @click="const bounds = $el.getBoundingClientRect(); if (!saving && ($event.clientX < bounds.left || $event.clientX > bounds.right || $event.clientY < bounds.top || $event.clientY > bounds.bottom)) $el.close()">
+        <div class="account-dialog-head">
+            <div class="min-w-0">
+                <h2 id="transfer-modal-title">Transfer Antar Rekening</h2>
+                <p id="transfer-modal-help" class="work-muted mt-1">Pindahkan saldo antar rekening kas atau bank sekolah aktif.</p>
+            </div>
+            <button type="button" class="work-btn" @click="$refs.transferModal.close()" :disabled="saving" aria-label="Tutup form transfer">Tutup</button>
+        </div>
+        <form method="POST" action="{{ route('finance.accounts.transfer') }}" @submit="saving = true" :aria-busy="saving">
+            @csrf
+
+            {{-- Rekening Asal --}}
+            <div class="work-field">
+                <label for="transfer-from-account">Rekening Asal (Pengirim) <span aria-hidden="true">*</span></label>
+                <select id="transfer-from-account" name="from_account_id" required>
+                    <option value="" disabled selected>-- Pilih Rekening Asal --</option>
+                    @foreach($accounts->where('is_active', true) as $acc)
+                        <option value="{{ $acc->id }}">
+                            {{ $acc->name }} ({{ $acc->type === 'Bank' ? ($acc->bank_name . ' - ' . $acc->account_number) : 'Kas Tunai' }}) — Saldo: Rp {{ number_format($acc->current_balance, 0, ',', '.') }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- Rekening Tujuan --}}
+            <div class="work-field">
+                <label for="transfer-to-account">Rekening Tujuan (Penerima) <span aria-hidden="true">*</span></label>
+                <select id="transfer-to-account" name="to_account_id" required>
+                    <option value="" disabled selected>-- Pilih Rekening Tujuan --</option>
+                    @foreach($accounts->where('is_active', true) as $acc)
+                        <option value="{{ $acc->id }}">
+                            {{ $acc->name }} ({{ $acc->type === 'Bank' ? ($acc->bank_name . ' - ' . $acc->account_number) : 'Kas Tunai' }}) — Saldo: Rp {{ number_format($acc->current_balance, 0, ',', '.') }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- Nominal Transfer --}}
+            <div class="work-field">
+                <label for="transfer-amount">Nominal Transfer <span aria-hidden="true">*</span></label>
+                <div class="relative flex items-center">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-semibold text-gray-500 pointer-events-none select-none z-10">Rp</span>
+                    <input id="transfer-amount" name="amount" type="text" inputmode="numeric" data-mask="currency" required placeholder="0" class="w-full !pl-11 pr-3 py-2 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white tabular-nums mask-currency" style="padding-left: 2.75rem !important;">
+                </div>
+            </div>
+
+            {{-- Tanggal Transfer --}}
+            <div class="work-field">
+                <label for="transfer-date">Tanggal Transfer <span aria-hidden="true">*</span></label>
+                <input id="transfer-date" name="transfer_date" type="date" value="{{ date('Y-m-d') }}" required>
+            </div>
+
+            {{-- Keterangan / Catatan --}}
+            <div class="work-field">
+                <label for="transfer-notes">Catatan / Keterangan</label>
+                <input id="transfer-notes" name="notes" type="text" maxlength="255" placeholder="Contoh: Pemindahan dana operasional ke kas kasir">
+            </div>
+
+            <div class="work-actions mt-2 justify-end">
+                <button type="button" class="work-btn" @click="$refs.transferModal.close()" :disabled="saving">Batal</button>
+                <button type="submit" :disabled="saving" class="work-btn work-btn-primary" x-text="saving ? 'Memproses…' : 'Kirim Transfer'">Kirim Transfer</button>
+            </div>
+        </form>
+    </dialog>
 
     <dialog x-ref="accountModal" class="account-dialog work" aria-labelledby="account-modal-title" aria-describedby="account-modal-help"
         @close="saving = false" @cancel="if (saving) $event.preventDefault()"

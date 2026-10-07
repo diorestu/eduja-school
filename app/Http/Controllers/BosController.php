@@ -298,6 +298,7 @@ class BosController extends Controller
 
         $validated = $request->validate([
             'budget_category_id' => 'nullable|exists:budget_categories,id',
+            'account_id' => 'nullable|exists:school_accounts,id',
             'expense_name' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0',
             'transaction_date' => 'required|date',

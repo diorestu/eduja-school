@@ -56,6 +56,7 @@
             'transaction_date_raw' => $exp->transaction_date ? $exp->transaction_date->format('Y-m-d') : date('Y-m-d'),
             'source_funding' => $exp->source_funding ?? 'BOS',
             'payment_method' => $exp->payment_method ?? 'Tunai',
+            'account_id' => $exp->account_id ?? '',
             'amount' => $amt,
             'wallet_or_account' => $exp->virtualWallet?->name ?? ($exp->account?->name ?? 'Kas Sekolah'),
             'tax_type' => $exp->tax_type ?? '',
@@ -105,6 +106,7 @@
         editDate: '',
         editFunding: 'BOS',
         editPaymentMethod: 'Tunai',
+        editAccountId: '',
         editReference: '',
         editRecipient: '',
         editTaxType: '',
@@ -118,6 +120,7 @@
             this.editDate = row.transaction_date_raw || '';
             this.editFunding = row.source_funding || 'BOS';
             this.editPaymentMethod = row.payment_method || 'Tunai';
+            this.editAccountId = row.account_id || '';
             this.editReference = row.reference_invoice_raw || '';
             this.editRecipient = row.recipient_name_raw || '';
             this.editTaxType = row.tax_type || '';
@@ -258,14 +261,19 @@
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="work-field">
-                            <label for="create-op-method">Metode Pembayaran <span class="text-red-500">*</span></label>
-                            <select id="create-op-method" name="payment_method" required>
-                                <option value="Tunai">Tunai / Cash</option>
-                                <option value="Transfer">Transfer Bank</option>
+                            <label for="create-op-account">Rekening Pembayaran <span class="text-red-500">*</span></label>
+                            <select id="create-op-account" name="account_id" required>
+                                <option value="" disabled selected>-- Pilih Rekening Sekolah --</option>
+                                @foreach($schoolAccounts as $acc)
+                                    <option value="{{ $acc->id }}">
+                                        {{ $acc->name }} ({{ $acc->bank_name ? $acc->bank_name . ' - ' . $acc->account_number : $acc->type }}) — Saldo: Rp {{ number_format($acc->current_balance, 0, ',', '.') }}
+                                    </option>
+                                @endforeach
                             </select>
+                            <input type="hidden" name="payment_method" value="Transfer" />
                         </div>
                         <div class="work-field">
-                            <label for="create-op-wallet">Dompet Sumber Dana <span class="text-red-500">*</span></label>
+                            <label for="create-op-wallet">Dompet Sumber Dana <span class="text-xs text-gray-400 font-normal">(opsional)</span></label>
                             <select id="create-op-wallet" name="virtual_wallet_id">
                                 <option value="">-- Rekening Utama / Kas --</option>
                                 @foreach($virtualWallets as $vw)
@@ -357,11 +365,16 @@
                             <input id="create-bos-recipient" name="recipient_name" type="text" placeholder="Contoh: CV. Restu Agung" required>
                         </div>
                         <div class="work-field">
-                            <label for="create-bos-method">Metode Pembayaran <span class="text-red-500">*</span></label>
-                            <select id="create-bos-method" name="payment_method" required>
-                                <option value="Transfer">Transfer Rekening BOS</option>
-                                <option value="Tunai">Tunai Kas BOS</option>
+                            <label for="create-bos-account">Rekening Pembayaran BOS <span class="text-red-500">*</span></label>
+                            <select id="create-bos-account" name="account_id" required>
+                                <option value="" disabled selected>-- Pilih Rekening Pembayaran --</option>
+                                @foreach($schoolAccounts as $acc)
+                                    <option value="{{ $acc->id }}">
+                                        {{ $acc->name }} ({{ $acc->bank_name ? $acc->bank_name . ' - ' . $acc->account_number : $acc->type }}) — Saldo: Rp {{ number_format($acc->current_balance, 0, ',', '.') }}
+                                    </option>
+                                @endforeach
                             </select>
+                            <input type="hidden" name="payment_method" value="Transfer" />
                         </div>
                     </div>
 
@@ -472,11 +485,16 @@
                     </select>
                 </div>
                 <div class="work-field">
-                    <label for="edit-payment">Metode Pembayaran <span class="text-red-500">*</span></label>
-                    <select id="edit-payment" name="payment_method" x-model="editPaymentMethod" required>
-                        <option value="Tunai">Tunai / Cash</option>
-                        <option value="Transfer">Transfer Bank</option>
+                    <label for="edit-account">Rekening Pembayaran <span class="text-red-500">*</span></label>
+                    <select id="edit-account" name="account_id" x-model="editAccountId" required>
+                        <option value="">-- Pilih Rekening Sekolah --</option>
+                        @foreach($schoolAccounts as $acc)
+                            <option value="{{ $acc->id }}">
+                                {{ $acc->name }} ({{ $acc->bank_name ? $acc->bank_name . ' - ' . $acc->account_number : $acc->type }}) — Saldo: Rp {{ number_format($acc->current_balance, 0, ',', '.') }}
+                            </option>
+                        @endforeach
                     </select>
+                    <input type="hidden" name="payment_method" value="Transfer" />
                 </div>
             </div>
 
