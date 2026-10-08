@@ -226,6 +226,30 @@ class BosController extends Controller
         })->where('is_active', true)->first();
 
         $expenseTypes = ExpenseType::where('school_id', $schoolId)->orderBy('name')->get();
+        $komiteExpenseTypes = $expenseTypes->filter(fn ($et) => strtolower($et->source_funding ?? '') === 'komite');
+        if ($komiteExpenseTypes->isEmpty()) {
+            // Sediakan beberapa jenis pengeluaran komite umum untuk kemudahan operasional
+            $defaultKomiteNames = [
+                'Konsumsi & Rapat Komite',
+                'Honor & Transport Pengurus Komite',
+                'Bantuan Kegiatan Kesiswaan & Lomba',
+                'Pemeliharaan Fasilitas & Sarpras Komite',
+                'Kegiatan Paguyuban Orang Tua Murid',
+                'Operasional & Administrasi Komite',
+            ];
+            foreach ($defaultKomiteNames as $idx => $name) {
+                ExpenseType::create([
+                    'school_id' => $schoolId,
+                    'code' => 'KMT-' . str_pad((string) ($idx + 1), 3, '0', STR_PAD_LEFT),
+                    'name' => $name,
+                    'source_funding' => 'komite',
+                    'requires_approval' => true,
+                ]);
+            }
+            $expenseTypes = ExpenseType::where('school_id', $schoolId)->orderBy('name')->get();
+            $komiteExpenseTypes = $expenseTypes->filter(fn ($et) => strtolower($et->source_funding ?? '') === 'komite');
+        }
+
         $virtualWallets = VirtualWallet::where('school_id', $schoolId)->where('status', 'active')->get();
         $schoolAccounts = SchoolAccount::where('school_id', $schoolId)->where('is_active', true)->get();
         $bosBudgets = BudgetPlan::where('school_id', $schoolId)->where('source_funding', 'BOS')->get();
@@ -237,6 +261,7 @@ class BosController extends Controller
             'academicYears' => $academicYears,
             'activeYear' => $activeYear,
             'expenseTypes' => $expenseTypes,
+            'komiteExpenseTypes' => $komiteExpenseTypes,
             'virtualWallets' => $virtualWallets,
             'schoolAccounts' => $schoolAccounts,
             'bosBudgets' => $bosBudgets,
@@ -298,6 +323,8 @@ class BosController extends Controller
 
         $validated = $request->validate([
             'budget_category_id' => 'nullable|exists:budget_categories,id',
+            'expense_type_id' => 'nullable|exists:expense_types,id',
+            'virtual_wallet_id' => 'nullable|exists:virtual_wallets,id',
             'account_id' => 'nullable|exists:school_accounts,id',
             'expense_name' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0',

@@ -55,6 +55,8 @@
             'transaction_date' => $exp->transaction_date ? $exp->transaction_date->translatedFormat('d M Y') : '-',
             'transaction_date_raw' => $exp->transaction_date ? $exp->transaction_date->format('Y-m-d') : date('Y-m-d'),
             'source_funding' => $exp->source_funding ?? 'BOS',
+            'expense_type_id' => $exp->expense_type_id ?? '',
+            'virtual_wallet_id' => $exp->virtual_wallet_id ?? '',
             'payment_method' => $exp->payment_method ?? 'Tunai',
             'account_id' => $exp->account_id ?? '',
             'amount' => $amt,
@@ -80,15 +82,23 @@
         saving: false,
         expenseCategory: 'Operasional', // Operasional | BOS | Transfer Alokasi
         createAmount: 0,
+        createOpAmount: 0,
+        createOpWalletId: '{{ $virtualWallets->first()?->id ?? '' }}',
+        createBosAccountId: '{{ $schoolAccounts->first()?->id ?? '' }}',
         createTaxType: '',
         createTaxAmount: 0,
+        accountsMap: @js($schoolAccounts->pluck('current_balance', 'id')),
+        walletsMap: @js($virtualWallets->pluck('nominal', 'id')),
         // BOS specific state
         bosYear: {{ date('Y') }},
         bosSource: 'BOS Reguler',
         bosComponent: 'Belanja barang',
         bosRemainingBudget: 50000000,
+        parseNum(val) {
+            return parseFloat(String(val || '').replace(/\D/g, '')) || 0;
+        },
         calculateCreateTax() {
-            let amt = parseFloat(String(this.createAmount || '').replace(/\D/g, '')) || 0;
+            let amt = this.parseNum(this.createAmount);
             if (this.createTaxType === 'PPN') {
                 this.createTaxAmount = Math.round(amt * 0.11);
             } else if (this.createTaxType === 'PPh 22') {
@@ -99,27 +109,59 @@
                 this.createTaxAmount = 0;
             }
         },
+        get selectedOpWalletBalance() {
+            return parseFloat(this.walletsMap[this.createOpWalletId] ?? 0);
+        },
+        get isOpWalletBalanceInsufficient() {
+            let amt = this.parseNum(this.createOpAmount);
+            return this.createOpWalletId && amt > this.selectedOpWalletBalance;
+        },
+        get selectedBosAccountBalance() {
+            return parseFloat(this.accountsMap[this.createBosAccountId] ?? 0);
+        },
+        get isBosAccountBalanceInsufficient() {
+            let amt = this.parseNum(this.createAmount);
+            return this.createBosAccountId && amt > this.selectedBosAccountBalance;
+        },
         editingItem: null,
         editCategoryId: '',
+        editExpenseTypeId: '',
+        editVirtualWalletId: '',
         editExpenseName: '',
         editAmount: 0,
         editDate: '',
         editFunding: 'BOS',
-        editPaymentMethod: 'Tunai',
+        editPaymentMethod: 'Transfer',
         editAccountId: '',
         editReference: '',
         editRecipient: '',
         editTaxType: '',
         editTaxAmount: 0,
         editIsTaxPaid: false,
+        get editSelectedAccountBalance() {
+            return parseFloat(this.accountsMap[this.editAccountId] ?? 0);
+        },
+        get isEditAccountBalanceInsufficient() {
+            let amt = this.parseNum(this.editAmount);
+            return this.editFunding === 'BOS' && this.editAccountId && amt > this.editSelectedAccountBalance;
+        },
+        get editSelectedWalletBalance() {
+            return parseFloat(this.walletsMap[this.editVirtualWalletId] ?? 0);
+        },
+        get isEditWalletBalanceInsufficient() {
+            let amt = this.parseNum(this.editAmount);
+            return this.editFunding === 'Komite' && this.editVirtualWalletId && amt > this.editSelectedWalletBalance;
+        },
         openEdit(row) {
             this.editingItem = row;
             this.editCategoryId = row.budget_category_id || '';
+            this.editExpenseTypeId = row.expense_type_id || '';
+            this.editVirtualWalletId = row.virtual_wallet_id || '';
             this.editExpenseName = row.expense_name || '';
             this.editAmount = window.formatCurrencyMask ? window.formatCurrencyMask(row.amount) : (row.amount || 0);
             this.editDate = row.transaction_date_raw || '';
             this.editFunding = row.source_funding || 'BOS';
-            this.editPaymentMethod = row.payment_method || 'Tunai';
+            this.editPaymentMethod = row.payment_method || 'Transfer';
             this.editAccountId = row.account_id || '';
             this.editReference = row.reference_invoice_raw || '';
             this.editRecipient = row.recipient_name_raw || '';
@@ -230,10 +272,10 @@
                             <input id="create-op-date" name="transaction_date" type="date" value="{{ date('Y-m-d') }}" required>
                         </div>
                         <div class="work-field">
-                            <label for="create-op-type">Jenis Pengeluaran <span class="text-red-500">*</span></label>
+                            <label for="create-op-type">Jenis Pengeluaran Komite <span class="text-red-500">*</span></label>
                             <select id="create-op-type" name="expense_type_id" required>
-                                <option value="">-- Pilih Jenis Pengeluaran --</option>
-                                @foreach($expenseTypes as $et)
+                                <option value="" disabled selected>-- Pilih Jenis Pengeluaran Komite --</option>
+                                @foreach($komiteExpenseTypes as $et)
                                     <option value="{{ $et->id }}">{{ $et->code }} - {{ $et->name }}</option>
                                 @endforeach
                             </select>
@@ -250,7 +292,7 @@
                             <label for="create-op-amount">Nominal <span class="text-red-500">*</span></label>
                             <div class="relative flex items-center">
                                 <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-semibold text-gray-500 pointer-events-none select-none z-10">Rp</span>
-                                <input id="create-op-amount" name="amount" type="text" inputmode="numeric" data-mask="currency" required placeholder="Contoh: 750.000" class="w-full !pl-11 pr-3 py-2 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white tabular-nums mask-currency" style="padding-left: 2.75rem !important;">
+                                <input id="create-op-amount" name="amount" type="text" inputmode="numeric" data-mask="currency" x-model="createOpAmount" required placeholder="Contoh: 750.000" class="w-full !pl-11 pr-3 py-2 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white tabular-nums mask-currency" style="padding-left: 2.75rem !important;">
                             </div>
                         </div>
                         <div class="work-field">
@@ -259,28 +301,23 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="work-field">
-                            <label for="create-op-account">Rekening Pembayaran <span class="text-red-500">*</span></label>
-                            <select id="create-op-account" name="account_id" required>
-                                <option value="" disabled selected>-- Pilih Rekening Sekolah --</option>
-                                @foreach($schoolAccounts as $acc)
-                                    <option value="{{ $acc->id }}">
-                                        {{ $acc->name }} ({{ $acc->bank_name ? $acc->bank_name . ' - ' . $acc->account_number : $acc->type }}) — Saldo: Rp {{ number_format($acc->current_balance, 0, ',', '.') }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <input type="hidden" name="payment_method" value="Transfer" />
-                        </div>
-                        <div class="work-field">
-                            <label for="create-op-wallet">Dompet Sumber Dana <span class="text-xs text-gray-400 font-normal">(opsional)</span></label>
-                            <select id="create-op-wallet" name="virtual_wallet_id">
-                                <option value="">-- Rekening Utama / Kas --</option>
-                                @foreach($virtualWallets as $vw)
-                                    <option value="{{ $vw->id }}">{{ $vw->name }} (Saldo: Rp {{ number_format($vw->nominal, 0, ',', '.') }})</option>
-                                @endforeach
-                            </select>
-                        </div>
+                    {{-- Asal Dana Komite: HANYA dari Dompet Virtual --}}
+                    <div class="work-field">
+                        <label for="create-op-wallet">Asal Dana: Dompet Virtual <span class="text-red-500">*</span></label>
+                        <select id="create-op-wallet" name="virtual_wallet_id" x-model="createOpWalletId" required>
+                            <option value="" disabled>-- Pilih Dompet Virtual Sumber Dana --</option>
+                            @foreach($virtualWallets as $vw)
+                                <option value="{{ $vw->id }}">{{ $vw->name }} (Saldo: Rp {{ number_format($vw->nominal, 0, ',', '.') }})</option>
+                            @endforeach
+                        </select>
+                        <input type="hidden" name="payment_method" value="Transfer" />
+                    </div>
+
+                    {{-- Warning Saldo Dompet Virtual Tidak Mencukupi --}}
+                    <div x-show="isOpWalletBalanceInsufficient" x-cloak
+                        class="p-3 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 text-xs flex items-center gap-2">
+                        <svg class="w-4 h-4 shrink-0 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <span><strong>Peringatan Saldo Dompet:</strong> Saldo dompet virtual tidak mencukupi untuk nominal pengeluaran ini (Saldo: <span x-text="formatRupiah(selectedOpWalletBalance)"></span>, Pengeluaran: <span x-text="formatRupiah(parseNum(createOpAmount))"></span>).</span>
                     </div>
 
                     <div class="work-field">
@@ -322,11 +359,11 @@
                         </div>
                     </div>
 
-                    {{-- Akun / Kategori Anggaran BOS --}}
+                    {{-- Akun / Kategori Anggaran BOS (Hanya Jenis Pengeluaran BOS) --}}
                     <div class="work-field">
-                        <label for="create-bos-cat">Akun Anggaran RKAS / Jenis Pengeluaran <span class="text-red-500">*</span></label>
+                        <label for="create-bos-cat">Jenis Pengeluaran BOS (Akun Anggaran RKAS) <span class="text-red-500">*</span></label>
                         <select id="create-bos-cat" name="budget_category_id" required>
-                            <option value="">-- Pilih Jenis Pengeluaran BOS --</option>
+                            <option value="" disabled selected>-- Pilih Jenis Pengeluaran BOS --</option>
                             @foreach($categories as $cat)
                                 <option value="{{ $cat->id }}">{{ $cat->code }} - {{ $cat->name }}</option>
                             @endforeach
@@ -334,7 +371,7 @@
                     </div>
 
                     {{-- Warning jika Anggaran Tidak Cukup (Page 32-33) --}}
-                    <div x-show="createAmount > bosRemainingBudget" x-cloak
+                    <div x-show="parseNum(createAmount) > bosRemainingBudget" x-cloak
                         class="p-3 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 text-xs flex items-center gap-2">
                         <svg class="w-4 h-4 shrink-0 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                         <span><strong>Peringatan Anggaran:</strong> Sisa anggaran BOS komponen ini tidak mencukupi (Sisa: <span x-text="formatRupiah(bosRemainingBudget)"></span>).</span>
@@ -342,7 +379,7 @@
 
                     <div class="work-field">
                         <label for="create-bos-name">Deskripsi / Uraian Kegiatan <span class="text-red-500">*</span></label>
-                        <input id="create-bos-name" name="expense_name" type="text" required placeholder="Contoh: Pengadaan bahan ajar praktikum siswa">
+                        <input id="create-bos-name" name="expense_name" type="text" required placeholder="Contoh: Pengadaan bahan ajar praktikum murid">
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -366,8 +403,8 @@
                         </div>
                         <div class="work-field">
                             <label for="create-bos-account">Rekening Pembayaran BOS <span class="text-red-500">*</span></label>
-                            <select id="create-bos-account" name="account_id" required>
-                                <option value="" disabled selected>-- Pilih Rekening Pembayaran --</option>
+                            <select id="create-bos-account" name="account_id" x-model="createBosAccountId" required>
+                                <option value="" disabled>-- Pilih Rekening Pembayaran --</option>
                                 @foreach($schoolAccounts as $acc)
                                     <option value="{{ $acc->id }}">
                                         {{ $acc->name }} ({{ $acc->bank_name ? $acc->bank_name . ' - ' . $acc->account_number : $acc->type }}) — Saldo: Rp {{ number_format($acc->current_balance, 0, ',', '.') }}
@@ -376,6 +413,13 @@
                             </select>
                             <input type="hidden" name="payment_method" value="Transfer" />
                         </div>
+                    </div>
+
+                    {{-- Warning Saldo Rekening Sekolah Tidak Mencukupi --}}
+                    <div x-show="isBosAccountBalanceInsufficient" x-cloak
+                        class="p-3 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 text-xs flex items-center gap-2">
+                        <svg class="w-4 h-4 shrink-0 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <span><strong>Peringatan Saldo Rekening:</strong> Saldo rekening pembayaran tidak mencukupi untuk pengeluaran ini (Saldo: <span x-text="formatRupiah(selectedBosAccountBalance)"></span>, Pengeluaran: <span x-text="formatRupiah(parseNum(createAmount))"></span>).</span>
                     </div>
 
                     {{-- CHECKLIST DOKUMEN BELANJA BOS SESUAI FLOW (PAGE 33) --}}
@@ -446,12 +490,32 @@
             @csrf
             @method('PUT')
 
+            {{-- 1. Sumber Dana --}}
             <div class="work-field">
-                <label for="edit-budget-category">Akun Anggaran RKAS</label>
-                <select id="edit-budget-category" name="budget_category_id" x-model="editCategoryId">
-                    <option value="">-- Pilih Akun Anggaran --</option>
+                <label for="edit-funding">Sumber Dana <span class="text-red-500">*</span></label>
+                <select id="edit-funding" name="source_funding" x-model="editFunding" required>
+                    <option value="BOS">BOS (Bantuan Operasional Sekolah)</option>
+                    <option value="Komite">Komite (Operasional Rutin)</option>
+                </select>
+            </div>
+
+            {{-- Jenis Pengeluaran / Akun Anggaran sesuai Sumber Dana --}}
+            <div class="work-field" x-show="editFunding === 'BOS'">
+                <label for="edit-budget-category">Jenis Pengeluaran BOS (Akun Anggaran RKAS) <span class="text-red-500">*</span></label>
+                <select id="edit-budget-category" name="budget_category_id" x-model="editCategoryId" :required="editFunding === 'BOS'">
+                    <option value="">-- Pilih Jenis Pengeluaran BOS --</option>
                     @foreach($categories as $cat)
                         <option value="{{ $cat->id }}">{{ $cat->code }} - {{ $cat->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="work-field" x-show="editFunding === 'Komite'" x-cloak>
+                <label for="edit-expense-type">Jenis Pengeluaran Komite <span class="text-red-500">*</span></label>
+                <select id="edit-expense-type" name="expense_type_id" x-model="editExpenseTypeId" :required="editFunding === 'Komite'">
+                    <option value="">-- Pilih Jenis Pengeluaran Komite --</option>
+                    @foreach($komiteExpenseTypes as $et)
+                        <option value="{{ $et->id }}">{{ $et->code }} - {{ $et->name }}</option>
                     @endforeach
                 </select>
             </div>
@@ -475,27 +539,42 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="work-field">
-                    <label for="edit-funding">Sumber Dana <span class="text-red-500">*</span></label>
-                    <select id="edit-funding" name="source_funding" x-model="editFunding" required>
-                        <option value="BOS">BOS (Reguler/Kinerja)</option>
-                        <option value="Yayasan">Yayasan (Swasta)</option>
-                        <option value="Komite">Komite / Iuran</option>
-                    </select>
-                </div>
-                <div class="work-field">
-                    <label for="edit-account">Rekening Pembayaran <span class="text-red-500">*</span></label>
-                    <select id="edit-account" name="account_id" x-model="editAccountId" required>
-                        <option value="">-- Pilih Rekening Sekolah --</option>
-                        @foreach($schoolAccounts as $acc)
-                            <option value="{{ $acc->id }}">
-                                {{ $acc->name }} ({{ $acc->bank_name ? $acc->bank_name . ' - ' . $acc->account_number : $acc->type }}) — Saldo: Rp {{ number_format($acc->current_balance, 0, ',', '.') }}
-                            </option>
-                        @endforeach
-                    </select>
-                    <input type="hidden" name="payment_method" value="Transfer" />
-                </div>
+            {{-- Asal Dana: Dompet Virtual untuk Komite, Rekening untuk BOS --}}
+            <div class="work-field" x-show="editFunding === 'Komite'" x-cloak>
+                <label for="edit-virtual-wallet">Asal Dana: Dompet Virtual <span class="text-red-500">*</span></label>
+                <select id="edit-virtual-wallet" name="virtual_wallet_id" x-model="editVirtualWalletId" :required="editFunding === 'Komite'">
+                    <option value="">-- Pilih Dompet Virtual Sumber Dana --</option>
+                    @foreach($virtualWallets as $vw)
+                        <option value="{{ $vw->id }}">{{ $vw->name }} (Saldo: Rp {{ number_format($vw->nominal, 0, ',', '.') }})</option>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- Warning Saldo Dompet Virtual pada Edit --}}
+            <div x-show="isEditWalletBalanceInsufficient" x-cloak
+                class="p-3 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 text-xs flex items-center gap-2">
+                <svg class="w-4 h-4 shrink-0 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <span><strong>Peringatan Saldo Dompet:</strong> Saldo dompet virtual tidak mencukupi untuk jumlah belanja ini (Saldo: <span x-text="formatRupiah(editSelectedWalletBalance)"></span>, Belanja: <span x-text="formatRupiah(parseNum(editAmount))"></span>).</span>
+            </div>
+
+            <div class="work-field" x-show="editFunding === 'BOS'">
+                <label for="edit-account">Rekening Pembayaran BOS <span class="text-red-500">*</span></label>
+                <select id="edit-account" name="account_id" x-model="editAccountId" :required="editFunding === 'BOS'">
+                    <option value="">-- Pilih Rekening Sekolah --</option>
+                    @foreach($schoolAccounts as $acc)
+                        <option value="{{ $acc->id }}">
+                            {{ $acc->name }} ({{ $acc->bank_name ? $acc->bank_name . ' - ' . $acc->account_number : $acc->type }}) — Saldo: Rp {{ number_format($acc->current_balance, 0, ',', '.') }}
+                        </option>
+                    @endforeach
+                </select>
+                <input type="hidden" name="payment_method" value="Transfer" />
+            </div>
+
+            {{-- Warning Saldo Rekening Sekolah pada Edit --}}
+            <div x-show="isEditAccountBalanceInsufficient" x-cloak
+                class="p-3 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 text-xs flex items-center gap-2">
+                <svg class="w-4 h-4 shrink-0 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <span><strong>Peringatan Saldo Rekening:</strong> Saldo rekening pembayaran tidak mencukupi untuk jumlah belanja ini (Saldo: <span x-text="formatRupiah(editSelectedAccountBalance)"></span>, Belanja: <span x-text="formatRupiah(parseNum(editAmount))"></span>).</span>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
