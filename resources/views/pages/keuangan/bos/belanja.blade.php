@@ -114,14 +114,21 @@
         },
         get isOpWalletBalanceInsufficient() {
             let amt = this.parseNum(this.createOpAmount);
-            return this.createOpWalletId && amt > this.selectedOpWalletBalance;
+            return Boolean(this.createOpWalletId && amt > this.selectedOpWalletBalance);
         },
         get selectedBosAccountBalance() {
             return parseFloat(this.accountsMap[this.createBosAccountId] ?? 0);
         },
         get isBosAccountBalanceInsufficient() {
             let amt = this.parseNum(this.createAmount);
-            return this.createBosAccountId && amt > this.selectedBosAccountBalance;
+            return Boolean(this.createBosAccountId && amt > this.selectedBosAccountBalance);
+        },
+        get isCreateInsufficient() {
+            if (this.expenseCategory === 'BOS') {
+                return this.isBosAccountBalanceInsufficient;
+            } else {
+                return this.isOpWalletBalanceInsufficient;
+            }
         },
         editingItem: null,
         editCategoryId: '',
@@ -143,14 +150,22 @@
         },
         get isEditAccountBalanceInsufficient() {
             let amt = this.parseNum(this.editAmount);
-            return this.editFunding === 'BOS' && this.editAccountId && amt > this.editSelectedAccountBalance;
+            return Boolean(this.editFunding === 'BOS' && this.editAccountId && amt > this.editSelectedAccountBalance);
         },
         get editSelectedWalletBalance() {
             return parseFloat(this.walletsMap[this.editVirtualWalletId] ?? 0);
         },
         get isEditWalletBalanceInsufficient() {
             let amt = this.parseNum(this.editAmount);
-            return this.editFunding === 'Komite' && this.editVirtualWalletId && amt > this.editSelectedWalletBalance;
+            return Boolean(this.editFunding === 'Komite' && this.editVirtualWalletId && amt > this.editSelectedWalletBalance);
+        },
+        get isEditInsufficient() {
+            if (this.editFunding === 'BOS') {
+                return this.isEditAccountBalanceInsufficient;
+            } else if (this.editFunding === 'Komite') {
+                return this.isEditWalletBalanceInsufficient;
+            }
+            return false;
         },
         openEdit(row) {
             this.editingItem = row;
@@ -185,6 +200,16 @@
     @if(session('error'))
         <div role="alert" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
             {{ session('error') }}
+        </div>
+    @endif
+
+    @if($errors->any())
+        <div role="alert" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
+            <ul class="list-disc list-inside space-y-1">
+                @foreach($errors->all() as $err)
+                    <li>{{ $err }}</li>
+                @endforeach
+            </ul>
         </div>
     @endif
 
@@ -247,7 +272,7 @@
             </button>
         </div>
 
-        <form method="POST" action="{{ route('bos.belanja.store') }}" enctype="multipart/form-data" @submit="saving = true" :aria-busy="saving" class="space-y-4">
+        <form method="POST" action="{{ route('bos.belanja.store') }}" enctype="multipart/form-data" @submit="if (isCreateInsufficient) { $event.preventDefault(); return false; } saving = true" :aria-busy="saving" class="space-y-4">
             @csrf
             <input type="hidden" name="academic_year_id" value="{{ $activeYear?->id }}" />
 
@@ -464,8 +489,9 @@
 
             <div class="account-dialog-actions mt-5 pt-3 border-t border-gray-100 dark:border-gray-800">
                 <button type="button" class="work-btn" @click="$refs.createExpenseModal.close()" :disabled="saving">Batal</button>
-                <button type="submit" class="work-btn work-btn-primary" :disabled="saving">
-                    <span x-show="!saving">Ajukan Pengeluaran</span>
+                <button type="submit" class="work-btn work-btn-primary disabled:opacity-50 disabled:cursor-not-allowed" :disabled="saving || isCreateInsufficient">
+                    <span x-show="!saving && !isCreateInsufficient">Ajukan Pengeluaran</span>
+                    <span x-show="!saving && isCreateInsufficient" x-cloak>Saldo Tidak Mencukupi</span>
                     <span x-show="saving" x-cloak>Menyimpan…</span>
                 </button>
             </div>
@@ -486,7 +512,7 @@
             </button>
         </div>
 
-        <form method="POST" :action="editingItem ? editingItem.update_url : '#'" @submit="saving = true" :aria-busy="saving" class="space-y-4">
+        <form method="POST" :action="editingItem ? editingItem.update_url : '#'" @submit="if (isEditInsufficient) { $event.preventDefault(); return false; } saving = true" :aria-busy="saving" class="space-y-4">
             @csrf
             @method('PUT')
 
@@ -590,8 +616,9 @@
 
             <div class="account-dialog-actions mt-5 pt-3 border-t border-gray-100 dark:border-gray-800">
                 <button type="button" class="work-btn" @click="$refs.editExpenseModal.close()" :disabled="saving">Batal</button>
-                <button type="submit" class="work-btn work-btn-primary" :disabled="saving">
-                    <span x-show="!saving">Simpan Perubahan</span>
+                <button type="submit" class="work-btn work-btn-primary disabled:opacity-50 disabled:cursor-not-allowed" :disabled="saving || isEditInsufficient">
+                    <span x-show="!saving && !isEditInsufficient">Simpan Perubahan</span>
+                    <span x-show="!saving && isEditInsufficient" x-cloak>Saldo Tidak Mencukupi</span>
                     <span x-show="saving" x-cloak>Menyimpan…</span>
                 </button>
             </div>

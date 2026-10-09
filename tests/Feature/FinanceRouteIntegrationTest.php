@@ -2039,3 +2039,82 @@ it('records expense with account_id and deducts account balance upon approval', 
     $acc->refresh();
     expect((float) $acc->current_balance)->toEqual(3800000.0);
 });
+
+it('rejects recording expense when amount exceeds selected account or virtual wallet balance', function () {
+    $bendahara = User::factory()->create(['role' => 'bendahara']);
+    $schoolId = DB::table('schools')->insertGetId([
+        'name' => 'SMK Negeri Keuangan Validasi',
+        'level' => 'smk',
+        'ownership' => 'negeri',
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    DB::table('school_user_roles')->insert([
+        'school_id' => $schoolId,
+        'user_id' => $bendahara->id,
+        'role' => 'bendahara',
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $academicYearId = DB::table('academic_years')->insertGetId([
+        'school_id' => $schoolId,
+        'year' => '2026/2027',
+        'semester' => 'Ganjil',
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $acc = \App\Models\SchoolAccount::create([
+        'school_id' => $schoolId,
+        'name' => 'Rekening BOS BNI',
+        'type' => 'Bank',
+        'current_balance' => 3000000,
+        'opening_balance' => 3000000,
+        'is_active' => true,
+    ]);
+
+    $wallet = \App\Models\VirtualWallet::create([
+        'school_id' => $schoolId,
+        'name' => 'Dompet Komite Siswa',
+        'nominal' => 2000000,
+        'status' => 'active',
+    ]);
+
+    $this->actingAs($bendahara)->withSession(['active_school_id' => $schoolId]);
+
+    // 1. Submit BOS expense exceeding account balance (5.000.000 > 3.000.000)
+    $responseBos = $this->post('/bos/belanja', [
+        'category' => 'BOS',
+        'source_funding' => 'BOS',
+        'academic_year_id' => $academicYearId,
+        'expense_name' => 'Pengadaan Laptop Sekolah',
+        'amount' => 5000000,
+        'transaction_date' => '2026-10-08',
+        'payment_method' => 'Transfer',
+        'account_id' => $acc->id,
+    ]);
+
+    $responseBos->assertSessionHasErrors(['amount']);
+    expect(\App\Models\Expense::where('school_id', $schoolId)->where('expense_name', 'Pengadaan Laptop Sekolah')->exists())->toBeFalse();
+
+    // 2. Submit Komite expense exceeding virtual wallet balance (2.500.000 > 2.000.000)
+    $responseKomite = $this->post('/bos/belanja', [
+        'category' => 'Operasional',
+        'source_funding' => 'Komite',
+        'academic_year_id' => $academicYearId,
+        'expense_name' => 'Sewa Tenda Rapat Komite',
+        'amount' => 2500000,
+        'transaction_date' => '2026-10-08',
+        'payment_method' => 'Transfer',
+        'virtual_wallet_id' => $wallet->id,
+    ]);
+
+    $responseKomite->assertSessionHasErrors(['amount']);
+    expect(\App\Models\Expense::where('school_id', $schoolId)->where('expense_name', 'Sewa Tenda Rapat Komite')->exists())->toBeFalse();
+});
+

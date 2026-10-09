@@ -308,6 +308,28 @@ class BosController extends Controller
 
         $schoolId = $schoolContext->activeSchoolId();
         abort_unless($schoolId, 403);
+
+        $amount = (float) $validated['amount'];
+
+        // Validasi nominal pengeluaran tidak boleh melebihi saldo dompet virtual atau rekening
+        if (!empty($validated['virtual_wallet_id'])) {
+            $wallet = VirtualWallet::where('school_id', $schoolId)->find($validated['virtual_wallet_id']);
+            if ($wallet && $amount > (float) $wallet->nominal) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['amount' => 'Nominal pengeluaran melebihi saldo dompet virtual (' . $wallet->name . ': Rp ' . number_format($wallet->nominal, 0, ',', '.') . '). Transaksi tidak dapat disimpan.']);
+            }
+        }
+
+        if (!empty($validated['account_id'])) {
+            $account = SchoolAccount::where('school_id', $schoolId)->find($validated['account_id']);
+            if ($account && $amount > (float) $account->current_balance) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['amount' => 'Nominal pengeluaran melebihi saldo rekening (' . $account->name . ': Rp ' . number_format($account->current_balance, 0, ',', '.') . '). Transaksi tidak dapat disimpan.']);
+            }
+        }
+
         $finance->createExpense($schoolId, $request->user()->id, $validated);
 
         return redirect()->back()->with('success', 'Pengeluaran dibuat dan menunggu approval kepala sekolah.');
@@ -337,6 +359,27 @@ class BosController extends Controller
             'tax_amount' => 'nullable|numeric|min:0',
             'is_tax_paid' => 'nullable|boolean',
         ]);
+
+        $amount = (float) $validated['amount'];
+
+        // Validasi nominal pengeluaran tidak boleh melebihi saldo dompet virtual atau rekening
+        if (!empty($validated['virtual_wallet_id'])) {
+            $wallet = VirtualWallet::where('school_id', $schoolId)->find($validated['virtual_wallet_id']);
+            if ($wallet && $amount > (float) $wallet->nominal) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['amount' => 'Nominal pengeluaran melebihi saldo dompet virtual (' . $wallet->name . ': Rp ' . number_format($wallet->nominal, 0, ',', '.') . '). Transaksi tidak dapat disimpan.']);
+            }
+        }
+
+        if (!empty($validated['account_id'])) {
+            $account = SchoolAccount::where('school_id', $schoolId)->find($validated['account_id']);
+            if ($account && $amount > (float) $account->current_balance) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['amount' => 'Nominal pengeluaran melebihi saldo rekening (' . $account->name . ': Rp ' . number_format($account->current_balance, 0, ',', '.') . '). Transaksi tidak dapat disimpan.']);
+            }
+        }
 
         $validated['tax_amount'] = $request->filled('tax_amount') ? (float) $request->input('tax_amount') : 0.00;
         $validated['is_tax_paid'] = $request->has('is_tax_paid') ? (bool) $request->input('is_tax_paid') : false;
