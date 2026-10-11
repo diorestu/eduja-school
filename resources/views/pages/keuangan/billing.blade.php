@@ -2,6 +2,24 @@
 
 @section('content')
 @php
+    $wizardDefaults = array_replace([
+        'income_type_id' => '', 'income_type_name' => '',
+        'academic_year_id' => (string) ($academicYears->firstWhere('is_active')?->id ?? $academicYears->first()?->id ?? ''),
+        'academic_year_name' => $academicYears->firstWhere('is_active')?->year ?? $academicYears->first()?->year ?? '',
+        'name' => '', 'amount' => '', 'allow_installment' => 'tidak', 'minimum_installment' => '',
+        'has_late_fee' => 'tidak', 'late_fee_per_day' => '', 'late_fee_maximum' => '',
+        'billing_frequency' => 'Bulanan', 'billing_day' => 5, 'due_day' => 25,
+        'start_date' => now()->toDateString(), 'due_date' => now()->toDateString(),
+        'target_type' => 'school', 'target_department_id' => '', 'target_generation' => '',
+        'target_class_id' => '', 'target_student_id' => '',
+    ], collect(old())->only(['income_type_id', 'academic_year_id', 'name', 'amount', 'allow_installment', 'minimum_installment', 'has_late_fee', 'late_fee_per_day', 'late_fee_maximum', 'billing_frequency', 'billing_day', 'due_day', 'start_date', 'due_date', 'target_type', 'target_department_id', 'target_generation', 'target_class_id', 'target_student_id'])->all());
+    foreach (['allow_installment', 'has_late_fee'] as $key) {
+        $wizardDefaults[$key] = in_array($wizardDefaults[$key], [true, 1, '1', 'ya'], true) ? 'ya' : 'tidak';
+    }
+    $targetStudentData = $targetStudents->map(fn ($student) => [
+        'id' => $student->id, 'name' => $student->name, 'nis' => $student->nis,
+        'generation' => $student->generation, 'class_ids' => $student->schoolClasses->pluck('id')->all(),
+    ])->values();
     $billingColumns = [
         ['key' => 'name', 'label' => 'Nama Tagihan', 'bold' => true],
         ['key' => 'income_type_name', 'label' => 'Jenis Tagihan', 'type' => 'badge'],
@@ -73,7 +91,7 @@
 
 <x-common.page-breadcrumb pageTitle="Tagihan Murid & Komite" label="Tagihan" />
 
-<div class="work work-stack"
+<div class="work work-stack grid-cols-1"
     x-data="{
         activeTab: '{{ request('tab', 'billing') }}', // billing | arrears
         billingView: 'list', // list | detail
@@ -86,6 +104,9 @@
         filterYear: '',
         filterStatus: '',
         searchBillQuery: '',
+        billPage: 1,
+        billPageSize: 10,
+        billSort: 'name',
 
         // Flow Tunggakan Siswa State
         arrearsView: 'list', // list | detail
@@ -112,37 +133,40 @@
         // Wizard Form State
         wizardStep: 1,
         saving: false,
-        formErrors: {},
-        newBill: {
-            income_type_id: '',
-            income_type_name: '',
-            academic_year_id: '{{ $academicYears->firstWhere('is_active')?->id ?? $academicYears->first()?->id }}',
-            academic_year_name: '{{ $academicYears->firstWhere('is_active')?->year ?? '2025/2026' }}',
-            name: '',
-            amount: '',
-            allow_installment: 'ya',
-            minimum_installment: '100000',
-            has_late_fee: 'tidak',
-            late_fee_per_day: '5000',
-            late_fee_maximum: '100000',
-            billing_frequency: 'Bulanan',
-            billing_day: 5,
-            due_day: 25,
-            start_date: '{{ date('Y-m-d') }}',
-            due_date: '{{ date('Y-m-d', strtotime('+1 month')) }}',
-            target_type: 'pilihan',
-            target_department_id: '',
-            target_generation: '',
-            target_class_ids: [],
-            target_class_id: '',
-            target_student_id: ''
-        },
+        formErrors: @js($errors->toArray()),
+        newBill: @js($wizardDefaults),
 
         // Raw server items
         billingDetails: @js($billingDetails),
         arrearsStudents: @js($arrearsStudentsData),
         classesList: @js($classes),
-        totalActiveStudents: {{ $students->count() }},
+        targetStudentData: @js($targetStudentData),
+        isSmk: @js($isSmk),
+        totalActiveStudents: {{ $targetStudents->count() }},
+        init() {
+            this.$watch('filterYear', () => this.billPage = 1);
+            this.$watch('filterStatus', () => this.billPage = 1);
+            this.$watch('searchBillQuery', () => this.billPage = 1);
+            this.$watch('billSort', () => this.billPage = 1);
+            if (@js($errors->any() && old('_billing_action') === 'payment')) {
+                this.openPayByInvoice(@js(old('invoice_id')));
+                this.payAmount = @js(old('amount_paid', ''));
+                this.payMethod = @js(old('payment_method', 'Tunai'));
+                this.payAccountId = @js(old('account_id', ''));
+                this.payDate = @js(old('payment_date', now()->toDateString()));
+            } else if (@js($errors->any() && old('_billing_action') === 'edit')) {
+                const row = this.billingDetails.find(b => b.billing_item_id == @js(old('billing_item_id')));
+                if (row) {
+                    this.openEdit(row);
+                    this.editName = @js(old('name', ''));
+                    this.editAmount = @js(old('amount', ''));
+                    this.editStatus = @js(old('status', 'active'));
+                    this.editFrequency = @js(old('billing_frequency', 'Bulanan'));
+                }
+            } else if (@js($errors->any() && !old('_method'))) {
+                this.$nextTick(() => this.$refs.wizardModal.showModal());
+            }
+        },
 
         // Modals from server session
         showSuccessModal: {{ session('success_modal') ? 'true' : 'false' }},
@@ -194,6 +218,11 @@
             this.$nextTick(() => {
                 this.$refs.paymentModal.showModal();
             });
+        },
+
+        openPayByInvoice(id) {
+            const student = this.arrearsStudents.find(s => s.invoices.some(i => i.id == id));
+            if (student) this.openPayModal(student, student.invoices.find(i => i.id == id));
         },
 
         onInvoiceSelectChange(id) {
@@ -271,8 +300,6 @@
         openCreateWizard() {
             this.wizardStep = 1;
             this.formErrors = {};
-            this.newBill.name = '';
-            this.newBill.amount = '';
             if (this.newBill.income_type_id) {
                 this.updateIncomeTypeName();
             }
@@ -305,9 +332,6 @@
             if (!this.newBill.income_type_id) {
                 this.formErrors.income_type_id = 'Pilih jenis tagihan.';
             }
-            if (!this.newBill.name || !this.newBill.name.trim()) {
-                this.formErrors.name = 'Nama tagihan wajib diisi.';
-            }
             const cleanBillAmount = Number(String(this.newBill.amount || '').replace(/\D/g, ''));
             if (!this.newBill.amount || cleanBillAmount <= 0) {
                 this.formErrors.amount = 'Nominal tagihan harus lebih dari 0.';
@@ -324,6 +348,11 @@
         },
 
         goToStep3() {
+            if (this.calculateTargetStudents() === 0) {
+                this.formErrors.target_type = 'Tidak ada siswa aktif yang sesuai pilihan.';
+                return;
+            }
+            delete this.formErrors.target_type;
             this.wizardStep = 3;
         },
 
@@ -353,7 +382,7 @@
             this.editAmount = window.formatCurrencyMask ? window.formatCurrencyMask(row.amount) : (row.amount || '');
             this.editFrequency = row.billing_frequency || 'Bulanan';
             this.editDueDate = row.due_date_raw || '';
-            this.editStatus = row.status_raw || 'active';
+            this.editStatus = row.status_raw === 'active' ? 'active' : 'nonaktif';
             this.$nextTick(() => {
                 this.$refs.editBillingModal.showModal();
             });
@@ -361,24 +390,27 @@
 
         formatRupiah(val) {
             if (!val && val !== 0) return 'Rp 0';
-            const clean = Number(String(val).replace(/\D/g, '')) || 0;
+            const clean = typeof val === 'number' ? val : (Number(String(val).replace(/\D/g, '')) || 0);
             return 'Rp ' + clean.toLocaleString('id-ID');
         },
 
         calculateTargetStudents() {
-            if (this.newBill.target_type === 'school') {
-                return this.totalActiveStudents || 64;
-            }
-            if (this.newBill.target_student_id) {
-                return 1;
-            }
-            if (this.newBill.target_class_ids.length > 0) {
-                return this.newBill.target_class_ids.length * 32;
-            }
-            if (this.newBill.target_class_id) {
-                return 32;
-            }
-            return 64;
+            return this.filteredTargetStudents().filter(s => !this.newBill.target_student_id || s.id == this.newBill.target_student_id).length;
+        },
+        filteredTargetClasses() {
+            return this.classesList.filter(c => c.academic_year_id == this.newBill.academic_year_id
+                && (!this.newBill.target_department_id || c.department_id == this.newBill.target_department_id)
+                && (!this.newBill.target_generation || this.targetStudentData.some(s => s.generation == this.newBill.target_generation && s.class_ids.includes(c.id))));
+        },
+        filteredTargetStudents() {
+            if (this.newBill.target_type === 'school') return this.targetStudentData;
+            const ids = this.filteredTargetClasses().filter(c => !this.newBill.target_class_id || c.id == this.newBill.target_class_id).map(c => c.id);
+            return this.targetStudentData.filter(s => (!this.newBill.target_generation || s.generation == this.newBill.target_generation)
+                && ((!this.newBill.target_class_id && !this.newBill.target_department_id) || s.class_ids.some(id => ids.includes(id))));
+        },
+        resetTargets() {
+            this.newBill.target_class_id = '';
+            this.newBill.target_student_id = '';
         },
 
         getTargetSummaryText() {
@@ -388,17 +420,14 @@
             if (this.newBill.target_student_id) {
                 return 'Murid Tertentu';
             }
-            if (this.newBill.target_class_ids.length > 0) {
-                return 'Rombel ' + this.newBill.target_class_ids.map(id => {
-                    const c = this.classesList.find(cls => cls.id == id);
-                    return c ? c.name : 'Kelas';
-                }).join(', ');
-            }
             if (this.newBill.target_class_id) {
                 const c = this.classesList.find(cls => cls.id == this.newBill.target_class_id);
                 return c ? 'Rombel ' + c.name : 'Pilihan Rombel';
             }
-            return 'Pilihan Tertentu';
+            const labels = [];
+            if (this.newBill.target_department_id) labels.push(document.getElementById('wizard-dept')?.selectedOptions[0]?.text || 'Jurusan');
+            if (this.newBill.target_generation) labels.push('Angkatan ' + this.newBill.target_generation);
+            return labels.join(', ') || 'Seluruh siswa aktif';
         },
 
         filteredBillingRows() {
@@ -413,7 +442,13 @@
                 const q = this.searchBillQuery.toLowerCase();
                 list = list.filter(item => item.name.toLowerCase().includes(q) || item.income_type_name.toLowerCase().includes(q));
             }
-            return list;
+            return [...list].sort((a,b) => this.billSort === 'amount' ? a.amount - b.amount : String(a[this.billSort] || '').localeCompare(String(b[this.billSort] || ''), 'id'));
+        },
+
+        pagedBillingRows() {
+            const rows = this.filteredBillingRows();
+            const page = Math.min(this.billPage, Math.max(1, Math.ceil(rows.length / this.billPageSize)));
+            return rows.slice((page - 1) * this.billPageSize, page * this.billPageSize);
         },
 
         filteredDetailStudents() {
@@ -448,8 +483,8 @@
             </svg>
         </div>
         <div class="text-xs text-sky-900 dark:text-sky-200 leading-relaxed">
-            <strong class="font-semibold text-sky-950 dark:text-sky-100">Data tagihan komite selalu real-time.</strong>
-            <span> Setiap pembayaran akan langsung memperbarui status murid dan mengirim notifikasi ke orang tua.</span>
+            <strong class="font-semibold text-sky-950 dark:text-sky-100">Piutang tetap tercatat setelah deadline.</strong>
+            <span> Pembayaran memperbarui status Paid/Unpaid. Pengingat WhatsApp memerlukan provider yang terkonfigurasi.</span>
         </div>
     </div>
 
@@ -489,8 +524,8 @@
                         <select x-model="filterStatus"
                             class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-800 dark:text-gray-200 focus:outline-hidden focus:ring-1 focus:ring-brand-500">
                             <option value="">Semua Status</option>
-                            <option value="active">Aktif</option>
-                            <option value="nonaktif">Nonaktif</option>
+                            <option value="active">Active</option>
+                            <option value="deactive">Deactive</option>
                         </select>
                     </div>
 
@@ -507,6 +542,13 @@
                 </div>
             </div>
 
+            <div class="flex flex-wrap items-center gap-3 text-xs text-gray-700 dark:text-gray-300">
+                <label for="bill-sort">Urutkan</label>
+                <select id="bill-sort" x-model="billSort" class="rounded-lg border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-800">
+                    <option value="name">Nama tagihan</option><option value="amount">Nominal terkecil</option><option value="period_date">Periode terlama</option>
+                </select>
+                <span x-text="filteredBillingRows().length + ' periode tagihan'"></span>
+            </div>
             {{-- TABLE TAGIHAN KOMITE (SECTION CLASS DATA-TABLE) --}}
             <section class="data-table rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900 overflow-hidden" aria-label="Daftar Tagihan Komite">
                 <div class="overflow-x-auto">
@@ -523,23 +565,24 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-                            <template x-for="(item, index) in filteredBillingRows()" :key="item.id">
+                            <template x-for="(item, index) in pagedBillingRows()" :key="item.id">
                                 <tr class="hover:bg-gray-50/70 dark:hover:bg-gray-800/30 transition-colors">
-                                    <td class="py-3 px-4 text-center text-gray-400" x-text="index + 1"></td>
+                                    <td class="py-3 px-4 text-center text-gray-500" x-text="(billPage - 1) * billPageSize + index + 1"></td>
                                     <td class="py-3 px-4">
                                         <button type="button" @click="viewBillingDetail(item)"
                                             class="font-semibold text-gray-900 dark:text-white hover:text-brand-600 text-left flex flex-col">
                                             <span x-text="item.name"></span>
                                             <span class="text-[11px] text-gray-400 font-normal" x-text="item.income_type_name"></span>
+                                            <span x-show="item.configuration_status !== 'active'" class="text-[11px] text-gray-500">Penerbitan nonaktif</span>
                                         </button>
                                     </td>
                                     <td class="py-3 px-4 text-gray-600 dark:text-gray-300" x-text="item.academic_year_name"></td>
                                     <td class="py-3 px-4 font-semibold text-gray-900 dark:text-white tabular-nums" x-text="formatRupiah(item.amount)"></td>
-                                    <td class="py-3 px-4" x-text="item.billing_frequency"></td>
+                                    <td class="py-3 px-4"><span x-text="item.period_label"></span><span class="block text-gray-500" x-text="'Deadline ' + item.due_date"></span></td>
                                     <td class="py-3 px-4 text-center">
                                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium"
                                             :class="item.status === 'active' || item.status === 'Aktif' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300'"
-                                            x-text="item.status === 'active' || item.status === 'Aktif' ? 'Aktif' : 'Nonaktif'"></span>
+                                            x-text="item.status === 'active' ? 'Active' : 'Deactive'"></span>
                                     </td>
                                     <td class="py-3 px-4 text-center">
                                         <div class="flex items-center justify-center gap-1.5">
@@ -555,7 +598,7 @@
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                             </button>
 
-                                            <form method="POST" :action="'/finance/billing/' + item.id" onsubmit="return confirm('Apakah Anda yakin ingin menghapus tagihan ini? (Tagihan dengan transaksi tidak dapat dihapus)')">
+                                            <form method="POST" :action="item.delete_url" onsubmit="return confirm('Hapus konfigurasi yang belum diterbitkan?')">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit"
@@ -585,9 +628,14 @@
                         <svg class="w-4 h-4 shrink-0 text-sky-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
                         <span>Pilih <strong>"Buat Tagihan Baru"</strong> untuk membuat tagihan komite baru.</span>
                     </div>
-                    <span x-text="'Menampilkan 1 - ' + filteredBillingRows().length + ' data'"></span>
+                    <span x-text="filteredBillingRows().length ? 'Menampilkan ' + ((billPage - 1) * billPageSize + 1) + '–' + Math.min(billPage * billPageSize, filteredBillingRows().length) + ' dari ' + filteredBillingRows().length : '0 data'"></span>
                 </div>
             </section>
+            <div class="flex items-center justify-between gap-3 text-xs">
+                <button type="button" class="work-btn" @click="billPage--" :disabled="billPage <= 1">Sebelumnya</button>
+                <span x-text="'Halaman ' + billPage + ' dari ' + Math.max(1, Math.ceil(filteredBillingRows().length / billPageSize))"></span>
+                <button type="button" class="work-btn" @click="billPage++" :disabled="billPage >= Math.ceil(filteredBillingRows().length / billPageSize)">Berikutnya</button>
+            </div>
 
             {{-- STEP 10: CATATAN PENTING PENGATURAN TAGIHAN --}}
             <div class="rounded-xl border border-sky-200/80 bg-sky-50/50 p-4 dark:border-sky-900/50 dark:bg-sky-950/20 text-xs">
@@ -682,7 +730,7 @@
                                     <td class="py-3 px-4 font-mono text-gray-600 dark:text-gray-400" x-text="s.nis"></td>
                                     <td class="py-3 px-4 font-semibold text-gray-900 dark:text-white" x-text="s.name"></td>
                                     <td class="py-3 px-4 text-gray-600 dark:text-gray-400" x-text="s.class_name"></td>
-                                    <td class="py-3 px-4 font-semibold text-gray-900 dark:text-white tabular-nums" x-text="formatRupiah(s.amount)"></td>
+                                    <td class="py-3 px-4 tabular-nums"><span class="font-semibold" x-text="formatRupiah(s.amount)"></span><span class="block text-gray-500" x-text="'Denda ' + formatRupiah(s.late_fee_amount)"></span><span class="block" x-text="'Sisa ' + formatRupiah(s.remaining_amount)"></span></td>
                                     <td class="py-3 px-4 text-center">
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold"
                                             :class="s.status === 'Paid' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'"
@@ -690,7 +738,9 @@
                                     </td>
                                     <td class="py-3 px-4 text-center text-gray-600 dark:text-gray-400" x-text="s.payment_date"></td>
                                     <td class="py-3 px-4 text-center">
+                                        <button type="button" x-show="s.status === 'Unpaid'" @click="openPayByInvoice(s.id)" class="work-btn work-btn-primary">Bayar</button>
                                         <a href="{{ route('spp.transaksi.index', ['tab' => 'tunggakan']) }}"
+                                            x-show="s.status === 'Paid'"
                                             class="inline-flex items-center px-2 py-1 rounded text-xs font-semibold text-brand-600 hover:text-brand-800 hover:bg-brand-50 transition-colors">
                                             Lihat di Pembayaran
                                         </a>
@@ -726,7 +776,7 @@
                 <h2 id="wizard-title" class="text-base font-semibold text-gray-900 dark:text-white">Buat Tagihan Komite</h2>
                 {{-- STEPPER HEADER (STEP 4, 6, 7) --}}
                 <div class="flex items-center gap-3 mt-2 text-xs">
-                    <div class="flex items-center gap-1.5" :class="wizardStep >= 1 ? 'text-brand-600 font-semibold' : 'text-gray-400'">
+                    <div class="flex items-center gap-1.5" :class="wizardStep >= 1 ? 'text-brand-600 dark:text-brand-300 font-semibold' : 'text-gray-400'">
                         <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]"
                             :class="wizardStep > 1 ? 'bg-emerald-100 text-emerald-700' : (wizardStep === 1 ? 'bg-brand-600 text-white' : 'bg-gray-200 text-gray-600')">
                             <template x-if="wizardStep > 1">
@@ -739,7 +789,7 @@
                         <span>Informasi Dasar</span>
                     </div>
                     <span class="text-gray-300">&rsaquo;</span>
-                    <div class="flex items-center gap-1.5" :class="wizardStep >= 2 ? 'text-brand-600 font-semibold' : 'text-gray-400'">
+                    <div class="flex items-center gap-1.5" :class="wizardStep >= 2 ? 'text-brand-600 dark:text-brand-300 font-semibold' : 'text-gray-400'">
                         <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]"
                             :class="wizardStep > 2 ? 'bg-emerald-100 text-emerald-700' : (wizardStep === 2 ? 'bg-brand-600 text-white' : 'bg-gray-200 text-gray-600')">
                             <template x-if="wizardStep > 2">
@@ -752,7 +802,7 @@
                         <span>Target Murid</span>
                     </div>
                     <span class="text-gray-300">&rsaquo;</span>
-                    <div class="flex items-center gap-1.5" :class="wizardStep === 3 ? 'text-brand-600 font-semibold' : 'text-gray-400'">
+                    <div class="flex items-center gap-1.5" :class="wizardStep === 3 ? 'text-brand-600 dark:text-brand-300 font-semibold' : 'text-gray-400'">
                         <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]"
                             :class="wizardStep === 3 ? 'bg-brand-600 text-white' : 'bg-gray-200 text-gray-600'">
                             3
@@ -768,6 +818,9 @@
 
         <form x-ref="wizardForm" method="POST" action="{{ route('finance.billing.store') }}" class="my-4 space-y-4 text-xs">
             @csrf
+            <div x-show="Object.keys(formErrors).length" role="alert" class="rounded-lg border border-red-200 p-3 text-red-700 dark:text-red-300">
+                <template x-for="(messages, field) in formErrors" :key="field"><p x-text="Array.isArray(messages) ? messages[0] : messages"></p></template>
+            </div>
 
             {{-- STEP 1: INFORMASI DASAR, DENDA & PERIODE --}}
             <div x-show="wizardStep === 1" class="space-y-3.5">
@@ -792,7 +845,7 @@
                     <label for="wizard-academic-year" class="block font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Tahun Ajaran <span class="text-red-500">*</span>
                     </label>
-                    <select id="wizard-academic-year" name="academic_year_id" x-model="newBill.academic_year_id" @change="updateIncomeTypeName()" required
+                    <select id="wizard-academic-year" name="academic_year_id" x-model="newBill.academic_year_id" @change="updateIncomeTypeName(); resetTargets()" required
                         class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-white">
                         @foreach($academicYears as $ay)
                             <option value="{{ $ay->id }}">{{ $ay->year }} {{ $ay->semester ? '- ' . $ay->semester : '' }}</option>
@@ -802,9 +855,9 @@
 
                 <div class="work-field">
                     <label for="wizard-name" class="block font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Nama Tagihan <span class="text-red-500">*</span>
+                        Nama Tagihan (opsional)
                     </label>
-                    <input id="wizard-name" name="name" type="text" x-model="newBill.name" required placeholder="Contoh: SPP Komite"
+                    <input id="wizard-name" name="name" type="text" x-model="newBill.name" maxlength="160" placeholder="Contoh: SPP Komite"
                         class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-white">
                     <template x-if="formErrors.name">
                         <p class="text-[11px] text-red-600 font-medium mt-0.5" x-text="formErrors.name"></p>
@@ -971,9 +1024,9 @@
 
                 <div x-show="newBill.target_type === 'pilihan'" class="p-3.5 rounded-xl border border-gray-100 bg-gray-50/80 dark:border-gray-800 dark:bg-gray-800/40 space-y-3">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
+                        <div x-show="isSmk">
                             <label for="wizard-dept" class="block font-medium text-gray-700 dark:text-gray-300 mb-1">Jurusan</label>
-                            <select id="wizard-dept" name="target_department_id" x-model="newBill.target_department_id"
+                            <select id="wizard-dept" name="target_department_id" x-model="newBill.target_department_id" @change="resetTargets()" :disabled="!isSmk || newBill.target_type === 'school'"
                                 class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs">
                                 <option value="">Semua Jurusan</option>
                                 @foreach($departments as $dept)
@@ -984,31 +1037,31 @@
 
                         <div>
                             <label for="wizard-gen" class="block font-medium text-gray-700 dark:text-gray-300 mb-1">Angkatan</label>
-                            <input id="wizard-gen" name="target_generation" type="text" x-model="newBill.target_generation" placeholder="Semua Angkatan (Contoh: 2024)"
+                            <select id="wizard-gen" name="target_generation" x-model="newBill.target_generation" @change="resetTargets()" :disabled="newBill.target_type === 'school'"
                                 class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs">
+                                <option value="">Semua Angkatan</option>
+                                @foreach($generations as $generation)<option value="{{ $generation }}">{{ $generation }}</option>@endforeach
+                            </select>
+                            <p class="mt-1 text-gray-500">Angkatan berasal dari tahun masuk pada Data Murid.</p>
                         </div>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label for="wizard-class" class="block font-medium text-gray-700 dark:text-gray-300 mb-1">Rombel / Kelas</label>
-                            <select id="wizard-class" name="target_class_id" x-model="newBill.target_class_id"
+                            <select id="wizard-class" name="target_class_id" x-model="newBill.target_class_id" @change="newBill.target_student_id = ''" :disabled="newBill.target_type === 'school'"
                                 class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs">
                                 <option value="">Semua Rombel</option>
-                                @foreach($classes as $c)
-                                    <option value="{{ $c->id }}">{{ $c->name }}</option>
-                                @endforeach
+                                <template x-for="c in filteredTargetClasses()" :key="c.id"><option :value="c.id" x-text="c.name"></option></template>
                             </select>
                         </div>
 
                         <div>
                             <label for="wizard-student" class="block font-medium text-gray-700 dark:text-gray-300 mb-1">Murid</label>
-                            <select id="wizard-student" name="target_student_id" x-model="newBill.target_student_id"
+                            <select id="wizard-student" name="target_student_id" x-model="newBill.target_student_id" :disabled="newBill.target_type === 'school'"
                                 class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs">
                                 <option value="">Semua Murid</option>
-                                @foreach($students as $st)
-                                    <option value="{{ $st->id }}">{{ $st->name }} ({{ $st->nis ?? '-' }})</option>
-                                @endforeach
+                                <template x-for="s in filteredTargetStudents()" :key="s.id"><option :value="s.id" x-text="s.name + ' (' + (s.nis || '-') + ')' "></option></template>
                             </select>
                         </div>
                     </div>
@@ -1060,7 +1113,8 @@
                 <div class="rounded-xl border border-sky-100 bg-sky-50 dark:border-sky-900/40 dark:bg-sky-950/30 p-3.5 flex items-start gap-2.5">
                     <svg class="w-4 h-4 text-sky-600 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
                     <p class="text-[11px] text-sky-900 dark:text-sky-200 leading-relaxed">
-                        Sistem akan otomatis membuat tagihan sesuai pengaturan untuk setiap bulan selama tahun ajaran <span x-text="newBill.academic_year_name"></span>.
+                        <span x-text="newBill.billing_frequency === 'Bulanan' ? 'Tagihan terbit pada tanggal mulai setiap bulan selama tahun ajaran yang dipilih. Bulan sebelum konfigurasi dibuat tidak ditagihkan.' : 'Sistem membuat satu tagihan untuk setiap siswa target.'"></span>
+                        Tanggal 29–31 menyesuaikan akhir bulan. Pengingat H-7 hanya dikirim jika invoice sudah terbit.
                     </p>
                 </div>
 
@@ -1097,7 +1151,7 @@
                     <span>Notifikasi WhatsApp</span>
                 </div>
                 <div class="text-[11px] text-emerald-900/90 dark:text-emerald-200/90 pl-6 leading-relaxed">
-                    <p>Notifikasi akan dikirim ke orang tua:</p>
+                    <p>{{ $whatsappConfigured ? 'Pengingat dijadwalkan untuk orang tua:' : 'Integrasi WhatsApp ditunda. Pengingat akan disiapkan oleh sistem, tetapi belum dikirim:' }}</p>
                     <p>&bull; H-7 sebelum deadline pembayaran</p>
                     <p>&bull; Saat deadline pembayaran</p>
                 </div>
@@ -1110,13 +1164,14 @@
     </dialog>
 
     {{-- MODAL UBAH ITEM TAGIHAN --}}
+    @include('pages.keuangan.committee-payment')
     <dialog x-ref="editBillingModal" class="account-dialog work" aria-labelledby="edit-billing-modal-title"
         @close="saving = false" @cancel="if (saving) $event.preventDefault()"
         @click="const bounds = $el.getBoundingClientRect(); if (!saving && ($event.clientX < bounds.left || $event.clientX > bounds.right || $event.clientY < bounds.top || $event.clientY > bounds.bottom)) $el.close()">
         <div class="account-dialog-head">
             <div class="min-w-0">
                 <h2 id="edit-billing-modal-title" class="text-base font-semibold text-gray-900 dark:text-white">Ubah Tagihan</h2>
-                <p class="work-muted text-xs mt-0.5">Perbarui informasi dan status tagihan.</p>
+                <p class="work-muted text-xs mt-0.5">Nominal baru berlaku untuk periode berikutnya. Nonaktif menghentikan penerbitan baru; piutang tetap tercatat.</p>
             </div>
             <button type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1 rounded-md" @click="$refs.editBillingModal.close()" :disabled="saving" aria-label="Tutup form">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -1126,6 +1181,9 @@
         <form method="POST" :action="editingItem ? editingItem.update_url : ''" @submit="saving = true" :aria-busy="saving" class="space-y-3.5 my-3 text-xs">
             @csrf
             @method('PUT')
+            @if($errors->any() && old('_billing_action') === 'edit')
+                <div role="alert" class="text-red-700 dark:text-red-300">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>
+            @endif
 
             <div class="work-field">
                 <label for="edit-name" class="block font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Tagihan <span class="text-red-500">*</span></label>
@@ -1157,7 +1215,6 @@
                         class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-900 dark:text-white">
                         <option value="active">Aktif</option>
                         <option value="nonaktif">Nonaktif</option>
-                        <option value="closed">Selesai</option>
                     </select>
                 </div>
             </div>

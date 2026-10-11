@@ -15,6 +15,7 @@ class InvoiceItem extends Model
         'spp_tariff_id',
         'name',
         'amount',
+        'is_late_fee',
     ];
 
     protected $casts = [

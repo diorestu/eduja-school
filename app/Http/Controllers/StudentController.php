@@ -31,6 +31,12 @@ class StudentController extends Controller
         $schoolId = $schoolContext->activeSchoolIdFor();
         abort_unless($schoolId, 403);
 
+        if ($request->input('action') === 'generation') {
+            $validated = $request->validate(['student_id' => ['required', 'integer'], 'generation' => ['nullable', 'integer', 'between:1900,2200']]);
+            Student::where('school_id', $schoolId)->findOrFail($validated['student_id'])->update(['generation' => $validated['generation']]);
+
+            return back()->with('success', 'Angkatan murid berhasil diperbarui.');
+        }
         if ($request->input('action') === 'status') {
             $validated = $request->validate([
                 'student_id' => ['required', 'integer'],
@@ -64,6 +70,7 @@ class StudentController extends Controller
             'phone' => ['nullable', 'string'],
             'parent_name' => ['nullable', 'string'],
             'parent_phone' => ['nullable', 'string'],
+            'generation' => ['nullable', 'integer', 'between:1900,2200'],
             'school_class_id' => ['required', 'integer'],
         ]);
         abort_unless(SchoolClass::where('school_id', $schoolId)->whereKey($validated['school_class_id'])->exists(), 404);

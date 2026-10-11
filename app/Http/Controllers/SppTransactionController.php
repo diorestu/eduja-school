@@ -2,25 +2,25 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Invoice;
-use App\Models\InvoiceItem;
-use App\Models\Transaction;
-use App\Models\Student;
-use App\Models\SppTariff;
 use App\Models\AcademicYear;
+use App\Models\BillingItem;
 use App\Models\ClassStudent;
 use App\Models\FinanceIncome;
 use App\Models\FundAllocation;
 use App\Models\IncomeType;
-use App\Models\BillingItem;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\SchoolAccount;
+use App\Models\SppTariff;
+use App\Models\Student;
+use App\Models\Transaction;
 use App\Models\VirtualWallet;
 use App\Services\NotificationService;
 use App\Services\SchoolContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Carbon;
 
 class SppTransactionController extends Controller
 {
@@ -29,14 +29,14 @@ class SppTransactionController extends Controller
         $schoolId = $schoolContext->activeSchoolId();
 
         $invoices = Invoice::with(['student.schoolClasses', 'transactions', 'invoiceItems'])
-            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->ownedBySchool($schoolId))
             ->orderBy('created_at', 'desc');
 
-        if ($request->has('search') && !empty($request->search)) {
+        if ($request->has('search') && ! empty($request->search)) {
             $search = $request->search;
             $invoices->whereHas('student', function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('nis', 'like', "%{$search}%");
+                    ->orWhere('nis', 'like', "%{$search}%");
             });
         }
 
@@ -115,14 +115,14 @@ class SppTransactionController extends Controller
         ]);
 
         $activeYear = AcademicYear::where('is_active', true)->first();
-        if (!$activeYear) {
+        if (! $activeYear) {
             return redirect()->route('spp.transaksi.index')->with('error', 'Tidak ada Tahun Akademik yang aktif saat ini.');
         }
 
-        $date = Carbon::createFromFormat('Y-m-d', $validated['billing_month'] . '-01')->startOfDay();
+        $date = Carbon::createFromFormat('Y-m-d', $validated['billing_month'].'-01')->startOfDay();
         $monthName = $date->translatedFormat('F'); // e.g. Juli
         $year = $date->year;
-        $label = "SPP Bulanan - " . $monthName . " " . $year;
+        $label = 'SPP Bulanan - '.$monthName.' '.$year;
 
         // Get all active students mapped to classes in this active year
         $classStudents = ClassStudent::whereHas('schoolClass', function ($q) use ($activeYear) {
@@ -156,31 +156,32 @@ class SppTransactionController extends Controller
                     ->where('type', 'Bulanan')
                     ->where(function ($q) use ($class) {
                         $q->where('school_class_id', $class->id)
-                          ->orWhereNull('school_class_id');
+                            ->orWhereNull('school_class_id');
                     })
                     ->orderBy('school_class_id', 'desc') // specific class first
                     ->first();
 
-                if (!$tariff) {
+                if (! $tariff) {
                     continue; // Skip if no tariff is set up
                 }
 
-                $invNumber = 'INV/' . $date->format('Ym') . '/' . str_pad($student->id, 6, '0', STR_PAD_LEFT);
+                $invNumber = 'INV/'.$date->format('Ym').'/'.str_pad($student->id, 6, '0', STR_PAD_LEFT);
 
                 $invoice = Invoice::create([
                     'student_id' => $student->id,
+                    'school_id' => $student->school_id,
                     'academic_year_id' => $activeYear->id,
                     'invoice_number' => $invNumber,
                     'due_date' => $date->copy()->endOfMonth(), // due at end of billing month
                     'total_amount' => $tariff->amount,
-                    'status' => 'Belum Lunas'
+                    'status' => 'Belum Lunas',
                 ]);
 
                 InvoiceItem::create([
                     'invoice_id' => $invoice->id,
                     'spp_tariff_id' => $tariff->id,
                     'name' => $label,
-                    'amount' => $tariff->amount
+                    'amount' => $tariff->amount,
                 ]);
 
                 $generatedCount++;
@@ -190,35 +191,43 @@ class SppTransactionController extends Controller
         return redirect()->route('spp.transaksi.index')->with('success', "Berhasil membuat {$generatedCount} tagihan untuk bulan {$monthName} {$year}.");
     }
 
-    public function pay(Request $request, $id)
+    public function pay(Request $request, $id, SchoolContext $schoolContext, \App\Services\BillingPaymentService $payments)
     {
+        $request->merge(['_billing_action' => 'payment', 'invoice_id' => $id]);
         $validated = $request->validate([
-            'amount_paid' => 'required|numeric|min:1',
+            'amount_paid' => 'required|numeric|min:0.01|decimal:0,2',
             'payment_method' => 'required|in:Tunai,Transfer,Transfer Bank,E-Wallet',
             'payment_date' => 'required|date',
             'account_id' => 'nullable|integer',
         ]);
 
-        $invoice = Invoice::with('transactions')->findOrFail($id);
-        $remaining = $invoice->remaining_amount;
-
-        if ((float) $validated['amount_paid'] > $remaining) {
-            return redirect()->back()->with('error', 'Jumlah pembayaran melebihi sisa tagihan.');
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        $invoice = Invoice::ownedBySchool($schoolId)->findOrFail($id);
+        if (! empty($validated['account_id'])) {
+            abort_unless(SchoolAccount::where('school_id', $schoolId)->where('is_active', true)->whereKey($validated['account_id'])->exists(), 404);
         }
 
         $trxData = null;
 
-        DB::transaction(function () use ($invoice, $validated, $remaining, &$trxData) {
+        DB::transaction(function () use ($invoice, $schoolId, $validated, $payments, &$trxData) {
+            $invoice = Invoice::ownedBySchool($schoolId)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+            if (! $invoice->school_id) {
+                $invoice->update(['school_id' => $schoolId]);
+            }
+            $payments->refreshCharges($invoice, now());
+            $payments->validatePayment($invoice, $validated['amount_paid']);
+            $remaining = $payments->remainingCents($invoice);
             $paymentDate = Carbon::parse($validated['payment_date']);
-            $datePrefix = 'TRX' . $paymentDate->format('Ymd');
-            $seq = Transaction::where('receipt_number', 'like', $datePrefix . '%')->count() + 1;
-            $rcpNumber = $datePrefix . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+            $datePrefix = 'TRX'.$paymentDate->format('Ymd');
+            $seq = Transaction::where('receipt_number', 'like', $datePrefix.'%')->count() + 1;
+            $rcpNumber = $datePrefix.str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
             while (Transaction::where('receipt_number', $rcpNumber)->exists()) {
                 $seq++;
-                $rcpNumber = $datePrefix . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+                $rcpNumber = $datePrefix.str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
             }
 
             $schoolId = $invoice->school_id;
+            $targetAccount = $payments->destinationAccount($schoolId, $validated['payment_method'], ! empty($validated['account_id']) ? (int) $validated['account_id'] : null, (bool) $invoice->billing_period_id);
 
             $tx = Transaction::create([
                 'invoice_id' => $invoice->id,
@@ -226,30 +235,16 @@ class SppTransactionController extends Controller
                 'amount_paid' => $validated['amount_paid'],
                 'payment_date' => $validated['payment_date'],
                 'payment_method' => $validated['payment_method'],
-                'account_id' => $validated['account_id'] ?? null,
+                'account_id' => $targetAccount?->id,
                 'receipt_number' => $rcpNumber,
                 'recipient_name' => auth()->user() ? auth()->user()->name : 'Bendahara',
-                'status' => 'confirmed',
+                'status' => 'approved',
             ]);
 
-            $newRemaining = $remaining - (float) $validated['amount_paid'];
-
-            if ($newRemaining <= 0) {
-                $invoice->update(['status' => 'Lunas']);
-            } else {
-                $invoice->update(['status' => 'Cicilan']);
-            }
+            $newRemaining = ($remaining - $payments::cents($validated['amount_paid'])) / 100;
+            $payments->syncStatus($invoice);
 
             // Update School Account (Kas jika Tunai, Bank jika Transfer)
-            $targetAccount = null;
-            if (!empty($validated['account_id'])) {
-                $targetAccount = SchoolAccount::find($validated['account_id']);
-            } elseif ($validated['payment_method'] === 'Tunai') {
-                $targetAccount = SchoolAccount::where('school_id', $schoolId)->where('type', 'cash')->first();
-            } else {
-                $targetAccount = SchoolAccount::where('school_id', $schoolId)->where('type', 'bank')->first();
-            }
-
             if ($targetAccount) {
                 $targetAccount->increment('current_balance', $validated['amount_paid']);
             }
@@ -257,10 +252,10 @@ class SppTransactionController extends Controller
             // Update Virtual Wallet automatically if fund allocations exist
             if ($schoolId) {
                 // Find income type from billing item or invoice item
-                $billingItem = BillingItem::where('school_id', $schoolId)
+                $billingItem = $invoice->billing_item_id ? $invoice->billingItem : BillingItem::where('school_id', $schoolId)
                     ->where(function ($q) use ($invoice) {
                         $q->where('name', $invoice->invoiceItems->first()?->name)
-                          ->orWhere('id', $invoice->billing_item_id ?? null);
+                            ->orWhere('id', $invoice->billing_item_id ?? null);
                     })->first();
 
                 $incomeTypeId = $billingItem?->income_type_id;
@@ -284,40 +279,36 @@ class SppTransactionController extends Controller
 
             // Sistem otomatis mengirimkan notifikasi ke orang tua setiap ada transaksi uang masuk
             $student = $invoice->student;
-            $parentPhone = $student?->parent_phone 
-                ?? $student?->phone 
-                ?? $student?->guardianUser?->phone 
-                ?? '081234567890';
-            $parentName = $student?->parent_name 
-                ?? $student?->guardianUser?->name 
-                ?? 'Orang Tua/Wali ' . ($student?->name ?? 'Siswa');
+            $parentPhone = $student?->parent_phone;
+            $parentName = $student?->parent_name
+                ?? $student?->guardianUser?->name
+                ?? 'Orang Tua/Wali '.($student?->name ?? 'Siswa');
 
-            $formattedAmount = 'Rp ' . number_format($validated['amount_paid'], 0, ',', '.');
-            $newRemainingFormatted = 'Rp ' . number_format(max(0, $newRemaining), 0, ',', '.');
-            $statusNotification = $newRemaining <= 0 ? 'Lunas' : 'Cicilan (Sisa: ' . $newRemainingFormatted . ')';
+            $formattedAmount = 'Rp '.number_format($validated['amount_paid'], 0, ',', '.');
+            $newRemainingFormatted = 'Rp '.number_format(max(0, $newRemaining), 0, ',', '.');
+            $statusNotification = $newRemaining <= 0 ? 'Lunas' : 'Cicilan (Sisa: '.$newRemainingFormatted.')';
 
             $notificationMessage = "Yth. Bpk/Ibu {$parentName},\n"
-                . "Pembayaran untuk murid {$student?->name} (NIS: {$student?->nis}) telah berhasil diterima pada " . $paymentDate->translatedFormat('d F Y') . ".\n"
-                . "No. Transaksi: {$rcpNumber}\n"
-                . "Nominal: {$formattedAmount}\n"
-                . "Metode: {$validated['payment_method']}\n"
-                . "Status: {$statusNotification}\n"
-                . "Terima kasih atas pembayaran Anda.";
+                ."Pembayaran untuk murid {$student?->name} (NIS: {$student?->nis}) telah berhasil diterima pada ".$paymentDate->translatedFormat('d F Y').".\n"
+                ."No. Transaksi: {$rcpNumber}\n"
+                ."Nominal: {$formattedAmount}\n"
+                ."Metode: {$validated['payment_method']}\n"
+                ."Status: {$statusNotification}\n"
+                .'Terima kasih atas pembayaran Anda.';
 
-            try {
-                app(NotificationService::class)->send('whatsapp', $parentPhone, $notificationMessage);
-            } catch (\Throwable $e) {
-                Log::warning("Gagal mengirim notifikasi WhatsApp transaksi uang masuk: " . $e->getMessage());
+            // Receipt delivery is independent of payment posting; log adapters do not prove delivery.
+            if ($parentPhone) {
+                DB::afterCommit(function () use ($parentPhone, $notificationMessage) {
+                    app(NotificationService::class)->send('whatsapp', $parentPhone, $notificationMessage);
+                });
             }
-
-            Log::info("Notifikasi WhatsApp uang masuk terkirim ke orang tua {$student?->name} ({$parentPhone}) untuk transaksi {$rcpNumber}");
 
             $trxData = [
                 'rcp_number' => $rcpNumber,
                 'amount' => $validated['amount_paid'],
                 'method' => $validated['payment_method'],
                 'date' => $paymentDate->translatedFormat('d F Y'),
-                'account_name' => $targetAccount ? ($targetAccount->bank_name ? $targetAccount->bank_name . ' - ' . $targetAccount->account_number : $targetAccount->account_name) : 'Kas Sekolah',
+                'account_name' => $targetAccount ? ($targetAccount->bank_name ? $targetAccount->bank_name.' - '.$targetAccount->account_number : $targetAccount->account_name) : 'Kas Sekolah',
                 'is_lunas' => $newRemaining <= 0,
                 'parent_phone' => $parentPhone,
             ];
@@ -326,7 +317,7 @@ class SppTransactionController extends Controller
         return redirect()->back()
             ->with('success', 'Transaksi berhasil disimpan')
             ->with('payment_success_modal', true)
-            ->with('trx_number', $trxData['rcp_number'] ?? 'TRX' . date('Ymd0001'))
+            ->with('trx_number', $trxData['rcp_number'] ?? 'TRX'.date('Ymd0001'))
             ->with('trx_amount', $trxData['amount'] ?? 0)
             ->with('trx_method', $trxData['method'] ?? 'Tunai')
             ->with('trx_account', $trxData['account_name'] ?? 'Kas Sekolah')
@@ -336,7 +327,7 @@ class SppTransactionController extends Controller
             ->with('trx_class', $invoice->student?->schoolClasses->first()?->name ?? 'Kelas X')
             ->with('trx_item_name', $invoice->invoiceItems->first()?->name ?? 'SPP Komite')
             ->with('trx_period', $invoice->due_date ? $invoice->due_date->translatedFormat('F Y') : 'Juli 2025')
-            ->with('parent_notification_sent', true)
+            ->with('parent_notification_sent', false)
             ->with('parent_phone', $trxData['parent_phone'] ?? '');
     }
 }

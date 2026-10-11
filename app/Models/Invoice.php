@@ -19,11 +19,25 @@ class Invoice extends Model
         'due_date',
         'total_amount',
         'status',
+        'billing_item_id',
+        'billing_period_id',
+        'principal_amount',
+        'late_fee_amount',
+        'allow_installment',
+        'minimum_installment',
+        'late_fee_per_day',
+        'late_fee_maximum',
     ];
 
     protected $casts = [
         'due_date' => 'date',
         'total_amount' => 'decimal:2',
+        'principal_amount' => 'decimal:2',
+        'late_fee_amount' => 'decimal:2',
+        'allow_installment' => 'boolean',
+        'minimum_installment' => 'decimal:2',
+        'late_fee_per_day' => 'decimal:2',
+        'late_fee_maximum' => 'decimal:2',
     ];
 
     /**
@@ -32,6 +46,23 @@ class Invoice extends Model
     public function student(): BelongsTo
     {
         return $this->belongsTo(Student::class, 'student_id');
+    }
+
+    public function billingItem(): BelongsTo
+    {
+        return $this->belongsTo(BillingItem::class);
+    }
+
+    public function scopeOwnedBySchool($query, int $schoolId)
+    {
+        return $query->where(fn ($q) => $q->where('school_id', $schoolId)
+            ->orWhere(fn ($legacy) => $legacy->whereNull('school_id')->whereHas('student', fn ($student) => $student->where('school_id', $schoolId))
+                ->whereHas('academicYear', fn ($year) => $year->where('school_id', $schoolId)->orWhereNull('school_id'))));
+    }
+
+    public function billingPeriod(): BelongsTo
+    {
+        return $this->belongsTo(BillingPeriod::class);
     }
 
     /**
@@ -63,7 +94,7 @@ class Invoice extends Model
      */
     public function getPaidAmountAttribute()
     {
-        return $this->transactions()->sum('amount_paid');
+        return $this->transactions()->whereIn('status', ['approved', 'confirmed'])->sum('amount_paid');
     }
 
     /**
@@ -71,6 +102,6 @@ class Invoice extends Model
      */
     public function getRemainingAmountAttribute()
     {
-        return $this->total_amount - $this->paid_amount;
+        return max(0, $this->total_amount - $this->paid_amount);
     }
 }

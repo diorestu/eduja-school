@@ -283,6 +283,31 @@ class FinanceService
         }
 
         DB::transaction(function () use ($payment, $reviewerId): void {
+            $payment = PaymentSubmission::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+            if ($payment->posted_at) {
+                return;
+            }
+            if ($payment->invoice_id) {
+                $invoice = \App\Models\Invoice::ownedBySchool($payment->school_id)->whereKey($payment->invoice_id)->lockForUpdate()->firstOrFail();
+                if (! $invoice->school_id) {
+                    $invoice->update(['school_id' => $payment->school_id]);
+                }
+                if ($payment->student_id && (int) $payment->student_id !== (int) $invoice->student_id) {
+                    throw new InvalidArgumentException('Pembayaran tidak sesuai siswa pada invoice.');
+                }
+                $payments = app(BillingPaymentService::class);
+                $payments->refreshCharges($invoice, now());
+                $payments->validatePayment($invoice, $payment->amount);
+                $account = $payments->destinationAccount($payment->school_id, $payment->payment_method, $payment->account_id, (bool) $invoice->billing_period_id);
+                $payment->account_id = $account?->id;
+                \App\Models\Transaction::create([
+                    'invoice_id' => $invoice->id, 'school_id' => $payment->school_id, 'account_id' => $payment->account_id,
+                    'amount_paid' => $payment->amount, 'payment_date' => $payment->payment_date,
+                    'payment_method' => $payment->payment_method, 'receipt_number' => 'APPROVAL-'.$payment->id,
+                    'recipient_name' => \App\Models\User::find($reviewerId)?->name, 'status' => 'approved',
+                ]);
+                $payments->syncStatus($invoice);
+            }
             if ($payment->account_id) {
                 SchoolAccount::query()->whereKey($payment->account_id)->increment('current_balance', $payment->amount);
             }

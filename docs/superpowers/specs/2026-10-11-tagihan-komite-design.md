@@ -1,7 +1,7 @@
 # Pembaruan Flow Tagihan Komite
 
 Tanggal: 11 Oktober 2026
-Status: rancangan percakapan disetujui; spesifikasi ini menunggu tinjauan pengguna.
+Status: disetujui dan diimplementasikan pada 11 Oktober 2026. Pengguna kemudian meminta integrasi provider WhatsApp dilewati; antrean pengingat tetap tersedia tanpa pengiriman eksternal.
 
 ## Tujuan dan cakupan
 
@@ -113,4 +113,4 @@ Validasi UI meliputi modal, input kondisional, dropdown berantai, error dan retr
 
 ## Peninjauan spesifikasi
 
-Rancangan percakapan telah disetujui pengguna. Spesifikasi ini memperjelas bahwa status Deactive milik periode, angkatan membutuhkan data tahun masuk yang sah, dan provider WhatsApp merupakan dependensi pengiriman nyata. Tidak ada perubahan kode aplikasi pada tahap ini. Setelah pengguna menyetujui dokumen, susun rencana implementasi dan tentukan pelaksanaan sebelum mengubah aplikasi.
+Rancangan percakapan dan spesifikasi telah disetujui melalui instruksi melanjutkan implementasi. Status Deactive milik periode, angkatan memakai data tahun masuk yang sah, dan pengiriman WhatsApp nyata sengaja ditunda sesuai instruksi lanjutan pengguna. Implementasi dijalankan dalam sesi yang sama pada branch `codex/tagihan-komite-flow`; panduan operasional ada di `docs/committee-billing-operations.md`.

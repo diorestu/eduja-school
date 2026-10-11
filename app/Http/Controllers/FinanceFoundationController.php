@@ -16,7 +16,6 @@ use App\Models\FinanceIncome;
 use App\Models\FundAllocation;
 use App\Models\IncomeType;
 use App\Models\Invoice;
-use App\Models\InvoiceItem;
 use App\Models\PaymentSubmission;
 use App\Models\SchoolAccount;
 use App\Models\SchoolClass;
@@ -140,7 +139,7 @@ class FinanceFoundationController extends Controller
 
             if ((float) $fromAccount->current_balance < $amount) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'amount' => 'Saldo rekening asal tidak mencukupi (Saldo saat ini: Rp ' . number_format($fromAccount->current_balance, 0, ',', '.') . ').',
+                    'amount' => 'Saldo rekening asal tidak mencukupi (Saldo saat ini: Rp '.number_format($fromAccount->current_balance, 0, ',', '.').').',
                 ]);
             }
 
@@ -149,7 +148,7 @@ class FinanceFoundationController extends Controller
         });
 
         return redirect()->route('finance.accounts')
-            ->with('success', 'Transfer antar rekening sebesar Rp ' . number_format($amount, 0, ',', '.') . ' berhasil diproses.');
+            ->with('success', 'Transfer antar rekening sebesar Rp '.number_format($amount, 0, ',', '.').' berhasil diproses.');
     }
 
     public function virtualWallets(SchoolContext $schoolContext): View
@@ -168,7 +167,7 @@ class FinanceFoundationController extends Controller
 
         $metrics = [
             ['label' => 'Total Dompet Virtual', 'value' => (string) $wallets->count()],
-            ['label' => 'Total Saldo / Nominal', 'value' => 'Rp ' . number_format($totalNominal, 0, ',', '.')],
+            ['label' => 'Total Saldo / Nominal', 'value' => 'Rp '.number_format($totalNominal, 0, ',', '.')],
             ['label' => 'Dompet Aktif', 'value' => (string) $activeCount],
             ['label' => 'Terhubung Alokasi', 'value' => (string) $withAllocationsCount],
         ];
@@ -397,10 +396,10 @@ class FinanceFoundationController extends Controller
 
         $incomeType = $finance->createIncomeType($schoolId, $validated);
 
-        if ($usesAllocation && !empty($request->input('allocations'))) {
+        if ($usesAllocation && ! empty($request->input('allocations'))) {
             foreach ($request->input('allocations') as $alloc) {
                 $walletId = $alloc['virtual_wallet_id'] ?? $alloc['account_id'] ?? null;
-                if (!empty($alloc['name']) && !empty($walletId)) {
+                if (! empty($alloc['name']) && ! empty($walletId)) {
                     $isVirtual = VirtualWallet::where('school_id', $schoolId)->where('id', $walletId)->exists();
                     $isAccount = (! $isVirtual) && SchoolAccount::where('school_id', $schoolId)->where('id', $walletId)->exists();
 
@@ -476,10 +475,10 @@ class FinanceFoundationController extends Controller
 
         if ($usesAllocation) {
             $incomeType->fundAllocations()->delete();
-            if (!empty($request->input('allocations'))) {
+            if (! empty($request->input('allocations'))) {
                 foreach ($request->input('allocations') as $alloc) {
                     $walletId = $alloc['virtual_wallet_id'] ?? $alloc['account_id'] ?? null;
-                    if (!empty($alloc['name']) && !empty($walletId)) {
+                    if (! empty($alloc['name']) && ! empty($walletId)) {
                         $isVirtual = VirtualWallet::where('school_id', $schoolId)->where('id', $walletId)->exists();
                         $isAccount = (! $isVirtual) && SchoolAccount::where('school_id', $schoolId)->where('id', $walletId)->exists();
 
@@ -701,7 +700,7 @@ class FinanceFoundationController extends Controller
             ['label' => 'Tahun Anggaran', 'value' => $budgetYears->count()],
             ['label' => 'Total Rencana', 'value' => $budgetPlans->count()],
             ['label' => 'Pending Approval', 'value' => $budgetPlans->where('status', 'pending')->count()],
-            ['label' => 'Total Anggaran', 'value' => 'Rp ' . number_format($budgetPlans->sum('amount'), 0, ',', '.')],
+            ['label' => 'Total Anggaran', 'value' => 'Rp '.number_format($budgetPlans->sum('amount'), 0, ',', '.')],
         ];
 
         $bosSources = ['BOS Reguler', 'BOS Kinerja', 'BOP', 'DAK', 'Lainnya'];
@@ -730,7 +729,7 @@ class FinanceFoundationController extends Controller
             'revisions.requestedBy',
             'revisions.reviewedBy',
         ])
-        ->where('school_id', $schoolId);
+            ->where('school_id', $schoolId);
 
         if ($selectedYearId) {
             $budgetPlansQuery->where('budget_year_id', $selectedYearId);
@@ -841,7 +840,7 @@ class FinanceFoundationController extends Controller
         $hasExpenses = Expense::where('school_id', $schoolId)
             ->where(function ($q) use ($budgetPlan) {
                 $q->where('expense_name', 'like', "%{$budgetPlan->activity_name}%")
-                  ->orWhere('expense_name', 'like', "%{$budgetPlan->program_name}%");
+                    ->orWhere('expense_name', 'like', "%{$budgetPlan->program_name}%");
             })->exists();
 
         if ($hasExpenses) {
@@ -902,7 +901,7 @@ class FinanceFoundationController extends Controller
     {
         $schoolId = $schoolContext->activeSchoolIdFor();
 
-        $billingItems = BillingItem::with(['incomeType', 'academicYear', 'department', 'schoolClass', 'student'])
+        $billingItems = BillingItem::with(['incomeType', 'academicYear', 'department', 'schoolClass', 'student', 'periods'])
             ->where('school_id', $schoolId)
             ->latest()
             ->get();
@@ -914,14 +913,16 @@ class FinanceFoundationController extends Controller
             $q->where('school_id', $schoolId)->orWhereNull('school_id');
         })->orderBy('name')->get();
         $classes = SchoolClass::where('school_id', $schoolId)->orderBy('name')->get();
-        $students = Student::where('school_id', $schoolId)->where('is_active', true)->orderBy('name')->get();
+        $students = Student::where('school_id', $schoolId)->with('schoolClasses')->orderBy('name')->get();
 
         // Calculate student arrears for Tunggakan Siswa tab
         $invoices = Invoice::with(['student.schoolClasses', 'transactions', 'invoiceItems'])
-            ->where(function ($q) use ($schoolId) {
-                $q->where('school_id', $schoolId)->orWhereNull('school_id');
-            })
+            ->ownedBySchool($schoolId)
             ->get();
+
+        foreach ($invoices as $invoice) {
+            app(\App\Services\BillingPaymentService::class)->refreshCharges($invoice, now());
+        }
 
         $arrearsStudents = $students->map(function ($student) use ($invoices) {
             $studentInvoices = $invoices->where('student_id', $student->id);
@@ -930,7 +931,7 @@ class FinanceFoundationController extends Controller
 
             $status = 'lunas';
             if ($totalRemaining > 0) {
-                $hasOverdue = $unpaidInvoices->contains(fn ($inv) => $inv->due_date && \Carbon\Carbon::parse($inv->due_date)->startOfDay()->isPast());
+                $hasOverdue = $unpaidInvoices->contains(fn ($inv) => $inv->due_date && \Carbon\Carbon::parse($inv->due_date)->endOfDay()->isPast());
                 $hasPaidSome = $unpaidInvoices->contains(fn ($inv) => $inv->paid_amount > 0 || str_contains(strtolower($inv->status ?? ''), 'cicil'));
                 if ($hasOverdue) {
                     $status = 'menunggak';
@@ -944,7 +945,7 @@ class FinanceFoundationController extends Controller
             $allInvoicesData = $studentInvoices->map(function ($inv) {
                 $rem = (float) $inv->remaining_amount;
                 $paid = (float) $inv->paid_amount;
-                $isOverdue = $inv->due_date && \Carbon\Carbon::parse($inv->due_date)->startOfDay()->isPast();
+                $isOverdue = $inv->due_date && \Carbon\Carbon::parse($inv->due_date)->endOfDay()->isPast();
 
                 if ($rem <= 0 || strtolower($inv->status) === 'lunas') {
                     $invStatus = 'Lunas';
@@ -964,6 +965,8 @@ class FinanceFoundationController extends Controller
                     'total_amount' => (float) $inv->total_amount,
                     'paid_amount' => $paid,
                     'remaining_amount' => $rem,
+                    'principal_amount' => (float) ($inv->principal_amount ?? $inv->total_amount),
+                    'late_fee_amount' => (float) $inv->late_fee_amount,
                     'status' => $invStatus,
                     'due_date' => $inv->due_date ? $inv->due_date->format('d M Y') : '-',
                     'due_date_raw' => $inv->due_date ? $inv->due_date->format('Y-m-d') : '',
@@ -999,81 +1002,48 @@ class FinanceFoundationController extends Controller
             ];
         })->filter(fn ($s) => $s['total_arrears'] > 0 || $s['invoices']->isNotEmpty())->values();
 
-        $komiteIncomeTypes = $incomeTypes->filter(fn ($it) => stripos($it->category ?? '', 'komite') !== false || stripos($it->name, 'komite') !== false || stripos($it->name, 'spp') !== false);
-        if ($komiteIncomeTypes->isEmpty()) {
-            $komiteIncomeTypes = $incomeTypes;
-        }
+        $komiteIncomeTypes = $incomeTypes->filter(fn ($it) => strtolower($it->category ?? '') === 'komite');
+        $billingDetails = $billingItems->flatMap(function ($item) use ($invoices) {
+            $periods = $item->periods->sortByDesc('start_date');
 
-        // Prepare structured billing items data for Step 9 & 10
-        $billingDetails = $billingItems->map(function ($item) use ($invoices, $students) {
-            $matchedInvoices = $invoices->filter(function ($inv) use ($item) {
-                return $inv->invoiceItems->contains(fn ($ii) => $ii->name === $item->name);
-            });
+            return ($periods->isNotEmpty() ? $periods : collect([null]))->map(function ($period) use ($item, $invoices) {
+                $matched = $invoices->filter(fn ($inv) => $period
+                    ? (int) $inv->billing_period_id === (int) $period->id
+                    : ($inv->billing_item_id ? (int) $inv->billing_item_id === (int) $item->id : $inv->invoiceItems->contains(fn ($ii) => $ii->name === $item->name)));
+                $rows = $matched->map(fn ($inv) => [
+                    'id' => $inv->id, 'nis' => $inv->student?->nis ?? '-', 'name' => $inv->student?->name ?? '-',
+                    'class_name' => $inv->student?->schoolClasses->firstWhere('academic_year_id', $item->academic_year_id)?->name ?? '-',
+                    'amount' => (float) $inv->total_amount, 'principal_amount' => (float) ($inv->principal_amount ?? $inv->total_amount),
+                    'late_fee_amount' => (float) $inv->late_fee_amount, 'remaining_amount' => (float) $inv->remaining_amount,
+                    'status' => $inv->remaining_amount <= 0 ? 'Paid' : 'Unpaid',
+                    'payment_date' => $inv->transactions->whereIn('status', ['approved', 'confirmed'])->sortByDesc('payment_date')->first()?->payment_date?->format('d M Y') ?? '-',
+                ])->values();
+                $due = $period?->due_date ?? $item->due_date;
 
-            $studentRows = $matchedInvoices->map(function ($inv) {
-                $isPaid = $inv->remaining_amount <= 0 || strtolower($inv->status) === 'lunas';
-                $lastTx = $inv->transactions->sortByDesc('payment_date')->first();
                 return [
-                    'id' => $inv->id,
-                    'nis' => $inv->student?->nis ?? '-',
-                    'name' => $inv->student?->name ?? 'Siswa',
-                    'class_name' => $inv->student?->schoolClasses->first()?->name ?? 'Kelas X',
-                    'amount' => (float) $inv->total_amount,
-                    'status' => $isPaid ? 'Paid' : 'Unpaid',
-                    'payment_date' => $lastTx ? $lastTx->payment_date?->format('d M Y') : ($isPaid ? 'Terbayar' : '-'),
+                    'id' => $period ? 'period-'.$period->id : 'bill-'.$item->id, 'billing_item_id' => $item->id,
+                    'name' => $item->name, 'income_type_name' => $item->incomeType?->name ?? '-',
+                    'academic_year_name' => $item->academicYear?->year ?? '-', 'amount' => (float) $item->amount,
+                    'billing_frequency' => $item->billing_frequency, 'period_label' => $period?->period_key === 'once' ? 'Sekali' : ($period?->start_date?->locale('id')->translatedFormat('F Y') ?? 'Belum terbit'),
+                    'period_date' => $period?->start_date?->toDateString() ?? '',
+                    'start_date' => ($period?->start_date ?? $item->start_date)?->format('d M Y') ?? '-',
+                    'due_date' => $due?->format('d M Y') ?? '-',
+                    'status' => $period ? ($due->endOfDay()->isPast() ? 'deactive' : 'active') : ($item->status === 'active' ? 'active' : 'deactive'),
+                    'configuration_status' => $item->status,
+                    'update_url' => route('finance.billing.update', $item), 'delete_url' => route('finance.billing.destroy', $item),
+                    'status_raw' => $item->status, 'students' => $rows, 'total_students' => $rows->count(),
+                    'paid_count' => $rows->where('status', 'Paid')->count(), 'unpaid_count' => $rows->where('status', 'Unpaid')->count(),
                 ];
-            })->values();
-
-            if ($studentRows->isEmpty()) {
-                $targetStudents = $students;
-                if ($item->target_type === 'pilihan') {
-                    if ($item->target_student_id) {
-                        $targetStudents = $students->where('id', $item->target_student_id);
-                    } elseif ($item->target_class_id) {
-                        $targetStudents = $students->filter(fn ($s) => $s->schoolClasses->contains('id', $item->target_class_id));
-                    } elseif ($item->target_department_id) {
-                        $targetStudents = $students->where('department_id', $item->target_department_id);
-                    } elseif ($item->target_generation) {
-                        $targetStudents = $students->where('generation', $item->target_generation);
-                    }
-                }
-
-                $studentRows = $targetStudents->map(function ($st) use ($item) {
-                    return [
-                        'id' => $st->id,
-                        'nis' => $st->nis ?? '-',
-                        'name' => $st->name,
-                        'class_name' => $st->schoolClasses->first()?->name ?? 'Kelas X',
-                        'amount' => (float) $item->amount,
-                        'status' => 'Unpaid',
-                        'payment_date' => '-',
-                    ];
-                })->values();
-            }
-
-            return [
-                'id' => $item->id,
-                'name' => $item->name,
-                'income_type_name' => $item->incomeType?->name ?? 'SPP Komite',
-                'academic_year_name' => $item->academicYear?->year ?? '2025/2026',
-                'amount' => (float) $item->amount,
-                'billing_frequency' => $item->billing_frequency ?? 'Bulanan',
-                'start_date' => $item->start_date ? $item->start_date->format('d M Y') : '1 Juli ' . date('Y'),
-                'due_date' => $item->due_date ? $item->due_date->format('d M Y') : '10 Juli ' . date('Y'),
-                'status' => $item->status ?? 'active',
-                'students' => $studentRows,
-                'total_students' => $studentRows->count(),
-                'paid_count' => $studentRows->where('status', 'Paid')->count(),
-                'unpaid_count' => $studentRows->where('status', 'Unpaid')->count(),
-            ];
-        });
+            });
+        })->values();
+        $targetStudents = $students->filter(fn ($student) => $student->is_active && $student->status === 'active')->values();
 
         $schoolAccounts = SchoolAccount::where('school_id', $schoolId)->where('is_active', true)->get();
 
         $metrics = [
             ['label' => 'Total Item Tagihan', 'value' => $billingItems->count()],
-            ['label' => 'Total Nominal', 'value' => 'Rp ' . number_format($billingItems->sum('amount'), 0, ',', '.')],
-            ['label' => 'Total Murid Menunggak', 'value' => $arrearsStudents->where('total_arrears', '>', 0)->count() . ' murid'],
+            ['label' => 'Total Nominal', 'value' => 'Rp '.number_format($billingItems->sum('amount'), 0, ',', '.')],
+            ['label' => 'Total Murid Menunggak', 'value' => $arrearsStudents->where('total_arrears', '>', 0)->count().' murid'],
             ['label' => 'Transfer Pending', 'value' => PaymentSubmission::where('school_id', $schoolId)->where('status', 'pending')->count()],
         ];
 
@@ -1089,118 +1059,52 @@ class FinanceFoundationController extends Controller
             'arrearsStudents' => $arrearsStudents,
             'schoolAccounts' => $schoolAccounts,
             'metrics' => $metrics,
+            'targetStudents' => $targetStudents,
+            'generations' => $targetStudents->pluck('generation')->filter()->unique()->sortDesc()->values(),
+            'isSmk' => strtolower($schoolContext->activeSchool()?->level ?? '') === 'smk',
+            'whatsappConfigured' => app(\App\Contracts\BillingWhatsAppGateway::class)->configured(),
         ]);
     }
 
-    public function storeBilling(Request $request, SchoolContext $schoolContext): RedirectResponse
+    public function storeBilling(\App\Http\Requests\StoreCommitteeBillingRequest $request, SchoolContext $schoolContext, \App\Services\BillingService $billing): RedirectResponse
     {
         $schoolId = $this->activeSchoolId($request, $schoolContext);
-        $validated = $request->validate([
-            'income_type_id' => ['nullable', 'integer', Rule::exists('income_types', 'id')->where(fn ($query) => $query->where('school_id', $schoolId))],
-            'academic_year_id' => ['nullable', 'integer', Rule::exists('academic_years', 'id')],
-            'name' => ['required', 'string', 'max:160'],
-            'amount' => ['required', 'numeric', 'min:0'],
-            'allow_installment' => ['nullable'],
-            'minimum_installment' => ['nullable', 'numeric', 'min:0'],
-            'has_late_fee' => ['nullable'],
-            'late_fee_per_day' => ['nullable', 'numeric', 'min:0'],
-            'late_fee_maximum' => ['nullable', 'numeric', 'min:0'],
-            'billing_frequency' => ['nullable', 'string', 'max:40'],
-            'billing_day' => ['nullable', 'integer', 'min:1', 'max:31'],
-            'due_day' => ['nullable', 'integer', 'min:1', 'max:31'],
-            'start_date' => ['nullable', 'date'],
-            'due_date' => ['nullable', 'date'],
-            'target_type' => ['nullable', 'string', 'max:40'],
-            'target_department_id' => ['nullable', 'integer'],
-            'target_generation' => ['nullable', 'string', 'max:20'],
-            'target_class_id' => ['nullable', 'integer'],
-            'target_student_id' => ['nullable', 'integer'],
-        ]);
+        $attributes = $request->validated();
+        $type = IncomeType::where('school_id', $schoolId)->findOrFail($attributes['income_type_id']);
+        $year = AcademicYear::findOrFail($attributes['academic_year_id']);
+        $attributes['name'] = $attributes['name'] ?? $type->name.' '.$year->year;
+        $bill = $billing->create($schoolId, $attributes);
+        $count = $billing->targetStudents($bill)->count();
 
-        $allowInstallment = $request->boolean('allow_installment') || $request->input('allow_installment') === '1' || $request->input('allow_installment') === 'ya';
-        $hasLateFee = $request->boolean('has_late_fee') || $request->input('has_late_fee') === '1' || $request->input('has_late_fee') === 'ya';
-
-        $startDate = $validated['start_date'] ?? null;
-        $dueDate = $validated['due_date'] ?? null;
-        if (($validated['billing_frequency'] ?? 'Bulanan') === 'Bulanan') {
-            $bDay = (int) ($request->input('billing_day') ?? 5);
-            $dDay = (int) ($request->input('due_day') ?? 25);
-            $startDate = now()->setDay($bDay)->format('Y-m-d');
-            $dueDate = now()->setDay($dDay)->format('Y-m-d');
-        }
-
-        unset($validated['billing_day'], $validated['due_day']);
-
-        $bill = BillingItem::create([
-            ...$validated,
-            'start_date' => $startDate,
-            'due_date' => $dueDate,
-            'allow_installment' => $allowInstallment,
-            'minimum_installment' => $allowInstallment ? ($validated['minimum_installment'] ?? 0) : null,
-            'has_late_fee' => $hasLateFee,
-            'late_fee_per_day' => $hasLateFee ? ($validated['late_fee_per_day'] ?? 0) : 0,
-            'late_fee_maximum' => $hasLateFee ? ($validated['late_fee_maximum'] ?? 0) : 0,
-            'school_id' => $schoolId,
-            'status' => 'active',
-        ]);
-
-        // Resolve target students & create initial invoices
-        $targetStudentsQuery = Student::where('school_id', $schoolId)->where('is_active', true);
-        if ($bill->target_type === 'pilihan') {
-            if ($bill->target_student_id) {
-                $targetStudentsQuery->where('id', $bill->target_student_id);
-            } elseif ($bill->target_class_id) {
-                $targetStudentsQuery->whereHas('schoolClasses', fn ($q) => $q->where('school_classes.id', $bill->target_class_id));
-            } elseif ($bill->target_department_id) {
-                $targetStudentsQuery->where('department_id', $bill->target_department_id);
-            } elseif ($bill->target_generation) {
-                $targetStudentsQuery->where('generation', $bill->target_generation);
-            }
-        }
-        $targetStudents = $targetStudentsQuery->get();
-        $targetCount = $targetStudents->count();
-
-        foreach ($targetStudents as $student) {
-            $invNum = 'INV-' . date('Ymd') . '-' . str_pad((string) $student->id, 4, '0', STR_PAD_LEFT) . '-' . substr(uniqid(), -4);
-            $invoice = Invoice::create([
-                'student_id' => $student->id,
-                'school_id' => $schoolId,
-                'academic_year_id' => $bill->academic_year_id,
-                'invoice_number' => $invNum,
-                'due_date' => $bill->due_date ?? now()->addMonth(),
-                'total_amount' => $bill->amount,
-                'status' => 'Belum Lunas',
-            ]);
-
-            InvoiceItem::create([
-                'invoice_id' => $invoice->id,
-                'name' => $bill->name,
-                'amount' => $bill->amount,
-            ]);
-        }
-
-        return back()
-            ->with('success', 'Tagihan berhasil disimpan.')
-            ->with('success_modal', true)
-            ->with('success_title', 'Tagihan berhasil dibuat')
-            ->with('target_student_count', $targetCount > 0 ? $targetCount : 64);
+        return back()->with('success', 'Tagihan berhasil disimpan.')
+            ->with('success_modal', true)->with('success_title', 'Tagihan berhasil dibuat')
+            ->with('success_message', $bill->periods()->exists() ? 'Tagihan diterbitkan untuk '.$count.' siswa dan disimpan ke dalam sistem.' : 'Konfigurasi tersimpan untuk '.$count.' siswa. Invoice akan diterbitkan pada tanggal mulai penagihan.')
+            ->with('target_student_count', $count);
     }
 
     public function updateBilling(Request $request, BillingItem $billingItem, SchoolContext $schoolContext): RedirectResponse
     {
+        $request->merge(['_billing_action' => 'edit', 'billing_item_id' => $billingItem->id]);
         $schoolId = $this->activeSchoolId($request, $schoolContext);
         abort_unless((int) $billingItem->school_id === $schoolId, 404);
 
         $validated = $request->validate([
             'income_type_id' => ['nullable', 'integer', Rule::exists('income_types', 'id')->where(fn ($query) => $query->where('school_id', $schoolId))],
             'name' => ['required', 'string', 'max:160'],
-            'amount' => ['required', 'numeric', 'min:0'],
-            'billing_frequency' => ['nullable', 'string', 'max:40'],
+            'amount' => ['required', 'numeric', 'min:0.01', 'decimal:0,2'],
+            'billing_frequency' => ['nullable', Rule::in(['Bulanan', 'Sekali'])],
             'due_date' => ['nullable', 'date'],
             'target_type' => ['nullable', 'string', 'max:40'],
             'status' => ['required', 'string', Rule::in(['draft', 'active', 'closed', 'nonaktif'])],
         ]);
 
+        if ($billingItem->periods()->exists() && isset($validated['billing_frequency']) && $validated['billing_frequency'] !== $billingItem->billing_frequency) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['billing_frequency' => 'Periode tagihan yang sudah terbit tidak dapat diubah. Buat konfigurasi baru.']);
+        }
+        unset($validated['target_type'], $validated['due_date']);
+        if ($billingItem->allow_installment && \App\Services\BillingPaymentService::cents($validated['amount']) < \App\Services\BillingPaymentService::cents($billingItem->minimum_installment)) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['amount' => 'Nominal tidak boleh kurang dari minimal cicilan konfigurasi.']);
+        }
         $billingItem->update($validated);
 
         return back()->with('success', 'Tagihan berhasil diperbarui.');
@@ -1211,11 +1115,14 @@ class FinanceFoundationController extends Controller
         $schoolId = $schoolContext->activeSchoolIdFor();
         abort_unless((int) $billingItem->school_id === $schoolId, 404);
 
+        if ($billingItem->periods()->exists()) {
+            return back()->with('error', 'Tagihan yang sudah diterbitkan tidak dapat dihapus. Nonaktifkan konfigurasi untuk menghentikan penerbitan berikutnya.');
+        }
         $hasPaidInvoices = Invoice::where('school_id', $schoolId)
             ->whereHas('invoiceItems', fn ($q) => $q->where('name', $billingItem->name))
             ->where(function ($q) {
                 $q->where('status', 'Lunas')
-                  ->orWhereHas('transactions');
+                    ->orWhereHas('transactions');
             })
             ->exists();
 
@@ -1298,7 +1205,7 @@ class FinanceFoundationController extends Controller
             }
 
             $targetAccount = null;
-            if ($validated['payment_method'] === 'Transfer' && !empty($validated['account_id'])) {
+            if ($validated['payment_method'] === 'Transfer' && ! empty($validated['account_id'])) {
                 $targetAccount = SchoolAccount::where('school_id', $schoolId)->find($validated['account_id']);
             } elseif ($validated['payment_method'] === 'Tunai') {
                 $targetAccount = SchoolAccount::where('school_id', $schoolId)->where('type', 'cash')->first();
@@ -1323,7 +1230,7 @@ class FinanceFoundationController extends Controller
                 }
 
                 $allocQuery = FundAllocation::where('school_id', $schoolId)->where('status', 'active');
-                if (!empty($validated['income_type_id']) && FundAllocation::where('school_id', $schoolId)->where('income_type_id', $validated['income_type_id'])->where('status', 'active')->exists()) {
+                if (! empty($validated['income_type_id']) && FundAllocation::where('school_id', $schoolId)->where('income_type_id', $validated['income_type_id'])->where('status', 'active')->exists()) {
                     $allocQuery->where('income_type_id', $validated['income_type_id']);
                 }
                 $allocations = $allocQuery->get();
@@ -1360,7 +1267,7 @@ class FinanceFoundationController extends Controller
             }
 
             $targetAccount = null;
-            if ($validated['payment_method'] === 'Transfer' && !empty($validated['account_id'])) {
+            if ($validated['payment_method'] === 'Transfer' && ! empty($validated['account_id'])) {
                 $targetAccount = SchoolAccount::where('school_id', $schoolId)->find($validated['account_id']);
             } elseif ($validated['payment_method'] === 'Tunai') {
                 $targetAccount = SchoolAccount::where('school_id', $schoolId)->where('type', 'cash')->first();
@@ -1384,7 +1291,7 @@ class FinanceFoundationController extends Controller
                 }
 
                 $allocQuery = FundAllocation::where('school_id', $schoolId)->where('status', 'active');
-                if (!empty($validated['income_type_id']) && FundAllocation::where('school_id', $schoolId)->where('income_type_id', $validated['income_type_id'])->where('status', 'active')->exists()) {
+                if (! empty($validated['income_type_id']) && FundAllocation::where('school_id', $schoolId)->where('income_type_id', $validated['income_type_id'])->where('status', 'active')->exists()) {
                     $allocQuery->where('income_type_id', $validated['income_type_id']);
                 }
                 $allocations = $allocQuery->get();
@@ -1448,8 +1355,8 @@ class FinanceFoundationController extends Controller
         ]);
 
         $period = $validated['period'];
-        if ($validated['type'] === 'bos' && !empty($validated['bos_type'])) {
-            $period = $validated['bos_type'] . ' ' . $period;
+        if ($validated['type'] === 'bos' && ! empty($validated['bos_type'])) {
+            $period = $validated['bos_type'].' '.$period;
         }
 
         $closing->close($schoolId, $validated['type'], $period, $request->user()->id);

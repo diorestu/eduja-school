@@ -20,6 +20,10 @@
                 <form action="{{ route('siswa.store') }}" method="POST" class="space-y-4">
                     @csrf
                     <div>
+                        <label for="student-generation" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Angkatan (tahun masuk)</label>
+                        <input id="student-generation" name="generation" type="number" min="1900" max="2200" value="{{ old('generation') }}" placeholder="Contoh: 2026" class="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm dark:border-gray-700 dark:text-white">
+                    </div>
+                    <div>
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                             NIS (Nomor Induk Murid)
                         </label>
@@ -144,6 +148,14 @@
                                     <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/10">
                                         <td class="px-5 py-4">
                                             <span class="block font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $student->name }}</span>
+                                            <form method="POST" action="{{ route('siswa.store') }}" class="mt-1 flex items-center gap-2">
+                                                @csrf
+                                                <input type="hidden" name="action" value="generation">
+                                                <input type="hidden" name="student_id" value="{{ $student->id }}">
+                                                <label class="sr-only" for="generation-{{ $student->id }}">Angkatan {{ $student->name }}</label>
+                                                <input id="generation-{{ $student->id }}" name="generation" type="number" min="1900" max="2200" value="{{ $student->generation }}" placeholder="Tahun masuk" class="w-28 rounded border border-gray-300 bg-transparent px-2 py-1 text-xs dark:border-gray-700 dark:text-white">
+                                                <button type="submit" class="rounded px-2 py-1 text-xs text-brand-600 focus-visible:ring-2 focus-visible:ring-brand-500">Simpan angkatan</button>
+                                            </form>
                                             <span class="block text-xs text-gray-400">{{ $student->phone ?? '-' }}</span>
                                         </td>
                                         <td class="px-5 py-4">

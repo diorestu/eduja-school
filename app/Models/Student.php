@@ -25,6 +25,7 @@ class Student extends Model
         'phone',
         'parent_name',
         'parent_phone',
+        'generation',
         'is_active',
         'status',
         'status_date',
@@ -33,6 +34,7 @@ class Student extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'generation' => 'integer',
         'status_date' => 'date',
     ];
 
@@ -47,6 +49,11 @@ class Student extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function guardianUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'guardian_user_id');
     }
 
     /**

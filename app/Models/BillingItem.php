@@ -15,6 +15,7 @@ class BillingItem extends Model
     protected $casts = [
         'due_date' => 'date',
         'start_date' => 'date',
+        'recurrence_start' => 'date',
         'allow_installment' => 'boolean',
         'has_late_fee' => 'boolean',
         'amount' => 'decimal:2',
@@ -26,6 +27,11 @@ class BillingItem extends Model
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class);
+    }
+
+    public function periods()
+    {
+        return $this->hasMany(BillingPeriod::class);
     }
 
     public function academicYear(): BelongsTo
