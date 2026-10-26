@@ -29,7 +29,10 @@ function bosIncomePayload(): array
 }
 
 it('renders bos source and year dropdowns from school data', function () {
-    bosIncomeFixture($this);
+    [$school] = bosIncomeFixture($this);
+    \App\Models\BudgetYear::create(['school_id' => $school, 'name' => 'TA 2028', 'start_date' => '2028-01-01', 'end_date' => '2028-12-31', 'status' => 'active']);
+    $years = app(\App\Services\BosIncomeService::class)->years($school);
+    expect($years)->toContain(2028);
     $this->get('/spp/transaksi?category=bos')->assertOk()->assertSee('Pemasukan BOS')->assertSee('BOS Sekolah Khusus')->assertSee('name="bos_year"', false)->assertSee('SP2D');
 });
 

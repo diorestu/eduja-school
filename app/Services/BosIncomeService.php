@@ -24,9 +24,30 @@ class BosIncomeService
 
     public function years(int $schoolId): Collection
     {
+        $budgetYears = \App\Models\BudgetYear::where('school_id', $schoolId)
+            ->get(['name', 'start_date'])
+            ->flatMap(function ($by) {
+                $years = [];
+                if ($by->start_date) {
+                    $years[] = (int) $by->start_date->format('Y');
+                }
+                if ($by->name && preg_match('/\b(20\d{2})\b/', $by->name, $matches)) {
+                    $years[] = (int) $matches[1];
+                }
+
+                return $years;
+            });
+
+        $academicYears = \App\Models\AcademicYear::where('school_id', $schoolId)
+            ->pluck('year')
+            ->flatMap(function ($ay) {
+                return preg_match_all('/\b(20\d{2})\b/', (string) $ay, $matches) ? $matches[1] : [];
+            });
+
         return collect(range(2020, max(2020, now()->year + 1)))
             ->merge(FinanceIncome::where('school_id', $schoolId)->whereNotNull('bos_year')->pluck('bos_year'))
-            ->merge(\App\Models\BudgetYear::where('school_id', $schoolId)->pluck('year'))
+            ->merge($budgetYears)
+            ->merge($academicYears)
             ->map(fn ($year) => (int) $year)->filter(fn ($year) => $year >= 2020 && $year <= 2099)->unique()->sortDesc()->values();
     }
 
