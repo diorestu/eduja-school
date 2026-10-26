@@ -10,9 +10,16 @@ use Illuminate\Validation\ValidationException;
 
 class BillingPaymentService
 {
-    public function destinationAccount(int $schoolId, string $method, ?int $accountId, bool $required): ?SchoolAccount
+    public function destinationAccount(int $schoolId, string $method, ?int $accountId, bool $required, bool $committeeTransfer = false): ?SchoolAccount
     {
         $query = SchoolAccount::where('school_id', $schoolId)->where('is_active', true);
+        if ($committeeTransfer) {
+            if ($method === 'Tunai') {
+                $query->where(fn ($q) => $q->whereNull('source_funding')->orWhere('source_funding', 'komite'));
+            } else {
+                $query->whereRaw('LOWER(type) = ?', ['bank'])->where('source_funding', 'komite');
+            }
+        }
         $account = $accountId
             ? $query->whereKey($accountId)->lockForUpdate()->first()
             : $query->whereIn(DB::raw('LOWER(type)'), $method === 'Tunai' ? ['tunai', 'cash'] : ['bank'])->orderBy('id')->lockForUpdate()->first();
@@ -62,6 +69,16 @@ class BillingPaymentService
             }
             $invoice->setRawAttributes($locked->getAttributes(), true);
         });
+    }
+
+    public function previewCharges(Invoice $invoice, CarbonInterface $date): void
+    {
+        if (! $invoice->billing_period_id || $invoice->status === 'Lunas' || $invoice->remaining_amount <= 0) {
+            return;
+        }
+        $days = max(0, (int) $invoice->due_date->diffInDays($date->copy()->startOfDay(), false));
+        $fee = max(self::cents($invoice->late_fee_amount), min($days * self::cents($invoice->late_fee_per_day), self::cents($invoice->late_fee_maximum)));
+        $invoice->forceFill(['late_fee_amount' => self::decimal($fee), 'total_amount' => self::decimal(self::cents($invoice->principal_amount) + $fee)]);
     }
 
     public function validatePayment(Invoice $invoice, string|int|float $amount): void

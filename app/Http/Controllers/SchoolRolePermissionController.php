@@ -17,6 +17,7 @@ class SchoolRolePermissionController extends Controller
         'kepsek' => 'Kepala Sekolah',
         'wakasek' => 'Wakil Kepala Sekolah',
         'bendahara' => 'Bendahara',
+        'teller' => 'Teller',
         'tu' => 'Tata Usaha',
         'staf_tu' => 'Staf Tata Usaha',
         'guru' => 'Guru',

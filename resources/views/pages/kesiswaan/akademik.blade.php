@@ -9,6 +9,7 @@
         </div>
     @endif
 
+    @if($errors->any())<p role="alert" class="mb-4 rounded border border-red-300 p-3">{{ $errors->first() }}</p>@endif
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <!-- Form Tambah -->
         <div class="lg:col-span-1">
@@ -101,6 +102,17 @@
                                     <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/10">
                                         <td class="px-5 py-4">
                                             <span class="block font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $year->year }}</span>
+                                            <details class="mt-2 text-xs"><summary class="cursor-pointer">Ubah tahun ajaran</summary>
+                                                <form method="POST" action="{{ route('akademik.store') }}" class="mt-2 grid min-w-48 gap-2">@csrf
+                                                    <input type="hidden" name="action" value="update"><input type="hidden" name="academic_year_id" value="{{ $year->id }}">
+                                                    <label>Tahun ajaran<input name="year" value="{{ $year->year }}" required class="block w-full rounded border p-1 dark:bg-gray-900"></label>
+                                                    <label>Semester<select name="semester" required class="block w-full rounded border p-1 dark:bg-gray-900">@foreach(['Ganjil','Genap'] as $semester)<option @selected($year->semester === $semester)>{{ $semester }}</option>@endforeach</select></label>
+                                                    <label>Tanggal mulai<input type="date" name="start_date" value="{{ $year->start_date?->format('Y-m-d') }}" required class="block w-full rounded border p-1 dark:bg-gray-900"></label>
+                                                    <label>Tanggal akhir<input type="date" name="end_date" value="{{ $year->end_date?->format('Y-m-d') }}" required class="block w-full rounded border p-1 dark:bg-gray-900"></label>
+                                                    <button class="rounded border px-2 py-1">Simpan tahun ajaran</button>
+                                                </form>
+                                                @unless($year->is_active)<form method="POST" action="{{ route('akademik.store') }}" class="mt-2">@csrf<input type="hidden" name="action" value="delete"><input type="hidden" name="academic_year_id" value="{{ $year->id }}"><button class="text-red-600">Hapus jika belum digunakan</button></form>@endunless
+                                            </details>
                                         </td>
                                         <td class="px-5 py-4">
                                             <span class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $year->semester }}</span>

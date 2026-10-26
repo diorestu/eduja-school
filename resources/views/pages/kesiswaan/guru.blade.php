@@ -150,7 +150,9 @@
                                             </span>
                                         </td>
                                         <td class="px-5 py-4">
-                                            <form action="{{ route('guru.store') }}" method="POST" class="min-w-48 space-y-1.5">
+                                            @include('pages.academic.lifecycle-history', ['personType' => 'teacher', 'person' => $teacher, 'history' => $lifecycleHistories->get($teacher->id, collect())])
+                                            @include('pages.academic.person-editor', ['personType' => 'teacher', 'person' => $teacher])
+                                            <form action="{{ route('guru.store') }}" method="POST" enctype="multipart/form-data" class="min-w-48 space-y-1.5">
                                                 @csrf
                                                 <input type="hidden" name="action" value="status">
                                                 <input type="hidden" name="teacher_id" value="{{ $teacher->id }}">
@@ -165,10 +167,18 @@
                                                     class="h-8 w-full rounded-md border border-gray-300 bg-transparent px-2 text-xs text-gray-700 focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
                                                 <input type="text" name="status_note" value="{{ $teacher->status_note }}" placeholder="Alasan/catatan"
                                                     class="h-8 w-full rounded-md border border-gray-300 bg-transparent px-2 text-xs text-gray-700 focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                                <label class="block text-xs text-gray-500">Jika kontrak selesai, diperbarui?
+                                                    <select name="contract_renewed" class="block w-full rounded border p-1 dark:bg-gray-900"><option value="0">Tidak</option><option value="1">Ya, tetap aktif</option></select>
+                                                </label>
+                                                <label class="block text-xs text-gray-500">Mulai kontrak baru<input type="date" name="contract_start_date" class="block w-full rounded border p-1 dark:bg-gray-900"></label>
+                                                <label class="block text-xs text-gray-500">Akhir kontrak baru<input type="date" name="contract_end_date" class="block w-full rounded border p-1 dark:bg-gray-900"></label>
+                                                <label class="block text-xs text-gray-500">Dokumen pendukung (opsional)<input type="file" name="status_document" accept="application/pdf,image/jpeg,image/png" class="block w-full text-xs"></label>
                                                 <button type="submit" class="inline-flex h-8 items-center rounded-md bg-brand-500 px-2.5 text-xs font-semibold text-white hover:bg-brand-600 focus:outline-hidden focus:ring-2 focus:ring-brand-500/30">
                                                     Simpan status
                                                 </button>
                                             </form>
+                                            @include('pages.academic.appointments', ['teacher' => $teacher, 'history' => $appointments->get($teacher->id, collect())])
+
                                         </td>
                                     </tr>
                                 @endforeach

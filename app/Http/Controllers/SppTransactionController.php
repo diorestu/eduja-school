@@ -3,10 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\AcademicYear;
-use App\Models\BillingItem;
 use App\Models\ClassStudent;
 use App\Models\FinanceIncome;
-use App\Models\FundAllocation;
 use App\Models\IncomeType;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
@@ -14,19 +12,29 @@ use App\Models\SchoolAccount;
 use App\Models\SppTariff;
 use App\Models\Student;
 use App\Models\Transaction;
-use App\Models\VirtualWallet;
 use App\Services\NotificationService;
 use App\Services\SchoolContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class SppTransactionController extends Controller
 {
     public function index(Request $request, SchoolContext $schoolContext)
     {
-        $schoolId = $schoolContext->activeSchoolId();
+        if ($request->input('category') === 'komite') {
+            return app(CommitteeIncomeController::class)->index($request, $schoolContext, app(\App\Services\StudentArrearsService::class));
+        }
+        if ($request->input('category') === 'bos') {
+            return app(BosIncomeController::class)->index($request, $schoolContext, app(\App\Services\BosIncomeService::class));
+        }
+        if ($request->input('category') === 'hibah') {
+            return app(GrantIncomeController::class)->index($request, $schoolContext, app(\App\Services\GrantIncomeService::class));
+        }
+        if ($request->input('category') === 'lainnya') {
+            return app(OtherIncomeController::class)->index($request, $schoolContext, app(\App\Services\OtherIncomeService::class));
+        }
+        $schoolId = $schoolContext->activeSchoolIdFor();
 
         $invoices = Invoice::with(['student.schoolClasses', 'transactions', 'invoiceItems'])
             ->when($schoolId, fn ($q) => $q->ownedBySchool($schoolId))
@@ -209,7 +217,8 @@ class SppTransactionController extends Controller
 
         $trxData = null;
 
-        DB::transaction(function () use ($invoice, $schoolId, $validated, $payments, &$trxData) {
+        $arrearsFlow = $request->routeIs('finance.arrears.pay');
+        DB::transaction(function () use ($invoice, $schoolId, $validated, $payments, $arrearsFlow, &$trxData) {
             $invoice = Invoice::ownedBySchool($schoolId)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
             if (! $invoice->school_id) {
                 $invoice->update(['school_id' => $schoolId]);
@@ -227,7 +236,7 @@ class SppTransactionController extends Controller
             }
 
             $schoolId = $invoice->school_id;
-            $targetAccount = $payments->destinationAccount($schoolId, $validated['payment_method'], ! empty($validated['account_id']) ? (int) $validated['account_id'] : null, (bool) $invoice->billing_period_id);
+            $targetAccount = $payments->destinationAccount($schoolId, $validated['payment_method'], ! empty($validated['account_id']) ? (int) $validated['account_id'] : null, $arrearsFlow || (bool) $invoice->billing_period_id, $arrearsFlow);
 
             $tx = Transaction::create([
                 'invoice_id' => $invoice->id,
@@ -249,33 +258,7 @@ class SppTransactionController extends Controller
                 $targetAccount->increment('current_balance', $validated['amount_paid']);
             }
 
-            // Update Virtual Wallet automatically if fund allocations exist
-            if ($schoolId) {
-                // Find income type from billing item or invoice item
-                $billingItem = $invoice->billing_item_id ? $invoice->billingItem : BillingItem::where('school_id', $schoolId)
-                    ->where(function ($q) use ($invoice) {
-                        $q->where('name', $invoice->invoiceItems->first()?->name)
-                            ->orWhere('id', $invoice->billing_item_id ?? null);
-                    })->first();
-
-                $incomeTypeId = $billingItem?->income_type_id;
-
-                $allocQuery = FundAllocation::where('school_id', $schoolId)->where('status', 'active');
-                if ($incomeTypeId && FundAllocation::where('school_id', $schoolId)->where('income_type_id', $incomeTypeId)->where('status', 'active')->exists()) {
-                    $allocQuery->where('income_type_id', $incomeTypeId);
-                }
-
-                $allocations = $allocQuery->get();
-
-                foreach ($allocations as $alloc) {
-                    if ($alloc->virtual_wallet_id) {
-                        $allocAmt = in_array(strtolower($alloc->method ?? ''), ['percentage', 'persentase', 'percent', '%'])
-                            ? ($validated['amount_paid'] * ($alloc->amount / 100))
-                            : min($validated['amount_paid'], (float) $alloc->amount);
-                        VirtualWallet::where('id', $alloc->virtual_wallet_id)->increment('nominal', $allocAmt);
-                    }
-                }
-            }
+            app(\App\Services\InvoiceWalletAllocationService::class)->allocate($invoice, $tx);
 
             // Sistem otomatis mengirimkan notifikasi ke orang tua setiap ada transaksi uang masuk
             $student = $invoice->student;

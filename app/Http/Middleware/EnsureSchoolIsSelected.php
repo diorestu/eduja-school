@@ -18,10 +18,10 @@ class EnsureSchoolIsSelected
         }
 
         $context = app(SchoolContext::class);
-        $context->ensureDefaultSchool($user);
+        if (! $context->ensureDefaultSchool($user)) {
+            abort_unless($request->isMethod('GET') || $request->isMethod('HEAD'), 403);
 
-        if (! session('active_school_id') && $context->availableSchools($user)->count() > 1) {
-            return redirect('/school/select');
+            return redirect()->route('school.select');
         }
 
         return $next($request);

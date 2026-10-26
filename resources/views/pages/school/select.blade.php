@@ -1,14 +1,13 @@
 @extends('layouts.app')
 
 @section('content')
-    <x-common.page-breadcrumb pageTitle="Pilih Sekolah" />
+    <x-common.page-breadcrumb :pageTitle="$title" />
 
     <section class="rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
         <div class="max-w-2xl">
-            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-500">Multi-School Context</p>
-            <h1 class="text-2xl font-semibold text-gray-900 dark:text-white/90">Pilih sekolah aktif</h1>
+            <h1 class="text-2xl font-semibold text-gray-900 dark:text-white/90">{{ $schools->isEmpty() ? 'Belum memiliki akses sekolah' : 'Pilih sekolah aktif' }}</h1>
             <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
-                Semua menu operasional akan membaca role dan data berdasarkan sekolah yang dipilih.
+                {{ $schools->isEmpty() ? 'Hubungi admin sekolah untuk mendapatkan akses atau memeriksa pengajuan Anda.' : 'Menu dan data yang tersedia mengikuti akses Anda di sekolah yang dipilih.' }}
             </p>
         </div>
 
@@ -30,7 +29,11 @@
                 </form>
             @empty
                 <div class="rounded-lg border border-warning-200 bg-warning-50 p-4 text-sm text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-400">
-                    Akun ini belum punya afiliasi sekolah. Hubungi admin untuk mengisi school_user_roles.
+                    @if($pendingSchoolNames->isNotEmpty())
+                        Pengajuan akses menunggu persetujuan: {{ $pendingSchoolNames->implode(', ') }}.
+                    @else
+                        Akun Anda belum terhubung ke sekolah dengan akses aktif.
+                    @endif
                 </div>
             @endforelse
         </div>

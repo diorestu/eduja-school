@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Exceptions\OutstandingStudentBills;
 use App\Models\Alumni;
 use App\Models\Department;
 use App\Models\SchoolClass;
@@ -19,30 +18,21 @@ class AcademicFoundationController extends Controller
     {
         $schoolId = $schoolContext->activeSchoolIdFor();
 
-        return view('pages.foundation.index', [
-            'title' => 'Jurusan & Program Keahlian',
-            'eyebrow' => 'Akademik Lanjutan',
-            'description' => 'Kelola jurusan sebagai fondasi rombel, kenaikan kelas, dan kelulusan.',
-            'metrics' => [
-                ['label' => 'Jurusan Aktif', 'value' => Department::where('school_id', $schoolId)->where('is_active', true)->count()],
-                ['label' => 'Rombel', 'value' => SchoolClass::where('school_id', $schoolId)->count()],
-                ['label' => 'Siswa Aktif', 'value' => Student::where('school_id', $schoolId)->where('status', 'active')->count()],
-            ],
-            'rows' => Department::where('school_id', $schoolId)->latest()->get(['code', 'name', 'is_active']),
-            'columns' => ['code' => 'Kode', 'name' => 'Jurusan', 'is_active' => 'Aktif'],
-            'form' => [
-                'action' => route('academic.departments.store'),
-                'fields' => [
-                    ['name' => 'code', 'label' => 'Kode', 'placeholder' => 'IPA'],
-                    ['name' => 'name', 'label' => 'Nama Jurusan', 'placeholder' => 'Ilmu Pengetahuan Alam'],
-                ],
-                'button' => 'Tambah Jurusan',
-            ],
-        ]);
+        abort_unless($schoolId, 403);
+        abort_unless(in_array($schoolContext->activeSchool()?->level, ['smk', 'mak'], true), 403);
+        return view('pages.academic.departments', ['title' => 'Jurusan & Program Keahlian', 'departments' => Department::where('school_id', $schoolId)->orderBy('code')->get()]);
     }
 
     public function storeDepartment(Request $request, SchoolContext $schoolContext, AcademicLifecycleService $service): RedirectResponse
     {
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        abort_unless($schoolId, 403);
+        if (! in_array($schoolContext->activeSchool()?->level, ['smk', 'mak'], true)) return back()->withErrors(['code' => 'Jurusan hanya tersedia untuk SMK/MAK.']);
+        if (in_array($request->input('action'), ['deactivate', 'activate'], true)) {
+            $data = $request->validate(['department_id' => ['required', 'integer']]);
+            Department::where('school_id', $schoolId)->findOrFail($data['department_id'])->update(['is_active' => $request->input('action') === 'activate']);
+            return back()->with('success', 'Status jurusan diperbarui; riwayat kelas tetap tersimpan.');
+        }
         $validated = $request->validate([
             'code' => ['required', 'string', 'max:20'],
             'name' => ['required', 'string', 'max:120'],
@@ -52,6 +42,13 @@ class AcademicFoundationController extends Controller
         abort_unless($schoolId, 403);
         if (! in_array(optional($schoolContext->activeSchool())->level, ['smk', 'mak'], true)) {
             return back()->withErrors(['code' => 'Jurusan hanya tersedia untuk SMK/MAK.'])->withInput();
+        }
+        if ($request->input('action') === 'update') {
+            $data = $request->validate(['department_id' => ['required', 'integer']]);
+            $department = Department::where('school_id', $schoolId)->findOrFail($data['department_id']);
+            if (Department::where('school_id', $schoolId)->where('code', strtoupper($validated['code']))->whereKeyNot($department->id)->exists()) return back()->withErrors(['code' => 'Kode jurusan sudah digunakan.']);
+            $department->update(['code' => strtoupper($validated['code']), 'name' => $validated['name']]);
+            return back()->with('success', 'Jurusan diperbarui.');
         }
         Department::updateOrCreate(
             ['school_id' => $schoolId, 'code' => strtoupper($validated['code'])],
@@ -64,41 +61,23 @@ class AcademicFoundationController extends Controller
     public function promotion(SchoolContext $schoolContext): View
     {
         $schoolId = $schoolContext->activeSchoolIdFor();
-
-        return view('pages.foundation.index', [
-            'title' => 'Kenaikan Kelas',
-            'eyebrow' => 'Wizard Akademik',
-            'description' => 'Alur bertahap untuk validasi siswa aktif, tujuan rombel, dan arsip keputusan.',
-            'metrics' => [
-                ['label' => 'Siswa Aktif', 'value' => Student::where('school_id', $schoolId)->where('status', 'active')->count()],
-                ['label' => 'Rombel Tujuan', 'value' => SchoolClass::where('school_id', $schoolId)->count()],
-            ],
-            'rows' => Student::where('school_id', $schoolId)->where('status', 'active')->latest()->get(['id', 'nis', 'name', 'status']),
-            'columns' => ['nis' => 'NIS', 'name' => 'Nama', 'status' => 'Status'],
-            'sections' => [
-                ['title' => 'Tahap 1', 'items' => ['Pilih tahun ajaran dan kelas asal.']],
-                ['title' => 'Tahap 2', 'items' => ['Validasi siswa naik kelas, tinggal kelas, atau pindah.']],
-                ['title' => 'Tahap 3', 'items' => ['Buat rombel tujuan dan simpan berita acara.']],
-            ],
-            'form' => [
-                'action' => route('academic.promotion.store'),
-                'fields' => [
-                    [
-                        'name' => 'student_ids[]',
-                        'label' => 'Siswa',
-                        'type' => 'select',
-                        'multiple' => true,
-                        'options' => Student::where('school_id', $schoolId)->where('status', 'active')->orderBy('name')->pluck('name', 'id')->all(),
-                    ],
-                    [
-                        'name' => 'target_class_id',
-                        'label' => 'Kelas Tujuan',
-                        'type' => 'select',
-                        'options' => SchoolClass::where('school_id', $schoolId)->orderBy('grade')->orderBy('name')->pluck('name', 'id')->all(),
-                    ],
-                ],
-                'button' => 'Proses Kenaikan',
-            ],
+        abort_unless($schoolId, 403);
+        $years = \App\Models\AcademicYear::where('school_id', $schoolId)->orderByDesc('year')->get();
+        $yearId = request()->integer('academic_year_id') ?: $years->firstWhere('is_active', true)?->id;
+        $classes = SchoolClass::where('school_id', $schoolId)->when($yearId, fn ($q) => $q->where('academic_year_id', $yearId))->orderBy('grade')->orderBy('name')->get();
+        $terminalGrade = match ($schoolContext->activeSchool()?->level) { 'sd', 'mi' => 6, 'smp', 'mts' => 9, default => 12 };
+        $sourceClasses = $classes;
+        if (request()->user()->hasRole('wali_kelas') && ! request()->user()->hasRole(['kepsek', 'wakasek', 'tu', 'staf_tu', 'pic_sekolah'])) {
+            $sourceClasses = $sourceClasses->filter(fn ($class) => $class->teacher?->user_id === request()->user()->id);
+        }
+        $sourceId = request()->integer('source_class_id');
+        $students = $sourceClasses->contains('id', $sourceId)
+            ? Student::where('school_id', $schoolId)->active()->whereHas('schoolClasses', fn ($q) => $q->where('school_classes.id', $sourceId))->orderBy('name')->get()
+            : collect();
+        return view('pages.academic.workflow', [
+            'title' => 'Kenaikan Kelas', 'workflow' => 'promotion', 'years' => $years, 'yearId' => $yearId,
+            'classes' => $sourceClasses, 'sourceId' => $sourceId, 'students' => $students,
+            'targetClasses' => SchoolClass::where('school_id', $schoolId)->with('academicYear')->orderBy('grade')->orderBy('name')->get(),
         ]);
     }
 
@@ -107,10 +86,13 @@ class AcademicFoundationController extends Controller
         $schoolId = $schoolContext->activeSchoolIdFor();
         $validated = $request->validate([
             'student_ids' => ['required', 'array', 'min:1'],
-            'student_ids.*' => ['integer'],
+            'student_ids.*' => ['integer', 'distinct'],
+            'academic_year_id' => ['nullable', 'integer'],
+            'source_class_id' => ['nullable', 'integer'],
             'target_class_id' => ['required', 'integer'],
         ]);
 
+        $this->validateAcademicSelection($schoolId, $validated, false);
         $count = $service->promote($schoolId, $validated['student_ids'], $validated['target_class_id'], $request->user()?->id);
 
         if ($count === 0) {
@@ -125,35 +107,23 @@ class AcademicFoundationController extends Controller
     public function graduation(SchoolContext $schoolContext): View
     {
         $schoolId = $schoolContext->activeSchoolIdFor();
-
-        return view('pages.foundation.index', [
-            'title' => 'Kelulusan',
-            'eyebrow' => 'Wizard Akademik',
-            'description' => 'Kelulusan mengecek tunggakan, menutup presensi, dan membuat profil alumni.',
-            'metrics' => [
-                ['label' => 'Kandidat', 'value' => Student::where('school_id', $schoolId)->where('status', 'active')->count()],
-                ['label' => 'Alumni', 'value' => Alumni::where('school_id', $schoolId)->count()],
-            ],
-            'rows' => Student::where('school_id', $schoolId)->where('status', 'active')->latest()->get(['id', 'nis', 'name', 'status']),
-            'columns' => ['nis' => 'NIS', 'name' => 'Nama', 'status' => 'Status'],
-            'sections' => [
-                ['title' => 'Kontrol Kelulusan', 'items' => ['Cek tunggakan sebelum lulus.', 'Nonaktifkan absensi setelah status graduated.', 'Buat data alumni otomatis dari siswa.']],
-            ],
-            'form' => [
-                'action' => route('academic.graduation.store'),
-                'fields' => [
-                    [
-                        'name' => 'student_ids[]',
-                        'label' => 'Siswa',
-                        'type' => 'select',
-                        'multiple' => true,
-                        'options' => Student::where('school_id', $schoolId)->where('status', 'active')->orderBy('name')->pluck('name', 'id')->all(),
-                    ],
-                    ['name' => 'graduation_date', 'label' => 'Tanggal Lulus', 'type' => 'date'],
-                    ['name' => 'graduation_year', 'label' => 'Tahun Lulus', 'type' => 'number', 'placeholder' => now()->year],
-                ],
-                'button' => 'Proses Kelulusan',
-            ],
+        abort_unless($schoolId, 403);
+        $years = \App\Models\AcademicYear::where('school_id', $schoolId)->orderByDesc('year')->get();
+        $yearId = request()->integer('academic_year_id') ?: $years->firstWhere('is_active', true)?->id;
+        $classes = SchoolClass::where('school_id', $schoolId)->when($yearId, fn ($q) => $q->where('academic_year_id', $yearId))->orderBy('grade')->orderBy('name')->get();
+        $terminalGrade = match ($schoolContext->activeSchool()?->level) { 'sd', 'mi' => 6, 'smp', 'mts' => 9, default => 12 };
+        $sourceClasses = $classes->where('grade', $terminalGrade);
+        if (request()->user()->hasRole('wali_kelas') && ! request()->user()->hasRole(['kepsek', 'wakasek', 'tu', 'staf_tu', 'pic_sekolah'])) {
+            $sourceClasses = $sourceClasses->filter(fn ($class) => $class->teacher?->user_id === request()->user()->id);
+        }
+        $sourceId = request()->integer('source_class_id');
+        $students = $sourceClasses->contains('id', $sourceId)
+            ? Student::where('school_id', $schoolId)->active()->whereHas('schoolClasses', fn ($q) => $q->where('school_classes.id', $sourceId))->orderBy('name')->get()
+            : collect();
+        return view('pages.academic.workflow', [
+            'title' => 'Kelulusan', 'workflow' => 'graduation', 'years' => $years, 'yearId' => $yearId,
+            'classes' => $sourceClasses, 'sourceId' => $sourceId, 'students' => $students,
+            'targetClasses' => SchoolClass::where('school_id', $schoolId)->with('academicYear')->orderBy('grade')->orderBy('name')->get(),
         ]);
     }
 
@@ -162,22 +132,18 @@ class AcademicFoundationController extends Controller
         $schoolId = $schoolContext->activeSchoolIdFor();
         $validated = $request->validate([
             'student_ids' => ['required', 'array', 'min:1'],
-            'student_ids.*' => ['integer'],
+            'student_ids.*' => ['integer', 'distinct'],
+            'academic_year_id' => ['nullable', 'integer'],
+            'source_class_id' => ['nullable', 'integer'],
             'graduation_date' => ['required', 'date'],
             'graduation_year' => ['required', 'integer', 'min:1900', 'max:2100'],
         ]);
 
-        try {
-            $count = $service->graduate(
-                $schoolId,
-                $validated['student_ids'],
-                $validated['graduation_date'],
-                $validated['graduation_year'],
-                $request->user()?->id,
-            );
-        } catch (OutstandingStudentBills $exception) {
-            return back()->with('error', 'Kelulusan dibatalkan. Siswa masih memiliki tunggakan: '.implode(', ', $exception->studentNames).'.');
-        }
+        $this->validateAcademicSelection($schoolId, $validated, true);
+        $count = $service->graduate(
+            $schoolId, $validated['student_ids'], $validated['graduation_date'],
+            $validated['graduation_year'], $request->user()?->id,
+        );
 
         if ($count === 0) {
             return back()->with('error', 'Tidak ada siswa aktif yang valid untuk diproses.');
@@ -186,12 +152,39 @@ class AcademicFoundationController extends Controller
         return back()->with('success', $count.' siswa berhasil diluluskan dan dipindahkan ke alumni.');
     }
 
+    private function validateAcademicSelection(int $schoolId, array $data, bool $graduation): void
+    {
+        $source = isset($data['source_class_id']) ? SchoolClass::where('school_id', $schoolId)->findOrFail($data['source_class_id']) : null;
+        if (isset($data['academic_year_id'])) {
+            \App\Models\AcademicYear::where('school_id', $schoolId)->findOrFail($data['academic_year_id']);
+            if ($source && (int) $source->academic_year_id !== (int) $data['academic_year_id']) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['source_class_id' => 'Kelas tidak termasuk tahun ajaran yang dipilih.']);
+            }
+        }
+        $isHomeroomOnly = request()->user()->hasRole('wali_kelas') && ! request()->user()->hasRole(['kepsek', 'wakasek', 'tu', 'staf_tu', 'pic_sekolah']);
+        if ($isHomeroomOnly) {
+            abort_unless($source && $source->teacher?->user_id === request()->user()->id, 403);
+        }
+        if ($source) {
+            $count = Student::where('school_id', $schoolId)->active()->whereIn('id', $data['student_ids'])
+                ->whereHas('schoolClasses', fn ($q) => $q->where('school_classes.id', $source->id))->count();
+            if ($count !== count($data['student_ids'])) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['student_ids' => 'Siswa harus berasal dari kelas yang dipilih.']);
+            }
+        }
+    }
+
     public function alumni(SchoolContext $schoolContext): View
     {
         $schoolId = $schoolContext->activeSchoolIdFor();
         $isAlumni = request()->user()->hasRole(['alumni']);
         $alumni = Alumni::where('school_id', $schoolId)
             ->when($isAlumni, fn ($q) => $q->where('user_id', request()->user()->id))->latest()->get();
+
+        foreach ($alumni as $profile) {
+            app(\App\Services\AlumniProfileService::class)->synchronizeSchoolHistory($profile);
+            $profile->load('educationEntries');
+        }
 
         return view('pages.foundation.alumni', [
             'title' => 'Alumni',
@@ -215,16 +208,7 @@ class AcademicFoundationController extends Controller
             abort_unless($alumni->user_id === $request->user()->id, 403);
         }
 
-        $validated = $request->validate([
-            'phone' => ['nullable', 'string', 'max:30'],
-            'email' => ['nullable', 'email', 'max:160'],
-            'address' => ['nullable', 'string', 'max:1000'],
-            'current_status' => ['required', 'string', 'max:60'],
-            'education_history' => ['nullable', 'string', 'max:2000'],
-            'current_job' => ['nullable', 'string', 'max:160'],
-        ]);
-
-        $alumni->update($validated);
+        app(\App\Services\AlumniProfileService::class)->update($alumni, $request);
 
         return back()->with('success', 'Profil alumni berhasil diperbarui.');
     }

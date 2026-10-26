@@ -17,7 +17,8 @@ class FinanceLedgerService
 
         Transaction::query()
             ->with('invoice.student')
-            ->where('status', 'approved')
+            ->whereIn('status', ['approved', 'confirmed'])
+            ->when($filters['source_funding'] ?? null, fn ($query, $source) => $query->whereRaw('LOWER(?) = ?', [$source, 'komite']))
             ->whereHas('invoice', fn ($query) => $query->where('school_id', $schoolId))
             ->when($filters['from'] ?? null, fn ($query, $from) => $query->whereDate('payment_date', '>=', $from))
             ->when($filters['to'] ?? null, fn ($query, $to) => $query->whereDate('payment_date', '<=', $to))
@@ -90,6 +91,22 @@ class FinanceLedgerService
                 ]);
             });
 
+        \App\Models\FinanceAccountTransfer::where('school_id', $schoolId)
+            ->when($filters['from'] ?? null, fn ($query, $date) => $query->whereDate('transfer_date', '>=', $date))
+            ->when($filters['to'] ?? null, fn ($query, $date) => $query->whereDate('transfer_date', '<=', $date))
+            ->get()->each(function ($transfer) use ($entries, $filters) {
+                foreach ([$transfer->from_account_id => false, $transfer->to_account_id => true] as $id => $incoming) {
+                    $account = \App\Models\SchoolAccount::find($id);
+                    if (($filters['account_id'] ?? null) && (int) $filters['account_id'] !== $id) { continue; }
+                    if (($filters['source_funding'] ?? null) && strcasecmp($filters['source_funding'], $account?->source_funding ?? '') !== 0) { continue; }
+                    $entries->push(['id' => $transfer->id, 'type' => 'transfer', 'school_id' => $transfer->school_id,
+                        'date' => $transfer->transfer_date, 'ref' => 'TRF-'.$transfer->id,
+                        'description' => 'Transfer antar rekening '.($incoming ? 'masuk' : 'keluar'), 'amount' => (float) $transfer->amount,
+                        'debet' => $incoming ? (float) $transfer->amount : 0.0, 'kredit' => $incoming ? 0.0 : (float) $transfer->amount,
+                        'source_funding' => $account?->source_funding ?? '', 'payment_method' => in_array(strtolower($account?->type ?? ''), ['cash', 'tunai']) ? 'Tunai' : 'Transfer', 'account_id' => $id]);
+                }
+            });
+
         return $entries
             ->sortBy(fn (array $entry) => $entry['date']->format('Y-m-d'))
             ->values();
@@ -108,8 +125,8 @@ class FinanceLedgerService
         }
 
         $entries = $this->entries($schoolId);
-        $collected = (float) $entries->sum('debet');
-        $spent = (float) $entries->sum('kredit');
+        $collected = (float) $entries->where('type', '!=', 'transfer')->sum('debet');
+        $spent = (float) $entries->where('type', '!=', 'transfer')->sum('kredit');
         $sppCollected = (float) $entries->where('type', 'spp')->sum('amount');
         $invoiced = (float) Invoice::query()->where('school_id', $schoolId)->sum('total_amount');
 
@@ -117,8 +134,9 @@ class FinanceLedgerService
             'collected' => $collected,
             'spent' => $spent,
             'outstanding' => max(0, $invoiced - $sppCollected),
-            'cash_balance' => $collected - $spent,
-            'account_balance' => (float) SchoolAccount::query()->where('school_id', $schoolId)->sum('current_balance'),
+            'cash_balance' => (float) SchoolAccount::where('school_id', $schoolId)->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(type)'), ['cash', 'tunai'])->sum('current_balance'),
+            'account_balance' => (float) SchoolAccount::where('school_id', $schoolId)->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(type)'), ['bank', 'bos'])->sum('current_balance'),
+            'total_balance' => (float) SchoolAccount::where('school_id', $schoolId)->sum('current_balance'),
         ];
     }
 
@@ -126,9 +144,10 @@ class FinanceLedgerService
     {
         $entries = $this->entries($schoolId, $filters);
         $taxEntries = $this->taxEntries($schoolId, $filters);
-        $ledger = $this->withRunningBalance($entries);
-        $bukuKas = $this->withRunningBalance($entries->filter(fn (array $entry) => mb_strtolower((string) $entry['payment_method']) === 'tunai')->values());
-        $bukuBank = $this->withRunningBalance($entries->filter(fn (array $entry) => mb_strtolower((string) $entry['payment_method']) !== 'tunai')->values());
+        $opening = $this->openingBalances($schoolId, $filters);
+        $ledger = $this->withRunningBalance($entries, $opening['total']);
+        $bukuKas = $this->withRunningBalance($entries->filter(fn (array $entry) => mb_strtolower((string) $entry['payment_method']) === 'tunai')->values(), $opening['cash']);
+        $bukuBank = $this->withRunningBalance($entries->filter(fn (array $entry) => mb_strtolower((string) $entry['payment_method']) !== 'tunai')->values(), $opening['bank']);
         $bukuPajak = $this->withRunningBalance($taxEntries);
 
         return [
@@ -138,11 +157,40 @@ class FinanceLedgerService
             'bukuPajak' => $bukuPajak,
             'totalDebet' => (float) $ledger->sum('debet'),
             'totalKredit' => (float) $ledger->sum('kredit'),
-            'finalBalance' => (float) ($ledger->last()['saldo'] ?? 0),
-            'balanceKas' => (float) ($bukuKas->last()['saldo'] ?? 0),
-            'balanceBank' => (float) ($bukuBank->last()['saldo'] ?? 0),
+            'openingBalance' => $opening['total'],
+            'finalBalance' => (float) ($ledger->last()['saldo'] ?? $opening['total']),
+            'balanceKas' => (float) ($bukuKas->last()['saldo'] ?? $opening['cash']),
+            'balanceBank' => (float) ($bukuBank->last()['saldo'] ?? $opening['bank']),
             'balancePajak' => (float) ($bukuPajak->last()['saldo'] ?? 0),
         ];
+    }
+
+    private function openingBalances(int $schoolId, array $filters): array
+    {
+        $accounts = SchoolAccount::where('school_id', $schoolId)->get();
+        $source = strtolower($filters['source_funding'] ?? '');
+        $accounts = $accounts->filter(fn ($account) => (! ($filters['account_id'] ?? null) || (int) $account->id === (int) $filters['account_id'])
+            && (! $source || ($source === 'komite' && (! $account->source_funding || strtolower($account->source_funding) === 'komite'))
+                || ($source === 'bos' && strtolower($account->source_funding ?? '') === 'bos') || strtolower($account->source_funding ?? '') === $source));
+        $from = $filters['from'] ?? null;
+        $snapshot = $from ? \App\Models\BookClosing::where('school_id', $schoolId)->where('status', 'closed')->get()
+            ->filter(fn ($closing) => isset($closing->snapshot['next_opening']['date']) && $closing->snapshot['next_opening']['date'] <= $from)
+            ->sortByDesc(fn ($closing) => $closing->snapshot['next_opening']['date'])->first()?->snapshot['next_opening'] : null;
+        $balances = $accounts->mapWithKeys(function ($account) use ($snapshot) {
+            $saved = collect($snapshot['accounts'] ?? [])->firstWhere('id', $account->id);
+            return [$account->id => $saved ? (float) $saved['balance'] : (float) $account->opening_balance];
+        });
+        if ($from) {
+            $earlier = $this->entries($schoolId, array_diff_key($filters, ['from' => true, 'to' => true]))
+                ->filter(fn ($entry) => $entry['date']->toDateString() < $from && (! $snapshot || $entry['date']->toDateString() >= $snapshot['date']));
+            foreach ($earlier as $entry) {
+                if ($balances->has($entry['account_id'])) {
+                    $balances[$entry['account_id']] += $entry['debet'] - $entry['kredit'];
+                }
+            }
+        }
+        $cashIds = $accounts->filter(fn ($account) => in_array(strtolower($account->type), ['tunai', 'cash'], true))->pluck('id')->all();
+        return ['total' => (float) $balances->sum(), 'cash' => (float) $balances->only($cashIds)->sum(), 'bank' => (float) $balances->except($cashIds)->sum()];
     }
 
     private function taxEntries(int $schoolId, array $filters): Collection
@@ -180,9 +228,8 @@ class FinanceLedgerService
         return $entries->sortBy(fn (array $entry) => $entry['date']->format('Y-m-d'))->values();
     }
 
-    private function withRunningBalance(Collection $entries): Collection
+    private function withRunningBalance(Collection $entries, float $balance = 0.0): Collection
     {
-        $balance = 0.0;
 
         return $entries->map(function (array $entry) use (&$balance): array {
             $balance += $entry['debet'] - $entry['kredit'];

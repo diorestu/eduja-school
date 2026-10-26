@@ -49,13 +49,13 @@ class AuthController extends Controller
 
     private function redirectAfterLogin(Request $request, User $user): RedirectResponse
     {
+        $request->session()->forget(['active_school_id', 'url.intended']);
         $route = app(\App\Services\RoleRedirectService::class)->afterLogin($user);
         if ($route === 'dashboard') {
-            $school = app(\App\Services\SchoolContext::class)->availableSchools($user)->first();
-            if ($school) $request->session()->put('active_school_id', $school->id);
+            app(\App\Services\SchoolContext::class)->ensureDefaultSchool($user);
         }
 
-        return redirect()->intended(route($route));
+        return redirect()->route($route);
     }
 
     private function normalizePhone(string $phone): string

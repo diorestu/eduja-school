@@ -25,6 +25,7 @@ class Student extends Model
         'phone',
         'parent_name',
         'parent_phone',
+        'photo_path',
         'generation',
         'is_active',
         'status',

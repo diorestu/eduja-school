@@ -23,6 +23,11 @@ class PaymentSubmission extends Model
         return $this->belongsTo(School::class);
     }
 
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(SchoolAccount::class, 'account_id');
+    }
+
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);

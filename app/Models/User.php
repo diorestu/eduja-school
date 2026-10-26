@@ -83,21 +83,8 @@ class User extends Authenticatable
     public function hasRole(string|array $roles): bool
     {
         $roles = is_array($roles) ? $roles : [$roles];
-        $schoolId = session('active_school_id');
 
-        if ($schoolId && $this->schoolRoles()->where('school_id', $schoolId)->where('is_active', true)->exists()) {
-            return app(\App\Services\PermissionService::class)->hasAnyRole($this, $roles);
-        }
-
-        $legacyRoleMap = [
-            'super_admin' => 'kepsek',
-            'bendahara' => 'bendahara',
-            'staf_tu' => 'tu',
-        ];
-
-        $currentRoles = array_filter([$this->role, $legacyRoleMap[$this->role] ?? null]);
-
-        return count(array_intersect($currentRoles, $roles)) > 0;
+        return app(\App\Services\PermissionService::class)->hasAnyRole($this, $roles);
     }
 
     public function schoolRoles(): HasMany

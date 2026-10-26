@@ -17,35 +17,18 @@ use Carbon\Carbon;
 
 class ExecutiveDashboardController extends Controller
 {
-    public function dinas(): View
+    public function dinas(Request $request, \App\Services\DistrictDashboardService $dashboardService): View
     {
-        $months = collect(range(5, 0))->map(fn (int $offset) => now()->subMonths($offset)->startOfMonth());
-        $schoolQuery = School::query()->where('is_active', true);
-        $schoolIds = (clone $schoolQuery)->pluck('id');
-        $districtDashboard = [
-            'schoolBreakdown' => [
-                'sd_mi' => (clone $schoolQuery)->whereIn('level', ['sd', 'mi'])->count(),
-                'smp_mts' => (clone $schoolQuery)->whereIn('level', ['smp', 'mts'])->count(),
-                'sma_ma' => (clone $schoolQuery)->whereIn('level', ['sma', 'ma'])->count(),
-                'smk_mak' => (clone $schoolQuery)->whereIn('level', ['smk', 'mak'])->count(),
-                'negeri' => (clone $schoolQuery)->where('ownership', 'negeri')->count(),
-                'swasta' => (clone $schoolQuery)->where('ownership', 'swasta')->count(),
-            ],
-            'people' => [
-                'students' => Student::whereIn('school_id', $schoolIds)->where('is_active', true)->count(),
-                'teachers' => Teacher::whereIn('school_id', $schoolIds)->where('is_active', true)->where('role_type', 'Guru')->count(),
-                'staff' => Teacher::whereIn('school_id', $schoolIds)->where('is_active', true)->where('role_type', '!=', 'Guru')->count(),
-            ],
-            'months' => $months->map(fn (Carbon $month) => $month->format('M Y'))->values()->all(),
-            'attendance' => [
-                'students' => $months->map(fn (Carbon $month) => StudentAttendance::whereIn('school_id', $schoolIds)->whereDate('attendance_date', '>=', $month)->whereDate('attendance_date', '<', $month->copy()->addMonth())->where('status', 'H')->count())->values()->all(),
-                'teachers' => $months->map(fn (Carbon $month) => \App\Models\TeacherAttendance::whereIn('school_id', $schoolIds)->whereHas('teacher', fn ($query) => $query->where('role_type', 'Guru'))->whereDate('attendance_date', '>=', $month)->whereDate('attendance_date', '<', $month->copy()->addMonth())->where('status', 'H')->count())->values()->all(),
-                'staff' => $months->map(fn (Carbon $month) => \App\Models\TeacherAttendance::whereIn('school_id', $schoolIds)->whereHas('teacher', fn ($query) => $query->where('role_type', '!=', 'Guru'))->whereDate('attendance_date', '>=', $month)->whereDate('attendance_date', '<', $month->copy()->addMonth())->where('status', 'H')->count())->values()->all(),
-            ],
-            'bos' => $months->map(fn (Carbon $month) => (float) Expense::where('source_funding', 'BOS')->where('status', '!=', 'rejected')->whereDate('transaction_date', '>=', $month)->whereDate('transaction_date', '<', $month->copy()->addMonth())->sum('amount'))->values()->all(),
-        ];
+        $validated = $request->validate(['school_id' => ['nullable', 'integer', 'min:1']]);
+        $schools = School::query()->where('is_active', true)->where('status', 'active')->orderBy('name')->get();
+        $selectedSchool = null;
+        if (isset($validated['school_id'])) {
+            $selectedSchool = $schools->firstWhere('id', (int) $validated['school_id']);
+            abort_unless($selectedSchool, 404);
+        }
+        $districtDashboard = $dashboardService->dashboard($selectedSchool);
 
-        return view('pages.foundation.dinas', compact('districtDashboard'));
+        return view('pages.foundation.dinas', compact('districtDashboard', 'schools', 'selectedSchool'));
     }
 
     public function yayasan(Request $request): View
@@ -66,19 +49,19 @@ class ExecutiveDashboardController extends Controller
 
     private function foundationSchools(Request $request)
     {
-        return School::query()->where('is_active', true)
-            ->whereHas('roles', fn ($query) => $query->where('user_id', $request->user()->id)->where('role', 'yayasan')->where('is_active', true))
+        return School::query()->where('is_active', true)->where('status', 'active')
+            ->whereHas('roles', fn ($query) => $query->where('user_id', $request->user()->id)->where('role', 'yayasan')->where('is_active', true)->where('membership_status', 'active'))
             ->orderBy('name')->get();
     }
 
     private function render(string $title, array $schoolIds, string $description, $foundationSchools = null, ?School $selectedSchool = null): View
     {
-        $schoolScope = fn ($query) => $schoolIds === [] ? $query : $query->whereIn('school_id', $schoolIds);
+        $schoolScope = fn ($query) => $query->whereIn('school_id', $schoolIds);
         $totalCollected = (float) $schoolScope(Transaction::query())->sum('amount_paid');
         $totalInvoices = (float) $schoolScope(Invoice::query())->sum('total_amount');
 
         $metrics = [
-            ['label' => 'Sekolah', 'value' => School::query()->when($schoolIds !== [], fn ($query) => $query->whereIn('id', $schoolIds))->count()],
+            ['label' => 'Sekolah', 'value' => count($schoolIds)],
             ['label' => 'Siswa', 'value' => $schoolScope(Student::query())->where('is_active', true)->count()],
             ['label' => 'Guru/GTK', 'value' => $schoolScope(Teacher::query())->where('is_active', true)->count()],
             ['label' => 'Kelas', 'value' => $schoolScope(SchoolClass::query())->count()],

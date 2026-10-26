@@ -36,7 +36,7 @@ class AttendanceRequestController extends Controller
 
     public function storeTeacher(Request $request, SchoolContext $schoolContext, AbsenceRequestService $absenceRequests): RedirectResponse
     {
-        $validated = $request->validate($this->rules(['sakit', 'cuti']));
+        $validated = $request->validate($this->rules(['sakit', 'cuti']) + ['leave_type'=>['nullable','in:annual,special'],'contact_phone'=>['nullable','string','max:40']]);
         $validated = $this->withDocument($request, $schoolContext, $validated);
 
         try {
@@ -53,6 +53,17 @@ class AttendanceRequestController extends Controller
         }
 
         return back()->with('success', 'Pengajuan absensi berhasil dikirim dan menunggu persetujuan.');
+    }
+
+    public function setLeaveEntitlement(Request $request, SchoolContext $context): RedirectResponse
+    {
+        abort_unless($request->user()->hasRole(['kepsek','tu','staf_tu']),403);
+        $data = $request->validate(['teacher_id'=>['required','integer'],'year'=>['required','integer','between:2000,2200'],'days'=>['required','integer','between:0,366']]);
+        abort_unless(\App\Models\Teacher::where('school_id',$context->activeSchoolIdFor())->whereKey($data['teacher_id'])->exists(),404);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($data,$context) {
+            \Illuminate\Support\Facades\DB::table('teacher_leave_entitlements')->updateOrInsert(['school_id'=>$context->activeSchoolIdFor(),'teacher_id'=>$data['teacher_id'],'year'=>$data['year']],['days'=>$data['days'],'updated_at'=>now(),'created_at'=>now()]);
+        });
+        return back()->with('success','Hak cuti tahunan disimpan.');
     }
 
     private function rules(array $requestTypes): array
@@ -84,8 +95,7 @@ class AttendanceRequestController extends Controller
     public function document(AttendanceRequest $absence, Request $request, SchoolContext $context)
     {
         abort_unless((int) $absence->school_id === $context->activeSchoolIdFor(), 404);
-        abort_unless($request->user()->hasRole(['kepsek', 'wakasek', 'tu', 'staf_tu', 'wali_kelas'])
-            || in_array($request->user()->id, [$absence->requester_id, $absence->submitted_by], true), 403);
+        abort_unless(app(\App\Services\AbsenceAccess::class)->canView($absence, $request->user()), 403);
         abort_unless($absence->document_path
             && str_starts_with($absence->document_path, 'attendance-documents/'.$absence->school_id.'/')
             && ! str_contains($absence->document_path, '..')

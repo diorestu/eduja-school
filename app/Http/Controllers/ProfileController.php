@@ -15,6 +15,9 @@ class ProfileController extends Controller
     {
         return view('pages.profile', [
             'title' => 'Profil Pengguna',
+            'alumniProfile' => auth()->user()?->hasRole('alumni')
+                ? \App\Models\Alumni::where('school_id', session('active_school_id'))->where('user_id', auth()->id())->first()
+                : null,
             'user' => auth()->user()
         ]);
     }

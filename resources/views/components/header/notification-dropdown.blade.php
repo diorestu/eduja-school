@@ -7,7 +7,11 @@
         <h2>Notifikasi sekolah</h2>
         <div class="max-h-80 overflow-y-auto">
         @forelse($schoolNotifications as $item)
-            <a class="work-row work-link" href="{{ $item['url'] }}">{{ $item['title'] }}</a>
+            @if(isset($item['notification_id']))
+                <form method="POST" action="{{ route('notifications.read', $item['notification_id']) }}">@csrf<button type="submit" class="work-row work-link w-full text-left">{{ $item['title'] }}</button></form>
+            @else
+                <a class="work-row work-link" href="{{ $item['url'] }}">{{ $item['title'] }}</a>
+            @endif
         @empty
             <p class="work-muted mt-4">Tidak ada pengumuman baru atau permohonan yang perlu Anda tinjau.</p>
         @endforelse

@@ -21,6 +21,9 @@ use LogicException;
 class ApprovalController extends Controller
 {
     private const APPROVABLE_TYPES = [
+        \App\Models\OtherIncomeRevision::class,
+        \App\Models\GrantIncomeRevision::class,
+        \App\Models\BosIncomeRevision::class,
         BudgetPlan::class,
         BudgetPlanRevision::class,
         Expense::class,
@@ -57,11 +60,30 @@ class ApprovalController extends Controller
             return $this->transitionAttendance($request, $approval, $attendanceApprovals, $status, $message);
         }
 
-        abort_unless($approval->school_id === $schoolContext->activeSchoolId(), 403);
+        abort_unless((int) $approval->school_id === $schoolContext->activeSchoolIdFor(), 403);
         abort_unless($approval->status === 'pending', 422, 'Approval ini sudah diproses.');
 
-        if ($approval->type === 'expense') {
+        $isPayment = $approval->type === 'payment' || $approval->approvable_type === PaymentSubmission::class;
+        $access = app(\App\Services\PaymentApprovalAccess::class);
+        $roles = app(\App\Services\PermissionService::class)->rolesForActiveSchool($request->user());
+        if (in_array('teller', $roles, true) && ! array_intersect($roles, ['bendahara', 'kepsek', 'super_admin'])) {
+            abort_unless($isPayment, 403);
+        }
+        if ($isPayment) {
+            abort_unless($access->canReview($request->user()) && $access->validPayment($approval), 403);
+        }
+
+        if ($approval->type === 'expense' || $approval->approvable_type === Expense::class) {
             abort_unless($request->user()->hasRole(['kepsek', 'super_admin']), 403);
+        }
+        if ($approval->type === 'bos_income_revision' || $approval->approvable_type === \App\Models\BosIncomeRevision::class) {
+            abort_unless($request->user()->hasRole(['kepsek', 'super_admin']), 403, 'Revisi penerimaan BOS harus diputuskan oleh kepala sekolah.');
+        }
+        if ($approval->type === 'grant_income_revision' || $approval->approvable_type === \App\Models\GrantIncomeRevision::class) {
+            abort_unless($request->user()->hasRole(['kepsek', 'super_admin']), 403, 'Revisi penerimaan Hibah harus diputuskan oleh kepala sekolah.');
+        }
+        if ($approval->type === 'other_income_revision' || $approval->approvable_type === \App\Models\OtherIncomeRevision::class) {
+            abort_unless($request->user()->hasRole(['kepsek', 'super_admin']), 403, 'Revisi pendapatan Lainnya harus diputuskan oleh kepala sekolah.');
         }
 
         if (in_array($approval->type, ['budget', 'budget_revision'], true) || in_array($approval->approvable_type, [BudgetPlan::class, BudgetPlanRevision::class], true)) {
@@ -69,7 +91,7 @@ class ApprovalController extends Controller
         }
 
         $validated = $request->validate([
-            'note' => ['nullable', 'string', 'max:1000'],
+            'note' => [$isPayment && $status === 'rejected' ? 'required' : 'nullable', 'string', 'max:1000'],
         ]);
 
         $approvable = $this->approvable($approval);
@@ -83,6 +105,12 @@ class ApprovalController extends Controller
         }
 
         DB::transaction(function () use ($approval, $approvable, $status, $validated, $request): void {
+            $approval = ApprovalRequest::whereKey($approval->id)->lockForUpdate()->firstOrFail();
+            abort_unless($approval->status === 'pending', 422, 'Approval ini sudah diproses.');
+            if ($approvable instanceof Expense) {
+                $approvable = Expense::whereKey($approvable->id)->lockForUpdate()->firstOrFail();
+                abort_unless($approvable->status === 'pending' && ! $approvable->posted_at, 422, 'Pengeluaran ini sudah diproses.');
+            }
             $approval->update([
                 'status' => $status,
                 'reviewed_by' => $request->user()->id,
@@ -92,6 +120,12 @@ class ApprovalController extends Controller
 
             if ($approvable && Schema::hasColumn($approvable->getTable(), 'status')) {
                 $payload = ['status' => $status];
+                if ($approvable instanceof PaymentSubmission) {
+                    $payment = PaymentSubmission::whereKey($approvable->id)->lockForUpdate()->firstOrFail();
+                    abort_unless($payment->status === 'pending' && ! $payment->posted_at, 422, 'Pembayaran ini sudah diproses.');
+                    $approvable = $payment;
+                    $payload['review_note'] = $validated['note'] ?? null;
+                }
                 if (Schema::hasColumn($approvable->getTable(), 'reviewed_by')) {
                     $payload['reviewed_by'] = $request->user()->id;
                 }

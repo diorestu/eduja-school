@@ -39,6 +39,8 @@ it('registers a guardian as active with a selected school code and owns the stud
 
 it('does not allow a non-superadmin to access permission settings', function () {
     $pic = User::factory()->create(['role' => 'pic_sekolah']);
+    $school = School::create(['name' => 'Sekolah PIC', 'status' => 'active', 'is_active' => true]);
+    $school->roles()->create(['user_id' => $pic->id, 'role' => 'pic_sekolah', 'is_active' => true, 'membership_status' => 'active']);
     $this->actingAs($pic)->get('/settings/permissions')->assertForbidden();
 });
 

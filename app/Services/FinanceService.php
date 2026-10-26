@@ -29,6 +29,7 @@ class FinanceService
             'school_id' => $schoolId,
             'name' => $attributes['name'],
             'type' => $attributes['type'] ?? 'Tunai',
+            'source_funding' => $attributes['source_funding'] ?? null,
             'bank_name' => $attributes['bank_name'] ?? null,
             'account_number' => $attributes['account_number'] ?? null,
             'opening_balance' => $openingBalance,
@@ -133,14 +134,18 @@ class FinanceService
         }
 
         return DB::transaction(function () use ($schoolId, $requestedBy, $attributes, $account): Expense {
+            [$account, $wallet] = app(ExpensePostingService::class)->sources($schoolId, $attributes);
             $expense = Expense::create([
                 ...$attributes,
                 'school_id' => $schoolId,
                 'account_id' => $account?->id,
+                'virtual_wallet_id' => $wallet?->id,
                 'status' => 'pending',
                 'tax_amount' => $attributes['tax_amount'] ?? 0,
                 'is_tax_paid' => (bool) ($attributes['is_tax_paid'] ?? false),
             ]);
+
+            $expense->update(['transaction_number' => 'EXP'.$expense->transaction_date->format('Ymd').str_pad((string) $expense->id, 8, '0', STR_PAD_LEFT)]);
 
             ApprovalRequest::create([
                 'school_id' => $schoolId,
@@ -177,6 +182,10 @@ class FinanceService
             throw new InvalidArgumentException('Tahun anggaran tidak berada pada sekolah aktif.');
         }
 
+        if ($year->status !== 'active') {
+            throw \Illuminate\Validation\ValidationException::withMessages(['budget_year_id' => 'Pilih tahun anggaran yang masih aktif.']);
+        }
+
         return DB::transaction(function () use ($schoolId, $requestedBy, $attributes): BudgetPlan {
             $plan = BudgetPlan::create([
                 ...$attributes,
@@ -199,6 +208,10 @@ class FinanceService
             throw new InvalidArgumentException('Rencana anggaran tidak berada pada sekolah aktif.');
         }
 
+        if ($plan->budgetYear?->status !== 'active') {
+            throw \Illuminate\Validation\ValidationException::withMessages(['budget_year_id' => 'Tahun anggaran sudah ditutup.']);
+        }
+
         return DB::transaction(function () use ($schoolId, $requestedBy, $plan, $attributes): BudgetPlanRevision {
             $revision = BudgetPlanRevision::create([
                 'school_id' => $schoolId,
@@ -218,6 +231,19 @@ class FinanceService
 
     public function applyApproval(ApprovalRequest $approval, Model $approvable, string $status, int $reviewerId): void
     {
+        if ($approvable instanceof \App\Models\OtherIncomeRevision) {
+            app(OtherIncomeService::class)->apply($approvable, $status, $reviewerId);
+
+            return;
+        }
+        if ($approvable instanceof \App\Models\BosIncomeRevision) {
+            app(BosIncomeService::class)->apply($approvable, $status, $reviewerId);
+        }
+        if ($approvable instanceof \App\Models\GrantIncomeRevision) {
+            app(GrantIncomeService::class)->apply($approvable, $status, $reviewerId);
+
+            return;
+        }
         if ($approvable instanceof Expense && $status === 'approved') {
             $this->postExpense($approvable, $reviewerId);
         }
@@ -260,20 +286,7 @@ class FinanceService
 
     private function postExpense(Expense $expense, int $reviewerId): void
     {
-        if ($expense->posted_at) {
-            return;
-        }
-
-        DB::transaction(function () use ($expense, $reviewerId): void {
-            if ($expense->account_id) {
-                SchoolAccount::query()->whereKey($expense->account_id)->decrement('current_balance', $expense->amount);
-            }
-
-            $expense->forceFill([
-                'posted_at' => now(),
-                'posted_by' => $reviewerId,
-            ])->save();
-        });
+        app(ExpensePostingService::class)->post($expense, $reviewerId);
     }
 
     private function postPayment(PaymentSubmission $payment, int $reviewerId): void
@@ -300,12 +313,13 @@ class FinanceService
                 $payments->validatePayment($invoice, $payment->amount);
                 $account = $payments->destinationAccount($payment->school_id, $payment->payment_method, $payment->account_id, (bool) $invoice->billing_period_id);
                 $payment->account_id = $account?->id;
-                \App\Models\Transaction::create([
+                $receipt = \App\Models\Transaction::create([
                     'invoice_id' => $invoice->id, 'school_id' => $payment->school_id, 'account_id' => $payment->account_id,
                     'amount_paid' => $payment->amount, 'payment_date' => $payment->payment_date,
                     'payment_method' => $payment->payment_method, 'receipt_number' => 'APPROVAL-'.$payment->id,
                     'recipient_name' => \App\Models\User::find($reviewerId)?->name, 'status' => 'approved',
                 ]);
+                app(InvoiceWalletAllocationService::class)->allocate($invoice, $receipt);
                 $payments->syncStatus($invoice);
             }
             if ($payment->account_id) {

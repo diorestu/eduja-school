@@ -108,6 +108,9 @@ class AbsenceRequestService
         $this->validateDates($schoolId, $subjectType, $subjectId, $start->toDateString(), $end->toDateString());
 
         return DB::transaction(function () use ($schoolId, $requester, $subjectType, $subjectId, $requestType, $reason, $start, $end, $attributes): AttendanceRequest {
+            if ($subjectType === Teacher::class && $requestType === 'cuti' && ($attributes['leave_type'] ?? 'special') === 'annual') {
+                $this->reserveAnnualLeave($schoolId, $subjectId, $start, $end);
+            }
             $absenceRequest = AttendanceRequest::query()->create([
                 'school_id' => $schoolId,
                 'requester_id' => $requester->id,
@@ -115,6 +118,8 @@ class AbsenceRequestService
                 'subject_type' => $subjectType,
                 'subject_id' => $subjectId,
                 'request_type' => $requestType,
+                'leave_type' => $subjectType === Teacher::class && $requestType === 'cuti' ? ($attributes['leave_type'] ?? 'special') : null,
+                'contact_phone' => $subjectType === Teacher::class ? ($attributes['contact_phone'] ?? null) : null,
                 'start_date' => $start->toDateString(),
                 'end_date' => $end->toDateString(),
                 'reason' => $reason,
@@ -134,9 +139,21 @@ class AbsenceRequestService
             ]);
 
             $absenceRequest->update(['approval_request_id' => $approval->id]);
+            app(NotificationService::class)->notifyUsers($schoolId, [$requester->id], 'attendance_request', 'Pengajuan absensi menunggu keputusan sekolah', '/attendance/requests', ['request_id'=>$absenceRequest->id], 'attendance-request:'.$absenceRequest->id);
 
             return $absenceRequest->fresh();
         });
+    }
+
+    private function reserveAnnualLeave(int $schoolId, int $teacherId, Carbon $start, Carbon $end): void
+    {
+        if ($start->year !== $end->year) throw new InvalidArgumentException('Ajukan cuti tahunan secara terpisah untuk setiap tahun.');
+        $allowance = DB::table('teacher_leave_entitlements')->where('school_id',$schoolId)->where('teacher_id',$teacherId)->where('year',$start->year)->lockForUpdate()->first();
+        if (! $allowance) throw new InvalidArgumentException('Hak cuti tahunan belum ditetapkan oleh sekolah.');
+        $reserved = AttendanceRequest::where('school_id',$schoolId)->where('subject_type',Teacher::class)->where('subject_id',$teacherId)
+            ->where('leave_type','annual')->whereIn('status',['pending','approved'])->whereYear('start_date',$start->year)->get()
+            ->sum(fn ($r)=>(int) $r->start_date->diffInDays($r->end_date ?? $r->start_date) + 1);
+        if ($reserved + (int) $start->diffInDays($end) + 1 > $allowance->days) throw new InvalidArgumentException('Sisa cuti tahunan tidak mencukupi. Pengajuan pending juga mencadangkan saldo.');
     }
 
     private function subjectId(array $attributes): int

@@ -21,7 +21,10 @@ it('exposes each executive dashboard only to its matching role', function () {
 });
 
 it('does not show executive dashboards to school administrators', function () {
-    $this->actingAs(User::factory()->create(['role' => 'super_admin']))->get('/dashboard')->assertOk();
+    $admin = User::factory()->create(['role' => 'super_admin']);
+    $school = School::create(['name' => 'Sekolah Admin', 'status' => 'active', 'is_active' => true]);
+    $school->roles()->create(['user_id' => $admin->id, 'role' => 'kepsek', 'is_active' => true, 'membership_status' => 'active']);
+    $this->actingAs($admin)->get('/dashboard')->assertOk();
     expect(collect(\App\Helpers\MenuHelper::getMainNavItems())->pluck('name')->all())
         ->not->toContain('Dashboard Dinas')
         ->not->toContain('Dashboard Yayasan');

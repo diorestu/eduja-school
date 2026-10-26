@@ -17,8 +17,9 @@
                     Registrasi Murid Baru
                 </h4>
 
-                <form action="{{ route('siswa.store') }}" method="POST" class="space-y-4">
+                <form action="{{ route('siswa.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                     @csrf
+                    <div><label for="student-photo" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Foto murid (opsional)</label><input id="student-photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" class="w-full text-sm"><p class="text-xs text-gray-500">JPG, PNG, atau WebP. Maksimal 2 MB.</p></div>
                     <div>
                         <label for="student-generation" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Angkatan (tahun masuk)</label>
                         <input id="student-generation" name="generation" type="number" min="1900" max="2200" value="{{ old('generation') }}" placeholder="Contoh: 2026" class="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm dark:border-gray-700 dark:text-white">
@@ -148,6 +149,11 @@
                                     <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/10">
                                         <td class="px-5 py-4">
                                             <span class="block font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $student->name }}</span>
+                                            <form method="POST" action="{{ route('siswa.store') }}" enctype="multipart/form-data" class="mt-2 flex flex-wrap gap-2">
+                                                @csrf
+                                                <input type="hidden" name="action" value="photo"><input type="hidden" name="student_id" value="{{ $student->id }}">
+                                                <label class="sr-only" for="student-photo-{{ $student->id }}">Foto {{ $student->name }}</label><input id="student-photo-{{ $student->id }}" type="file" name="photo" accept="image/jpeg,image/png,image/webp" required class="w-44 text-xs"><button type="submit" class="rounded px-2 py-1 text-xs text-brand-600 focus-visible:ring-2 focus-visible:ring-brand-500">Simpan foto</button>
+                                            </form>
                                             <form method="POST" action="{{ route('siswa.store') }}" class="mt-1 flex items-center gap-2">
                                                 @csrf
                                                 <input type="hidden" name="action" value="generation">
@@ -185,7 +191,9 @@
                                             <span class="block text-xs text-gray-400">{{ $student->parent_phone ?? '-' }}</span>
                                         </td>
                                         <td class="px-5 py-4">
-                                            <form action="{{ route('siswa.store') }}" method="POST" class="min-w-48 space-y-1.5">
+                                            @include('pages.academic.lifecycle-history', ['personType' => 'student', 'person' => $student, 'history' => $lifecycleHistories->get($student->id, collect())])
+                                            @include('pages.academic.person-editor', ['personType' => 'student', 'person' => $student])
+                                            <form action="{{ route('siswa.store') }}" method="POST" enctype="multipart/form-data" class="min-w-48 space-y-1.5">
                                                 @csrf
                                                 <input type="hidden" name="action" value="status">
                                                 <input type="hidden" name="student_id" value="{{ $student->id }}">
@@ -202,6 +210,12 @@
                                                     class="h-8 w-full rounded-md border border-gray-300 bg-transparent px-2 text-xs text-gray-700 focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
                                                 <input type="text" name="transfer_destination" placeholder="Sekolah tujuan jika pindah"
                                                     class="h-8 w-full rounded-md border border-gray-300 bg-transparent px-2 text-xs text-gray-700 focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                                                <label class="block text-xs text-gray-500">Surat pindah (wajib jika pindah)
+                                                    <input type="file" name="transfer_document" accept="application/pdf,image/jpeg,image/png" class="block w-full text-xs">
+                                                </label>
+                                                <label class="block text-xs text-gray-500">Dokumen pendukung status (opsional)
+                                                    <input type="file" name="status_document" accept="application/pdf,image/jpeg,image/png" class="block w-full text-xs">
+                                                </label>
                                                 <button type="submit" class="inline-flex h-8 items-center rounded-md bg-brand-500 px-2.5 text-xs font-semibold text-white hover:bg-brand-600 focus:outline-hidden focus:ring-2 focus:ring-brand-500/30">
                                                     Simpan status
                                                 </button>

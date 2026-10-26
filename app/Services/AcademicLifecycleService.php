@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Exceptions\OutstandingStudentBills;
 use App\Models\AcademicYear;
 use App\Models\Alumni;
 use App\Models\ClassStudent;
@@ -13,6 +12,7 @@ use App\Models\Teacher;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class AcademicLifecycleService
 {
@@ -94,7 +94,8 @@ class AcademicLifecycleService
             $students = Student::where('school_id', $schoolId)
                 ->where('status', 'active')
                 ->whereIn('id', $studentIds)
-                ->get();
+                ->lockForUpdate()->get();
+            $this->assertSelection($students, $studentIds);
 
             foreach ($students as $student) {
                 $currentMappings = ClassStudent::where('student_id', $student->id)
@@ -104,6 +105,13 @@ class AcademicLifecycleService
                     ->with('schoolClass')
                     ->get();
 
+                if ($currentMappings->isEmpty() || $currentMappings->contains(fn ($mapping) => (int) $targetClass->grade !== (int) $mapping->schoolClass->grade + 1 || (int) $targetClass->id === (int) $mapping->schoolClass->id)) {
+                    throw ValidationException::withMessages(['target_class_id' => 'Pilih kelas satu tingkat di atas pada tahun ajaran berikutnya.']);
+                }
+                $targetStart = $targetClass->academicYear?->start_date;
+                if ($targetStart && $currentMappings->contains(fn ($mapping) => $mapping->schoolClass->academicYear?->start_date && $targetStart->lessThanOrEqualTo($mapping->schoolClass->academicYear->start_date))) {
+                    throw ValidationException::withMessages(['target_class_id' => 'Tahun ajaran tujuan harus setelah tahun ajaran asal.']);
+                }
                 foreach ($currentMappings as $mapping) {
                     $this->archiveEnrollment($schoolId, $student->id, $mapping->schoolClass, 'promoted', $changedBy);
                     $mapping->delete();
@@ -126,23 +134,22 @@ class AcademicLifecycleService
                 ->where('status', 'active')
                 ->whereIn('id', $studentIds)
                 ->with('schoolClasses.department')
-                ->get();
+                ->lockForUpdate()->get();
 
-            $blockedNames = DB::table('invoices')
-                ->where('invoices.school_id', $schoolId)
-                ->whereIn('invoices.student_id', $students->pluck('id'))
-                ->where('invoices.status', '!=', 'Lunas')
-                ->join('students', 'students.id', '=', 'invoices.student_id')
-                ->pluck('students.name')
-                ->unique()
-                ->values()
-                ->all();
-
-            if ($blockedNames !== []) {
-                throw new OutstandingStudentBills($blockedNames);
+            $this->assertSelection($students, $studentIds);
+            $terminalGrade = match (School::findOrFail($schoolId)->level) {
+                'sd', 'mi' => 6,
+                'smp', 'mts' => 9,
+                default => 12,
+            };
+            foreach ($students as $student) {
+                if (! $student->schoolClasses->contains(fn ($class) => (int) $class->grade === $terminalGrade)) {
+                    throw ValidationException::withMessages(['student_ids' => 'Kelulusan hanya untuk siswa kelas akhir.']);
+                }
             }
 
             foreach ($students as $student) {
+                $this->notifyOutstandingBills($student, false);
                 $class = $student->schoolClasses->sortByDesc(fn (SchoolClass $item) => $item->academic_year_id)->first();
                 $this->transition(
                     $student,
@@ -154,7 +161,7 @@ class AcademicLifecycleService
                     $changedBy,
                 );
 
-                Alumni::updateOrCreate(
+                $alumni = Alumni::updateOrCreate(
                     ['school_id' => $schoolId, 'student_id' => $student->id],
                     [
                         'name' => $student->name,
@@ -167,11 +174,15 @@ class AcademicLifecycleService
                     ],
                 );
 
+                app(AlumniProfileService::class)->synchronizeSchoolHistory($alumni);
+
                 if ($student->user_id) {
                     DB::table('school_user_roles')->updateOrInsert(
                         ['school_id' => $schoolId, 'user_id' => $student->user_id, 'role' => 'alumni'],
-                        ['is_active' => true, 'membership_status' => 'active', 'created_at' => now(), 'updated_at' => now()],
+                        ['is_active' => true, 'membership_status' => 'active', 'lifecycle_suspended_by' => null, 'created_at' => now(), 'updated_at' => now()],
                     );
+                    app(NotificationService::class)->notifyUsers($schoolId, [$student->user_id], 'alumni.welcome',
+                        'Anda telah lulus. Lengkapi profil dan riwayat alumni.', route('alumni.index'), ['student_id' => $student->id], 'alumni-welcome:'.$student->id.':'.$graduationDate);
                 }
 
                 $mappings = ClassStudent::where('student_id', $student->id)
@@ -193,7 +204,23 @@ class AcademicLifecycleService
         abort_unless(in_array($status, self::STUDENT_STATUSES, true), 422, 'Status siswa tidak valid.');
 
         return DB::transaction(function () use ($schoolId, $studentId, $status, $date, $reason, $metadata, $changedBy) {
-            $student = Student::where('school_id', $schoolId)->findOrFail($studentId);
+            $student = Student::where('school_id', $schoolId)->lockForUpdate()->findOrFail($studentId);
+            if ($status === 'graduated') {
+                $this->graduate($schoolId, [$studentId], $date ?? now()->toDateString(), (int) substr($date ?? now()->toDateString(), 0, 4), $changedBy);
+                return $student->refresh();
+            }
+            if ($status !== 'active' && $student->status !== 'active') {
+                throw ValidationException::withMessages(['status' => 'Siswa harus aktif sebelum dinonaktifkan.']);
+            }
+            if ($status === 'transferred' && (blank($metadata['transfer_destination'] ?? null) || blank($metadata['transfer_document_path'] ?? null))) {
+                throw ValidationException::withMessages(['transfer_destination' => 'Sekolah tujuan dan surat pindah wajib diisi.']);
+            }
+            if ($status === 'dropped_out' && blank($reason)) {
+                throw ValidationException::withMessages(['status_note' => 'Alasan berhenti wajib diisi.']);
+            }
+            if ($status !== 'active') {
+                $this->notifyOutstandingBills($student, true);
+            }
             $this->transition($student, 'student', $status, $date, $reason, $metadata, $changedBy);
 
             return $student->refresh();
@@ -250,9 +277,9 @@ class AcademicLifecycleService
                 }
             }
 
-            $this->suspendSchoolMembership($person->user_id, $person->school_id);
+            $this->suspendSchoolMembership($person, $subjectType);
         } else {
-            $this->restoreSchoolMembership($person->user_id, $person->school_id);
+            $this->restoreSchoolMembership($person, $subjectType);
         }
     }
 
@@ -277,24 +304,60 @@ class AcademicLifecycleService
         ]);
     }
 
-    private function suspendSchoolMembership(?int $userId, int $schoolId): void
+    private function suspendSchoolMembership(Model $person, string $subjectType): void
     {
-        if ($userId) {
-            DB::table('school_user_roles')
-                ->where('user_id', $userId)
-                ->where('school_id', $schoolId)
-                ->update(['is_active' => false, 'membership_status' => 'inactive', 'updated_at' => now()]);
+        if (! $person->user_id) {
+            return;
+        }
+        $roles = $subjectType === 'student' ? ['siswa'] : ['guru', 'tendik', 'wali_kelas', 'kepsek', 'wakasek', 'bendahara', 'teller', 'tu', 'staf_tu'];
+        DB::table('school_user_roles')->where('user_id', $person->user_id)->where('school_id', $person->school_id)
+            ->whereIn('role', $roles)->where('is_active', true)->where('membership_status', 'active')
+            ->update(['is_active' => false, 'membership_status' => 'inactive', 'lifecycle_suspended_by' => $subjectType.':'.$person->id, 'updated_at' => now()]);
+    }
+
+    private function restoreSchoolMembership(Model $person, string $subjectType): void
+    {
+        if ($person->user_id) {
+            DB::table('school_user_roles')->where('user_id', $person->user_id)->where('school_id', $person->school_id)
+                ->where('lifecycle_suspended_by', $subjectType.':'.$person->id)
+                ->update(['is_active' => true, 'membership_status' => 'active', 'lifecycle_suspended_by' => null, 'updated_at' => now()]);
         }
     }
 
-    private function restoreSchoolMembership(?int $userId, int $schoolId): void
+    private function assertSelection(Collection $students, array $ids): void
     {
-        if ($userId) {
-            DB::table('school_user_roles')
-                ->where('user_id', $userId)
-                ->where('school_id', $schoolId)
-                ->update(['is_active' => true, 'membership_status' => 'active', 'updated_at' => now()]);
+        if ($students->count() !== count(array_unique($ids))) {
+            throw ValidationException::withMessages(['student_ids' => 'Pilih siswa aktif yang valid pada sekolah ini.']);
         }
+    }
+
+    private function notifyOutstandingBills(Student $student, bool $includeVicePrincipal): void
+    {
+        if (! DB::table('invoices')->where('school_id', $student->school_id)->where('student_id', $student->id)->where('status', '!=', 'Lunas')->exists()) {
+            return;
+        }
+        $recipients = DB::table('school_user_roles')->where('school_id', $student->school_id)
+            ->whereIn('role', $includeVicePrincipal ? ['bendahara', 'wakasek'] : ['bendahara'])
+            ->where('is_active', true)->where('membership_status', 'active')->pluck('user_id')->all();
+        $title = 'Perubahan status '.$student->name.': masih terdapat tagihan yang perlu ditindaklanjuti.';
+        $financeIds = array_values(array_diff($recipients, [$student->guardian_user_id]));
+        app(NotificationService::class)->notifyUsers($student->school_id, $financeIds, 'student.outstanding_bills', $title, route('finance.arrears'), ['student_id' => $student->id]);
+        if ($student->guardian_user_id) {
+            app(NotificationService::class)->notifyUsers($student->school_id, [$student->guardian_user_id], 'student.outstanding_bills', $title, route('portal.orang-tua'), ['student_id' => $student->id]);
+        }
+    }
+
+    public function deleteUnused(Model $model, string $column, array $tables, string $field): void
+    {
+        DB::transaction(function () use ($model, $column, $tables, $field) {
+            $model->newQuery()->whereKey($model->id)->lockForUpdate()->firstOrFail();
+            foreach ($tables as $table) {
+                if (\Illuminate\Support\Facades\Schema::hasColumn($table, $column) && DB::table($table)->where($column, $model->id)->exists()) {
+                    throw ValidationException::withMessages([$field => 'Data sudah digunakan. Riwayat dan transaksi harus tetap tersimpan.']);
+                }
+            }
+            $model->delete();
+        });
     }
 
     private function rombelName(string $level, int $grade, ?string $departmentCode, int $number): string

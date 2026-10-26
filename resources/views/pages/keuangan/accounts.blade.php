@@ -5,6 +5,7 @@
     $accountColumns = [
         ['key' => 'name', 'label' => 'Nama rekening'],
         ['key' => 'type', 'label' => 'Jenis'],
+        ['key' => 'source_funding_label', 'label' => 'Kategori Dana'],
         ['key' => 'bank_name', 'label' => 'Bank'],
         ['key' => 'account_number', 'label' => 'Nomor rekening'],
         ['key' => 'current_balance', 'label' => 'Nominal saat ini', 'type' => 'currency', 'minimumFractionDigits' => 2],
@@ -15,6 +16,8 @@
         'id' => $account->id,
         'name' => $account->name,
         'type' => $account->type,
+        'source_funding' => $account->source_funding,
+        'source_funding_label' => $account->source_funding ? ucfirst($account->source_funding) : 'Belum ditentukan',
         'bank_name' => $account->bank_name,
         'account_number' => $account->account_number,
         'current_balance' => $account->current_balance,
@@ -98,9 +101,11 @@
         saving: false,
         editingAccount: null,
         editType: 'Bank',
+        editFunding: '',
         openEdit(row) {
             this.editingAccount = row;
             this.editType = row.type || 'Bank';
+            this.editFunding = row.source_funding || '';
             this.$nextTick(() => {
                 this.$refs.editAccountModal.showModal();
             });
@@ -223,6 +228,12 @@
 
             {{-- Jenis Rekening --}}
             <div class="work-field">
+                <label for="account-funding">Kategori Dana</label>
+                <select id="account-funding" name="source_funding"><option value="">Belum ditentukan</option>@foreach(['komite' => 'Komite', 'bos' => 'BOS', 'lainnya' => 'Lainnya'] as $value => $label)<option value="{{ $value }}" @selected(old('source_funding') === $value)>{{ $label }}</option>@endforeach</select>
+                <p class="work-muted">Pilih Komite agar rekening bank tersedia untuk pembayaran tunggakan siswa.</p>
+                @error('source_funding')<p class="work-error">{{ $message }}</p>@enderror
+            </div>
+            <div class="work-field">
                 <label for="account-type">Jenis Rekening <span aria-hidden="true">*</span></label>
                 <select id="account-type" name="type" x-model="type" required @if($firstError === 'type') autofocus @endif @if($errors->has('type')) aria-invalid="true" aria-describedby="error-type" @endif>
                     <option value="Bank" @selected(old('type', 'Bank') === 'Bank')>Bank</option>
@@ -305,6 +316,7 @@
             </div>
 
             {{-- Jenis Rekening --}}
+            <div class="work-field"><label for="edit-account-funding">Kategori Dana</label><select id="edit-account-funding" name="source_funding" x-model="editFunding"><option value="">Belum ditentukan</option><option value="komite">Komite</option><option value="bos">BOS</option><option value="lainnya">Lainnya</option></select></div>
             <div class="work-field">
                 <label for="edit-account-type">Jenis Rekening <span aria-hidden="true">*</span></label>
                 <select id="edit-account-type" name="type" x-model="editType" required>

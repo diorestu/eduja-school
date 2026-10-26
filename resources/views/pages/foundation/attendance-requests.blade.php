@@ -20,6 +20,7 @@
                     <summary>{{ $item->subject?->name ?? 'Nama tidak tersedia' }} · {{ ucfirst($item->request_type) }}</summary>
                     <div class="work-actions"><span class="work-status">{{ $statusLabels[$item->status] ?? $item->status }}</span><span class="work-muted">{{ $item->start_date->format('d M Y') }} hingga {{ ($item->end_date ?? $item->start_date)->format('d M Y') }}</span></div>
                     <p class="work-muted">Diajukan oleh {{ $item->requester?->name ?? $item->submittedBy?->name ?? 'Tidak tercatat' }}</p>
+                    @if($item->leave_type)<p>Jenis cuti: {{ $item->leave_type === 'annual' ? 'Tahunan' : 'Khusus' }}</p>@endif @if($item->contact_phone)<p>Kontak selama izin: {{ $item->contact_phone }}</p>@endif
                     <h3>Alasan permohonan</h3><p class="work-copy">{{ $item->reason ?: 'Tidak ada alasan tercatat.' }}</p>
                     <p class="work-muted">Dokumen pendukung: {{ $item->document_name ?: ($item->document_path ? 'Dokumen tercatat' : 'Tidak dilampirkan') }}</p>
                     @if($item->document_path && str_starts_with($item->document_path, 'attendance-documents/'.$item->school_id.'/'))
@@ -58,6 +59,12 @@
                         @csrf
                         <div class="work-field"><label for="subject-{{ $kind }}">{{ $kind === 'student' ? 'Siswa' : 'Guru / tendik' }}</label><select id="subject-{{ $kind }}" name="subject_id" required>@foreach($subjects as $subject)<option value="{{ $subject->id }}" @selected(old('subject_id') == $subject->id)>{{ $subject->name }}</option>@endforeach</select></div>
                         <div class="work-field"><label for="type-{{ $kind }}">Jenis permohonan</label><select id="type-{{ $kind }}" name="request_type" required>@foreach(($kind === 'student' ? ['sakit','izin','dispensasi'] : ['sakit','cuti']) as $type)<option value="{{ $type }}" @selected(old('request_type') === $type)>{{ ucfirst($type) }}</option>@endforeach</select></div>
+                        @if($kind === 'teacher')
+                        <label>Jenis cuti (bila mengajukan cuti)<select name="leave_type"><option value="special">Cuti khusus</option><option value="annual">Cuti tahunan</option></select></label>
+                        <label>Kontak selama sakit/cuti<input name="contact_phone" maxlength="40" required value="{{ old('contact_phone',auth()->user()->phone) }}"></label>
+                        <p class="work-muted">Cuti tahunan dihitung per hari kalender, termasuk hari awal dan akhir. Pengajuan pending mencadangkan saldo.</p>
+                        @foreach($leaveEntitlements as $entitlement)<p class="work-muted">Hak cuti {{ $entitlement->year }}: {{ $entitlement->days }} hari.</p>@endforeach
+                        @endif
                         <div class="work-field"><label for="start-{{ $kind }}">Tanggal mulai (wajib)</label><input id="start-{{ $kind }}" type="date" name="start_date" min="{{ today()->toDateString() }}" value="{{ old('start_date') }}" required></div>
                         <div class="work-field"><label for="end-{{ $kind }}">Tanggal selesai (wajib)</label><input id="end-{{ $kind }}" type="date" name="end_date" min="{{ today()->toDateString() }}" value="{{ old('end_date') }}" required></div>
                         <div class="work-field"><label for="reason-{{ $kind }}">Alasan (wajib)</label><textarea id="reason-{{ $kind }}" name="reason" maxlength="1000" required>{{ old('reason') }}</textarea></div>
@@ -70,5 +77,11 @@
         </aside>
         @endif
     </div>
+    @if($leaveTeachers->isNotEmpty())
+    <section class="work-panel"><h2>Hak cuti tahunan</h2><form method="POST" action="{{ route('attendance.leave-entitlements.store') }}" class="work-fields">@csrf
+        <label>Guru/tendik<select name="teacher_id" required>@foreach($leaveTeachers as $person)<option value="{{ $person->id }}">{{ $person->name }}</option>@endforeach</select></label>
+        <x-work.field name="year" label="Tahun" type="number" :value="today()->year" min="2000" max="2200" required /><x-work.field name="days" label="Hak hari kalender" type="number" min="0" max="366" required /><button class="work-btn">Simpan hak cuti</button>
+    </form></section>
+    @endif
 </div>
 @endsection

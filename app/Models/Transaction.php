@@ -20,6 +20,7 @@ class Transaction extends Model
         'receipt_number',
         'recipient_name',
         'status',
+        'committee_receipt_id',
     ];
 
     protected $casts = [
@@ -34,5 +35,10 @@ class Transaction extends Model
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class, 'invoice_id');
+    }
+
+    public function committeeReceipt(): BelongsTo
+    {
+        return $this->belongsTo(CommitteeReceipt::class);
     }
 }

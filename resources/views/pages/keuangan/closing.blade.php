@@ -34,7 +34,8 @@
             'closed_by_name' => $item->closedBy?->name ?? 'Bendahara Sekolah',
             'closed_at_formatted' => $item->closed_at ? $item->closed_at->translatedFormat('d M Y H:i') : '-',
             'status' => $item->status,
-            'status_label' => 'Terkunci',
+            'status_label' => $item->status === 'closed' ? 'Terkunci' : 'Dibuka kembali',
+            'reopen_url' => \Illuminate\Support\Facades\Route::has('finance.closing.reopen') ? route('finance.closing.reopen', $item) : null,
             'snapshot' => $snapshot,
             'validation_results' => $item->validation_results ?? [],
             'only_edit' => true,
@@ -52,9 +53,9 @@
         activeSnapshot: null,
         closingType: 'monthly', // monthly | yearly | bos
         closePeriodMonthly: '{{ date('Y-m') }}',
-        closePeriodYearly: '{{ date('Y') }}',
+        closePeriodYearly: @js((string) ($budgetYears->first()?->id ?? '')),
         closeBosType: 'BOS Reguler',
-        closeBosMonth: '{{ date('Y-m') }}',
+        closeBosMonth: '{{ date('Y') }}',
         openDetail(row) {
             this.activeSnapshot = row;
             this.$nextTick(() => {
@@ -77,9 +78,9 @@
         </div>
     @endif
 
-    @if($errors->has('closing'))
+    @if($errors->any())
         <div role="alert" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
-            {{ $errors->first('closing') }}
+            {{ $errors->first() }}
         </div>
     @endif
 
@@ -151,7 +152,7 @@
             {{-- 3. Tidak ada jurnal gagal --}}
             <div class="p-3 rounded-lg border border-gray-100 bg-gray-50/60 dark:border-gray-800 dark:bg-gray-800/30">
                 <span class="block text-[11px] font-medium text-gray-500 dark:text-gray-400">3. Status Jurnal</span>
-                <p class="mt-1 text-sm font-bold text-emerald-600 dark:text-emerald-400">0 Gagal (Sinkron)</p>
+                <p class="mt-1 text-sm font-bold text-emerald-600 dark:text-emerald-400">{{ $validation['failed_journals'] === 0 ? 'Posting sinkron sesuai' : $validation['failed_journals'].' Belum Diposting' }}</p>
             </div>
 
             {{-- 4. Semua transfer selesai --}}
@@ -165,7 +166,7 @@
             {{-- 5. BOS Seimbang --}}
             <div class="p-3 rounded-lg border border-gray-100 bg-gray-50/60 dark:border-gray-800 dark:bg-gray-800/30">
                 <span class="block text-[11px] font-medium text-gray-500 dark:text-gray-400">5. Keseimbangan BOS</span>
-                <p class="mt-1 text-sm font-bold text-emerald-600 dark:text-emerald-400">Seimbang & Sesuai</p>
+                <p class="mt-1 text-sm font-bold text-emerald-600 dark:text-emerald-400">{{ $validation['bos_balance'] === 0 ? 'Saldo BOS sesuai catatan' : $validation['bos_balance'].' Rekening perlu diperiksa' }}</p>
             </div>
 
             {{-- 6. Pajak Selesai --}}
@@ -187,7 +188,7 @@
             {{-- 8. Rekening Sesuai --}}
             <div class="p-3 rounded-lg border border-gray-100 bg-gray-50/60 dark:border-gray-800 dark:bg-gray-800/30">
                 <span class="block text-[11px] font-medium text-gray-500 dark:text-gray-400">8. Rekening Bank/Kas</span>
-                <p class="mt-1 text-sm font-bold text-emerald-600 dark:text-emerald-400">Terekonsiliasi</p>
+                <p class="mt-1 text-sm font-bold text-emerald-600 dark:text-emerald-400">{{ $validation['account_reconciliation'] === 0 ? 'Saldo sesuai transaksi' : $validation['account_reconciliation'].' Rekening selisih' }}</p>
             </div>
         </div>
 
@@ -266,28 +267,29 @@
             {{-- OPSI JIKA BULANAN KOMITE (PAGE 34) --}}
             <div x-show="closingType === 'monthly'" class="work-field">
                 <label for="close-period-month">Pilih Bulan Tutup Buku <span class="text-red-500">*</span></label>
-                <input id="close-period-month" type="month" name="period" x-model="closePeriodMonthly" :required="closingType === 'monthly'">
+                <input id="close-period-month" type="month" name="period" x-model="closePeriodMonthly" :required="closingType === 'monthly'" :disabled="closingType !== 'monthly'">
             </div>
 
             {{-- OPSI JIKA TAHUNAN KOMITE (PAGE 34) --}}
             <div x-show="closingType === 'yearly'" x-cloak class="work-field">
                 <label for="close-period-year">Pilih Tahun Anggaran <span class="text-red-500">*</span></label>
-                <input id="close-period-year" type="number" min="2020" max="2099" name="period" x-model="closePeriodYearly" :required="closingType === 'yearly'">
+                <select id="close-period-year" name="period" x-model="closePeriodYearly" :required="closingType === 'yearly'" :disabled="closingType !== 'yearly'">
+                    <option value="">Pilih tahun anggaran aktif</option>
+                    @foreach($budgetYears as $year)<option value="{{ $year->id }}">{{ $year->name }}</option>@endforeach
+                </select>
             </div>
 
             {{-- OPSI JIKA TUTUP BUKU BOS (PAGE 35-36) --}}
             <div x-show="closingType === 'bos'" x-cloak class="space-y-4 rounded-xl border border-gray-100 bg-gray-50/70 p-3.5 dark:border-gray-800 dark:bg-gray-800/40">
                 <div class="work-field">
                     <label for="close-bos-type">Pilih Jenis BOS <span class="text-red-500">*</span></label>
-                    <select id="close-bos-type" name="bos_type" x-model="closeBosType" :required="closingType === 'bos'">
-                        <option value="BOS Reguler">BOS Reguler</option>
-                        <option value="BOS Kinerja">BOS Kinerja</option>
-                        <option value="BOS Afirmasi">BOS Afirmasi</option>
+                    <select id="close-bos-type" name="bos_type" x-model="closeBosType" :required="closingType === 'bos'" :disabled="closingType !== 'bos'">
+                        @foreach($bosSources as $source)<option value="{{ $source }}">{{ $source }}</option>@endforeach
                     </select>
                 </div>
                 <div class="work-field">
-                    <label for="close-bos-month">Pilih Tahun & Bulan BOS <span class="text-red-500">*</span></label>
-                    <input id="close-bos-month" type="month" name="period" x-model="closeBosMonth" :required="closingType === 'bos'">
+                    <label for="close-bos-month">Pilih Tahun BOS <span class="text-red-500">*</span></label>
+                    <input id="close-bos-month" type="number" min="2020" max="2099" name="period" x-model="closeBosMonth" :required="closingType === 'bos'" :disabled="closingType !== 'bos'">
                 </div>
             </div>
 
@@ -373,6 +375,21 @@
                     </div>
                 </div>
 
+                <div x-show="activeSnapshot.snapshot?.wallets?.length">
+                    <h4 class="text-xs font-semibold mb-2">Saldo Dompet &amp; Saldo Awal Berikutnya</h4>
+                    <template x-for="wallet in (activeSnapshot.snapshot?.wallets || [])" :key="wallet.id">
+                        <div class="flex justify-between text-xs py-1"><span x-text="wallet.name"></span><span x-text="formatRupiah(wallet.balance)"></span></div>
+                    </template>
+                    <p class="work-muted text-xs mt-2">Berlaku sebagai saldo awal <span x-text="activeSnapshot.snapshot?.next_opening?.date || '-' "></span>.</p>
+                </div>
+                @if(auth()->user()?->hasRole(['kepsek', 'super_admin']))
+                    <form method="POST" :action="activeSnapshot.reopen_url || ''" x-show="activeSnapshot.status === 'closed' && activeSnapshot.reopen_url" class="space-y-2 border-t pt-3">
+                        @csrf
+                        <label for="reopen-reason" class="text-xs font-semibold">Alasan Buka Kembali Buku</label>
+                        <textarea id="reopen-reason" name="reason" minlength="5" maxlength="1000" required class="w-full rounded border p-2 text-sm"></textarea>
+                        <button type="submit" class="work-btn work-btn-secondary">Buka Kembali Periode</button>
+                    </form>
+                @endif
                 <div class="flex justify-end pt-2">
                     <button type="button" class="work-btn" @click="$refs.snapshotModal.close()">Tutup</button>
                 </div>

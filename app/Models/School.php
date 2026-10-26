@@ -26,6 +26,8 @@ class School extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'dinas_finance_allowed' => 'boolean',
+        'guardian_finance_allowed' => 'boolean',
     ];
 
     public function users(): BelongsToMany

@@ -171,13 +171,15 @@ it('promotes selected active students into the target class', function () {
     expect(DB::table('class_students')->where('student_id', $student)->where('school_class_id', $targetClass)->exists())->toBeTrue();
 });
 
-it('blocks graduation when a selected student still has outstanding invoices', function () {
+it('graduates a student with outstanding invoices while retaining invoices and notifying', function () {
     $user = User::factory()->create(['role' => 'super_admin']);
     $school = DB::table('schools')->insertGetId(['name' => 'Sekolah Lulus Blokir', 'level' => 'sma', 'ownership' => 'swasta', 'created_at' => now(), 'updated_at' => now()]);
     DB::table('school_user_roles')->insert(['user_id' => $user->id, 'school_id' => $school, 'role' => 'wakasek', 'created_at' => now(), 'updated_at' => now()]);
 
     $year = DB::table('academic_years')->insertGetId(['school_id' => $school, 'year' => '2026/2027', 'semester' => 'Ganjil', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()]);
+    $class = DB::table('school_classes')->insertGetId(['school_id' => $school, 'name' => 'XII IPA 1', 'grade' => 12, 'academic_year_id' => $year, 'created_at' => now(), 'updated_at' => now()]);
     $student = DB::table('students')->insertGetId(['school_id' => $school, 'nis' => 'G001', 'nisn' => '9101', 'name' => 'Siswa Menunggak', 'gender' => 'P', 'is_active' => true, 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+    DB::table('class_students')->insert(['school_class_id' => $class, 'student_id' => $student, 'created_at' => now(), 'updated_at' => now()]);
     DB::table('invoices')->insert(['school_id' => $school, 'student_id' => $student, 'academic_year_id' => $year, 'invoice_number' => 'INV-GRAD-001', 'due_date' => now()->toDateString(), 'total_amount' => 500000, 'status' => 'Belum Lunas', 'created_at' => now(), 'updated_at' => now()]);
 
     $this->actingAs($user)
@@ -188,10 +190,11 @@ it('blocks graduation when a selected student still has outstanding invoices', f
             'graduation_year' => 2026,
         ])
         ->assertRedirect()
-        ->assertSessionHas('error');
+        ->assertSessionHas('success');
 
-    expect(DB::table('students')->where('id', $student)->value('status'))->toBe('active');
-    expect(DB::table('alumni')->where('student_id', $student)->exists())->toBeFalse();
+    expect(DB::table('students')->where('id', $student)->value('status'))->toBe('graduated');
+    expect(DB::table('alumni')->where('student_id', $student)->exists())->toBeTrue();
+    expect(DB::table('invoices')->where('student_id', $student)->value('status'))->toBe('Belum Lunas');
 });
 
 it('graduates selected students, archives alumni, and removes active class mapping', function () {

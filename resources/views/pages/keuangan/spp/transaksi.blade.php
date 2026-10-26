@@ -97,9 +97,9 @@
 
 <x-common.page-breadcrumb pageTitle="Transaksi Keuangan SPP & Pemasukan" label="Pemasukan" />
 
-<div class="work work-stack"
+<div class="work work-stack grid-cols-1"
     x-data="{
-        activeTab: '{{ request('tab', 'transaksi') }}', // transaksi | tunggakan | pemasukan
+        activeTab: @js(request('category') ? 'pemasukan' : request('tab', 'transaksi')),
         saving: false,
         activeInvoice: { id: '', number: '', name: '', remaining: 0 },
         payAmount: 0,
@@ -114,7 +114,7 @@
         arrearsPayAccountId: '',
         arrearsPayDate: '{{ date('Y-m-d') }}',
         // Catat Pemasukan Modal State
-        incomeCategory: 'bos', // bos | hibah | lainnya
+        incomeCategory: @js(in_array(request('category'), ['bos', 'hibah', 'lainnya'], true) ? request('category') : 'bos'),
         bosSource: 'BOS Reguler',
         bosYear: {{ date('Y') }},
         incomeAmount: '',
@@ -174,6 +174,7 @@
     @endif
 
     {{-- METRICS SUMMARY --}}
+    @include('pages.keuangan.income-category')
     <div class="grid grid-cols-2 gap-3 lg:grid-cols-4 mb-2">
         <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
             <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total Ditagihkan</p>
@@ -212,7 +213,7 @@
             :class="activeTab === 'pemasukan' ? 'border-brand-600 text-brand-600 dark:text-brand-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'"
             class="py-3 px-1 border-b-2 font-semibold text-sm transition-colors flex items-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-            Catat Pemasukan (BOS, Hibah, Lainnya)
+            Catat Pemasukan (Komite, BOS, Hibah, Lainnya)
             <span class="px-2 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 font-bold">{{ collect($incomes ?? [])->count() }}</span>
         </button>
     </div>
@@ -377,7 +378,7 @@
     <div x-show="activeTab === 'pemasukan'" x-cloak class="space-y-4">
         <div class="work-head mb-0">
             <p class="work-muted">Pencatatan pemasukan dana transfer BOS, Hibah dari donatur, dan pendapatan lainnya ke kas/bank sekolah.</p>
-            <button type="button" class="work-btn work-btn-primary" @click="$refs.incomeModal.showModal()">
+            <button type="button" class="work-btn work-btn-primary" @click="(incomeCategory === 'bos' || incomeCategory === 'hibah' || incomeCategory === 'lainnya') ? window.location.assign(@js(route('spp.transaksi.index')) + '?category=' + incomeCategory) : $refs.incomeModal.showModal()">
                 <svg class="w-4 h-4 mr-1.5 -ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 Catat Pemasukan
             </button>
@@ -606,7 +607,8 @@
             {{-- Kategori Pemasukan --}}
             <div class="work-field">
                 <label for="income-category">Pilih Kategori Pemasukan <span class="text-red-500">*</span></label>
-                <select id="income-category" name="category" x-model="incomeCategory" required>
+                <select id="income-category" name="category" x-model="incomeCategory" @change="if(incomeCategory === 'komite' || incomeCategory === 'bos' || incomeCategory === 'hibah' || incomeCategory === 'lainnya') window.location.assign(@js(route('spp.transaksi.index')) + '?category=' + incomeCategory)" required>
+                    <option value="komite">Pemasukan Komite (Tagihan Siswa)</option>
                     <option value="bos">Pemasukan BOS (Reguler / Kinerja / Afirmasi)</option>
                     <option value="hibah">Pemasukan Hibah (Donatur / Yayasan)</option>
                     <option value="lainnya">Pendapatan Lainnya (Kantin / Sewa / dll)</option>

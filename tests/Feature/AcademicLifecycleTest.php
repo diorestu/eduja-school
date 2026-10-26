@@ -176,7 +176,7 @@ it('promotes students while retaining enrollment history and rejecting another s
         ->assertNotFound();
 });
 
-it('blocks graduation on outstanding bills and preserves no partial state', function () {
+it('graduates with outstanding bills and retains debt records', function () {
     $school = academicSchool();
     $user = academicUserFor($school);
     $year = DB::table('academic_years')->insertGetId([
@@ -193,16 +193,18 @@ it('blocks graduation on outstanding bills and preserves no partial state', func
         'status' => 'Belum Lunas', 'created_at' => now(), 'updated_at' => now(),
     ]);
 
+    $class = DB::table('school_classes')->insertGetId(['school_id' => $school, 'academic_year_id' => $year, 'name' => 'XII 1', 'grade' => 12]);
+    DB::table('class_students')->insert(['student_id' => $student, 'school_class_id' => $class]);
     $this->actingAs($user)
         ->withSession(['active_school_id' => $school])
         ->post('/academic/graduation', [
             'student_ids' => [$student], 'graduation_date' => '2027-06-30', 'graduation_year' => 2027,
         ])
         ->assertRedirect()
-        ->assertSessionHas('error');
+        ->assertSessionHas('success');
 
-    expect(DB::table('students')->where('id', $student)->value('status'))->toBe('active');
-    expect(DB::table('alumni')->where('student_id', $student)->exists())->toBeFalse();
+    expect(DB::table('students')->where('id', $student)->value('status'))->toBe('graduated');
+    expect(DB::table('alumni')->where('student_id', $student)->exists())->toBeTrue();
 });
 
 it('graduates students, archives alumni, ends class access, history, attendance, and school login', function () {
@@ -266,6 +268,7 @@ it('updates student and teacher lifecycle states with immutable history and remo
             'action' => 'status', 'student_id' => $student, 'status' => 'transferred',
             'status_date' => '2027-01-15', 'status_note' => 'Pindah kota',
             'transfer_destination' => 'Sekolah Tujuan',
+            'transfer_document' => \Illuminate\Http\UploadedFile::fake()->create('pindah.pdf', 10, 'application/pdf'),
         ])
         ->assertRedirect();
 

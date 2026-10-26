@@ -59,7 +59,8 @@ class AttendanceApprovalService
             return false;
         }
 
-        return $this->hasAllowedRole($reviewer, $activeSchoolId, $this->allowedRoles($absence));
+        return $this->hasAllowedRole($reviewer, $activeSchoolId, $this->allowedRoles($absence))
+            && app(AbsenceAccess::class)->canReview($absence, $reviewer);
     }
 
     private function transition(ApprovalRequest $approval, User $reviewer, string $status, ?string $note): void
@@ -103,6 +104,11 @@ class AttendanceApprovalService
                 'reviewed_at' => $reviewedAt,
                 'note' => $note,
             ])->save();
+            $recipients = $subject instanceof Student ? [$subject->user_id, $subject->guardian_user_id] : [$subject?->user_id];
+            app(NotificationService::class)->notifyUsers((int) $absence->school_id, array_filter($recipients), 'attendance_decision',
+                'Pengajuan absensi '.($status === 'approved' ? 'disetujui' : 'ditolak'), '/attendance/requests',
+                ['request_id'=>$absence->id, 'status'=>$status], 'attendance-decision:'.$absence->id);
+
         });
     }
 
@@ -135,12 +141,7 @@ class AttendanceApprovalService
             ->whereDate('attendance_date', $date)
             ->first();
 
-        $classId = $attendance?->school_class_id ?: DB::table('class_students')
-            ->join('school_classes', 'school_classes.id', '=', 'class_students.school_class_id')
-            ->where('class_students.student_id', $student->id)
-            ->where('school_classes.school_id', $absence->school_id)
-            ->orderByDesc('class_students.id')
-            ->value('class_students.school_class_id');
+        $classId = $attendance?->school_class_id ?: app(ActiveEnrollment::class)->forStudent((int) $absence->school_id, $student->id)?->id;
 
         if (! $classId) {
             throw new InvalidArgumentException('Kelas siswa tidak ditemukan pada sekolah aktif.');

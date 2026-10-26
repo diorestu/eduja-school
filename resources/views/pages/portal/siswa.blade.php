@@ -4,13 +4,14 @@
 <div class="portal-shell">
     <header class="portal-header"><div class="portal-header__inner"><a class="portal-brand" href="{{ route('portal.siswa') }}">EDUJA · Portal Siswa</a><form action="{{ route('logout') }}" method="POST">@csrf<button class="portal-action" type="submit">Keluar</button></form></div></header>
     <main class="portal-main">
+        <nav class="portal-card portal-meta" aria-label="Menu portal"><a class="portal-action" href="{{ route('profile') }}">Akun saya</a><a class="portal-action" href="{{ route('announcements.index') }}">Pengumuman</a><a class="portal-action" href="{{ route('materials.index') }}">Materi belajar</a></nav>
         <div class="portal-grid portal-grid--two">
             <section class="portal-card"><p class="portal-muted">Siswa aktif</p><h1 class="text-2xl font-extrabold">{{ $student->name }}</h1><p class="portal-muted mt-1">{{ $className }}</p>
                 @if(session('success'))<p class="portal-status mt-4" role="status">{{ session('success') }}</p>@endif
                 @if(session('error'))<p class="portal-feedback is-visible" role="alert">{{ session('error') }}</p>@endif
                 @error('attendance')<p class="portal-feedback is-visible" role="alert">{{ $message }}</p>@enderror
                 @error('location')<p class="portal-feedback is-visible" role="alert">{{ $message }}</p>@enderror
-                <div class="portal-stats mt-6">@foreach(['Hadir'=>$stats['hadir'],'Sakit'=>$stats['sakit'],'Izin'=>$stats['izin'],'Alpha'=>$stats['alpa']] as $label => $value)<div><p class="portal-muted">{{ $label }}</p><p class="portal-figure">{{ $value }}</p></div>@endforeach</div>
+                <div class="portal-stats mt-6">@foreach(['Hadir'=>$stats['hadir'],'Sakit'=>$stats['sakit'],'Izin'=>$stats['izin'],'Dispensasi'=>$stats['dispensasi'],'Alpha'=>$stats['alpa']] as $label => $value)<div><p class="portal-muted">{{ $label }}</p><p class="portal-figure">{{ $value }}</p></div>@endforeach</div>
                 <p class="portal-muted mt-4">@if($stats['rate'] !== null) Kehadiran tercatat: {{ $stats['rate'] }}%. @else Belum ada riwayat presensi untuk dihitung. @endif</p>
             </section>
             <section class="portal-card"><h2>Presensi hari ini</h2>
@@ -39,6 +40,8 @@
         </div>
         <section class="portal-card mt-4"><h2>Ajukan izin atau sakit</h2><p class="portal-muted mt-2">Setiap pengajuan masuk ke antrean persetujuan sekolah.</p><x-portal.permission-form :student="$student" /></section>
         <section class="portal-card mt-4"><h2>Pengajuan terbaru</h2><div class="portal-list">@forelse($permissionRequests as $item)<div class="portal-meta"><span>{{ ucfirst($item->request_type) }} · {{ $item->start_date->translatedFormat('d M Y') }}</span><span class="portal-status">{{ ['pending'=>'Menunggu keputusan','approved'=>'Disetujui','rejected'=>'Ditolak'][$item->status] ?? $item->status }}</span></div>@empty<p class="portal-muted">Belum ada pengajuan.</p>@endforelse</div></section>
+        @include('pages.portal.payments')
+        @include('pages.portal.history')
     </main>
 </div>
 @include('pages.portal.mapbox-script')

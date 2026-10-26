@@ -238,7 +238,7 @@ it('stores a closing snapshot and audit metadata after all checks pass', functio
     $account = $service->createAccount($schoolId, ['name' => 'Kas Closing', 'type' => 'Tunai', 'opening_balance' => 350000]);
     $service->recordBosIncome($schoolId, [
         'source_funding' => 'BOS Reguler', 'bos_year' => 2026, 'amount' => 650000,
-        'received_date' => '2026-07-10', 'account_id' => $account->id,
+        'received_date' => '2026-07-10', 'account_id' => $account->id, 'proof_path' => 'finance/bos/sp2d.pdf',
     ]);
 
     $closing = app(FinanceClosingService::class)->close($schoolId, 'monthly', '2026-07', $user->id);
@@ -268,7 +268,11 @@ it('posts an approved expense to its account through the existing approval route
     $academicYearId = makeFinanceAcademicYear($schoolId);
     $service = app(FinanceService::class);
     $account = $service->createAccount($schoolId, ['name' => 'Kas Approval', 'type' => 'Tunai', 'opening_balance' => 1000000]);
+    $account->update(['source_funding' => 'bos']);
+    $budgetYear = $service->createBudgetYear($schoolId, ['name' => '2026', 'start_date' => '2026-01-01', 'end_date' => '2026-12-31']);
+    $budgetPlan = \App\Models\BudgetPlan::create(['school_id' => $schoolId, 'budget_year_id' => $budgetYear->id, 'source_funding' => 'BOS', 'program_name' => 'Operasional', 'activity_name' => 'Belanja', 'amount' => 1000000, 'status' => 'approved']);
     $expense = $service->createExpense($schoolId, $bendahara->id, [
+        'budget_plan_id' => $budgetPlan->id,
         'academic_year_id' => $academicYearId,
         'expense_name' => 'Belanja Approval',
         'amount' => 200000,

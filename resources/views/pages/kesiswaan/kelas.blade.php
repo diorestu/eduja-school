@@ -9,6 +9,7 @@
         </div>
     @endif
 
+    @if($errors->any())<p role="alert" class="mb-4 rounded border border-red-300 p-3">{{ $errors->first() }}</p>@endif
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <!-- Form Tambah -->
         <div class="lg:col-span-1">
@@ -141,6 +142,18 @@
                                     <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/10">
                                         <td class="px-5 py-4">
                                             <span class="block font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $class->name }}</span>
+                                            <details class="mt-2 text-xs"><summary class="cursor-pointer">Ubah kelas</summary>
+                                                <form method="POST" action="{{ route('kelas.store') }}" class="mt-2 grid min-w-48 gap-2">@csrf
+                                                    <input type="hidden" name="action" value="update"><input type="hidden" name="class_id" value="{{ $class->id }}">
+                                                    <label>Nama rombel<input name="name" value="{{ $class->name }}" required class="block w-full rounded border p-1 dark:bg-gray-900"></label>
+                                                    <label>Tingkat<input type="number" name="grade" value="{{ $class->grade }}" required min="1" max="12" class="block w-full rounded border p-1 dark:bg-gray-900"></label>
+                                                    <label>Tahun ajaran<select name="academic_year_id" required class="block w-full rounded border p-1 dark:bg-gray-900">@foreach($academicYears as $year)<option value="{{ $year->id }}" @selected($year->id == $class->academic_year_id)>{{ $year->year }} {{ $year->semester }}</option>@endforeach</select></label>
+                                                    @if(in_array($schoolLevel, ['smk', 'mak']))<label>Jurusan<select name="department_id" required class="block w-full rounded border p-1 dark:bg-gray-900">@foreach($departments as $department)<option value="{{ $department->id }}" @selected($department->id == $class->department_id)>{{ $department->name }}</option>@endforeach</select></label>@endif
+                                                    <label>Wali kelas<select name="teacher_id" class="block w-full rounded border p-1 dark:bg-gray-900"><option value="">Belum ditentukan</option>@foreach($teachers as $teacher)<option value="{{ $teacher->id }}" @selected($teacher->id == $class->teacher_id)>{{ $teacher->name }}</option>@endforeach</select></label>
+                                                    <button class="rounded border px-2 py-1">Simpan kelas</button>
+                                                </form>
+                                                <form method="POST" action="{{ route('kelas.store') }}" class="mt-2">@csrf<input type="hidden" name="action" value="delete"><input type="hidden" name="class_id" value="{{ $class->id }}"><button class="text-red-600">Hapus jika belum digunakan</button></form>
+                                            </details>
                                         </td>
                                         <td class="px-5 py-4">
                                             <span class="text-gray-500 text-theme-sm dark:text-gray-400">Tingkat {{ $class->grade }}</span>

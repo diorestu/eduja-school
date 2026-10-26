@@ -12,12 +12,15 @@ class Expense extends Model
 
     protected $fillable = [
         'budget_category_id',
+        'budget_plan_id',
+        'bos_year',
         'expense_type_id',
         'virtual_wallet_id',
         'school_id',
         'account_id',
         'academic_year_id',
         'expense_name',
+        'transaction_number',
         'amount',
         'transaction_date',
         'source_funding',

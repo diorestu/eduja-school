@@ -16,6 +16,10 @@ class PermissionService
 
     public function rolesForActiveSchool(User $user): array
     {
+        if (in_array($user->role, ['dinas', 'yayasan'], true)) {
+            return [$user->role];
+        }
+
         $schoolId = session('active_school_id');
         $rawRoles = [];
 
@@ -23,12 +27,10 @@ class PermissionService
             $rawRoles = $user->schoolRoles()
                 ->where('school_id', $schoolId)
                 ->where('is_active', true)
+                ->where('membership_status', 'active')
+                ->whereHas('school', fn ($query) => $query->where('is_active', true)->where('status', 'active'))
                 ->pluck('role')
                 ->all();
-        }
-
-        if (empty($rawRoles)) {
-            $rawRoles = [$user->role];
         }
 
         $allRoles = [];
@@ -62,6 +64,7 @@ class PermissionService
 
         if (str_starts_with($permission, 'executive.')) {
             $requiredRole = $permission === 'executive.district' ? 'dinas' : 'yayasan';
+
             return in_array($requiredRole, $roles, true);
         }
 

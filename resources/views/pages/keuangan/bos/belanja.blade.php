@@ -4,6 +4,7 @@
 @php
     $expenseColumns = [
         ['key' => 'transaction_date', 'label' => 'Tanggal / Bukti', 'bold' => true, 'subKey' => 'reference_invoice'],
+        ['key' => 'transaction_number', 'label' => 'Nomor Transaksi'],
         ['key' => 'expense_name', 'label' => 'Uraian Belanja & Akun', 'bold' => true, 'subKey' => 'category_info'],
         ['key' => 'source_funding', 'label' => 'Sumber Dana', 'type' => 'badge'],
         ['key' => 'payment_method', 'label' => 'Metode'],
@@ -46,8 +47,11 @@
 
         return [
             'id' => $exp->id,
+            'transaction_number' => $exp->transaction_number ?? 'Pengeluaran #'.$exp->id,
+            'proof_url' => $exp->proof_path ? route('bos.belanja.proof', $exp) : null,
             'expense_name' => $exp->expense_name,
             'budget_category_id' => $exp->budget_category_id ?? '',
+            'budget_plan_id' => $exp->budget_plan_id ?? '',
             'category_info' => $categoryText,
             'reference_invoice' => $exp->reference_invoice ? 'No. Bukti: ' . $exp->reference_invoice : 'Tanpa No. Bukti',
             'reference_invoice_raw' => $exp->reference_invoice ?? '',
@@ -80,10 +84,12 @@
 <div class="work work-stack"
     x-data="{
         saving: false,
-        expenseCategory: 'Operasional', // Operasional | BOS | Transfer Alokasi
+        expenseCategory: @js(old('_expense_form') === 'create' ? old('category', 'Operasional') : 'Operasional'),
         createAmount: 0,
-        createOpAmount: 0,
-        createOpWalletId: '{{ $virtualWallets->first()?->id ?? '' }}',
+        createOpAmount: @js(old('_expense_form') === 'create' ? old('amount', 0) : 0),
+        createOpWalletId: @js((string) old('virtual_wallet_id', $virtualWallets->first()?->id ?? '')),
+        createOpMethod: @js(old('payment_method', 'Tunai')),
+        createOpAccountId: @js((string) old('account_id', '')),
         createBosAccountId: '{{ $schoolAccounts->first()?->id ?? '' }}',
         createTaxType: '',
         createTaxAmount: 0,
@@ -93,7 +99,9 @@
         bosYear: {{ date('Y') }},
         bosSource: 'BOS Reguler',
         bosComponent: 'Belanja barang',
-        bosRemainingBudget: 50000000,
+        bosPlanId: '',
+        bosPlans: @js($bosBudgets->map(fn ($plan) => ['id' => (string) $plan->id, 'source' => $plan->source_funding, 'remaining' => (float) $plan->remaining_amount])->values()),
+        get bosRemainingBudget() { return this.bosPlans.find(plan => plan.id === String(this.bosPlanId))?.remaining ?? 0; },
         parseNum(val) {
             return parseFloat(String(val || '').replace(/\D/g, '')) || 0;
         },
@@ -132,6 +140,7 @@
         },
         editingItem: null,
         editCategoryId: '',
+        editBudgetPlanId: '',
         editExpenseTypeId: '',
         editVirtualWalletId: '',
         editExpenseName: '',
@@ -150,7 +159,7 @@
         },
         get isEditAccountBalanceInsufficient() {
             let amt = this.parseNum(this.editAmount);
-            return Boolean(this.editFunding === 'BOS' && this.editAccountId && amt > this.editSelectedAccountBalance);
+            return Boolean(/^(BOS|BOP|DAK)/i.test(this.editFunding) && this.editAccountId && amt > this.editSelectedAccountBalance);
         },
         get editSelectedWalletBalance() {
             return parseFloat(this.walletsMap[this.editVirtualWalletId] ?? 0);
@@ -160,7 +169,7 @@
             return Boolean(this.editFunding === 'Komite' && this.editVirtualWalletId && amt > this.editSelectedWalletBalance);
         },
         get isEditInsufficient() {
-            if (this.editFunding === 'BOS') {
+            if (/^(BOS|BOP|DAK)/i.test(this.editFunding)) {
                 return this.isEditAccountBalanceInsufficient;
             } else if (this.editFunding === 'Komite') {
                 return this.isEditWalletBalanceInsufficient;
@@ -170,6 +179,7 @@
         openEdit(row) {
             this.editingItem = row;
             this.editCategoryId = row.budget_category_id || '';
+            this.editBudgetPlanId = row.budget_plan_id || '';
             this.editExpenseTypeId = row.expense_type_id || '';
             this.editVirtualWalletId = row.virtual_wallet_id || '';
             this.editExpenseName = row.expense_name || '';
@@ -274,6 +284,7 @@
 
         <form method="POST" action="{{ route('bos.belanja.store') }}" enctype="multipart/form-data" @submit="if (isCreateInsufficient) { $event.preventDefault(); return false; } saving = true" :aria-busy="saving" class="space-y-4">
             @csrf
+            <input type="hidden" name="_expense_form" value="create">
             <input type="hidden" name="academic_year_id" value="{{ $activeYear?->id }}" />
 
             {{-- 1. Pilih Kategori (dropdown: Operasional, BOS, Transfer Alokasi) --}}
@@ -294,14 +305,14 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="work-field">
                             <label for="create-op-date">Tanggal Transaksi <span class="text-red-500">*</span></label>
-                            <input id="create-op-date" name="transaction_date" type="date" value="{{ date('Y-m-d') }}" required>
+                            <input id="create-op-date" name="transaction_date" type="date" value="{{ old('transaction_date', now()->toDateString()) }}" required>
                         </div>
                         <div class="work-field">
                             <label for="create-op-type">Jenis Pengeluaran Komite <span class="text-red-500">*</span></label>
                             <select id="create-op-type" name="expense_type_id" required>
                                 <option value="" disabled selected>-- Pilih Jenis Pengeluaran Komite --</option>
                                 @foreach($komiteExpenseTypes as $et)
-                                    <option value="{{ $et->id }}">{{ $et->code }} - {{ $et->name }}</option>
+                                    <option value="{{ $et->id }}" @selected(old('expense_type_id') == $et->id)>{{ $et->code }} - {{ $et->name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -309,7 +320,7 @@
 
                     <div class="work-field">
                         <label for="create-op-name">Deskripsi / Uraian Belanja <span class="text-red-500">*</span></label>
-                        <input id="create-op-name" name="expense_name" type="text" required placeholder="Contoh: Konsumsi rapat komite sekolah">
+                        <input id="create-op-name" name="expense_name" type="text" value="{{ old('expense_name') }}" required placeholder="Contoh: Konsumsi rapat komite sekolah">
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -321,12 +332,23 @@
                             </div>
                         </div>
                         <div class="work-field">
-                            <label for="create-op-recipient">Penerima Dana</label>
-                            <input id="create-op-recipient" name="recipient_name" type="text" placeholder="Contoh: Toko Berkah / Catering Ibu Ani">
+                            <label for="create-op-recipient">Penerima Dana <span aria-hidden="true">*</span></label>
+                            <input id="create-op-recipient" name="recipient_name" type="text" maxlength="255" value="{{ old('recipient_name') }}" required placeholder="Contoh: Toko Berkah / Catering Ibu Ani">
                         </div>
                     </div>
 
-                    {{-- Asal Dana Komite: HANYA dari Dompet Virtual --}}
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div class="work-field"><label for="create-op-method">Metode Pembayaran</label><select id="create-op-method" name="payment_method" x-model="createOpMethod" @change="createOpAccountId = ''" required><option value="Tunai">Tunai</option><option value="Transfer">Transfer</option></select></div>
+                        <div class="work-field"><label for="create-op-account">Kas / Rekening Pembayaran</label>
+                            <select id="create-op-account" name="account_id" x-model="createOpAccountId" required>
+                                <option value="">Pilih kas atau rekening bank</option>
+                                @foreach($schoolAccounts->filter(fn ($account) => strtolower($account->source_funding ?? '') !== 'bos' && in_array(strtolower($account->type), ['cash', 'tunai', 'bank'])) as $account)
+                                    <template x-if="createOpMethod === @js(in_array(strtolower($account->type), ['cash', 'tunai']) ? 'Tunai' : 'Transfer')"><option value="{{ $account->id }}">{{ $account->name }} · Rp {{ number_format($account->current_balance, 0, ',', '.') }}</option></template>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <p class="work-muted">Saldo kas/rekening dan dompet sumber baru dikurangi setelah disetujui kepala sekolah.</p>
                     <div class="work-field">
                         <label for="create-op-wallet">Asal Dana: Dompet Virtual <span class="text-red-500">*</span></label>
                         <select id="create-op-wallet" name="virtual_wallet_id" x-model="createOpWalletId" required>
@@ -335,7 +357,6 @@
                                 <option value="{{ $vw->id }}">{{ $vw->name }} (Saldo: Rp {{ number_format($vw->nominal, 0, ',', '.') }})</option>
                             @endforeach
                         </select>
-                        <input type="hidden" name="payment_method" value="Transfer" />
                     </div>
 
                     {{-- Warning Saldo Dompet Virtual Tidak Mencukupi --}}
@@ -356,7 +377,7 @@
             {{-- FORM KHUSUS PENGELUARAN BOS (PAGE 32-33) --}}
             <template x-if="expenseCategory === 'BOS'">
                 <div class="space-y-4 rounded-xl border border-gray-100 bg-gray-50/70 p-3.5 dark:border-gray-800 dark:bg-gray-800/40">
-                    <input type="hidden" name="source_funding" value="BOS" />
+                    <input type="hidden" name="source_funding" :value="bosSource" />
 
                     {{-- Step 1: Pilih Tahun BOS, Sumber Dana BOS & Komponen BOS --}}
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -367,30 +388,28 @@
                         <div class="work-field">
                             <label for="create-bos-source">Sumber Dana BOS <span class="text-red-500">*</span></label>
                             <select id="create-bos-source" name="bos_source" x-model="bosSource">
-                                <option value="BOS Reguler">BOS Reguler</option>
-                                <option value="BOS Kinerja">BOS Kinerja</option>
-                                <option value="BOS Afirmasi">BOS Afirmasi</option>
+                                @foreach($bosSources as $source)
+                                    <option value="{{ $source }}">{{ $source }}</option>
+                                @endforeach
                             </select>
                         </div>
                         <div class="work-field">
                             <label for="create-bos-comp">Komponen BOS <span class="text-red-500">*</span></label>
                             <select id="create-bos-comp" name="bos_component" x-model="bosComponent">
-                                <option value="Belanja pegawai">Belanja pegawai</option>
-                                <option value="Belanja barang">Belanja barang</option>
-                                <option value="Belanja modal">Belanja modal</option>
-                                <option value="Pembelajaran">Pembelajaran</option>
-                                <option value="Pemeliharaan">Pemeliharaan</option>
+                                @foreach($categories->pluck('name')->unique() as $component)
+                                    <option value="{{ $component }}">{{ $component }}</option>
+                                @endforeach
                             </select>
                         </div>
                     </div>
 
                     {{-- Akun / Kategori Anggaran BOS (Hanya Jenis Pengeluaran BOS) --}}
                     <div class="work-field">
-                        <label for="create-bos-cat">Jenis Pengeluaran BOS (Akun Anggaran RKAS) <span class="text-red-500">*</span></label>
-                        <select id="create-bos-cat" name="budget_category_id" required>
-                            <option value="" disabled selected>-- Pilih Jenis Pengeluaran BOS --</option>
-                            @foreach($categories as $cat)
-                                <option value="{{ $cat->id }}">{{ $cat->code }} - {{ $cat->name }}</option>
+                        <label for="create-bos-cat">Kegiatan BOS yang Disetujui <span class="text-red-500">*</span></label>
+                        <select id="create-bos-cat" name="budget_plan_id" x-model="bosPlanId" @change="bosSource = bosPlans.find(plan => plan.id === String(bosPlanId))?.source || bosSource" required>
+                            <option value="">Pilih kegiatan anggaran aktif</option>
+                            @foreach($bosBudgets as $plan)
+                                <option value="{{ $plan->id }}">{{ $plan->program_name }} / {{ $plan->activity_name }} — {{ $plan->source_funding }} — Sisa Rp {{ number_format($plan->remaining_amount, 0, ',', '.') }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -512,7 +531,10 @@
             </button>
         </div>
 
-        <form method="POST" :action="editingItem ? editingItem.update_url : '#'" @submit="if (isEditInsufficient) { $event.preventDefault(); return false; } saving = true" :aria-busy="saving" class="space-y-4">
+        <p class="work-muted mb-3" x-text="editingItem?.transaction_number"></p>
+        <template x-if="editingItem?.proof_url"><a class="work-btn mb-3" :href="editingItem.proof_url">Unduh bukti transaksi</a></template>
+        <p role="status" class="work-notice mb-3" x-show="editingItem?.status_raw !== 'pending'" x-cloak>Pengeluaran sudah diproses dan tidak dapat diubah.</p>
+        <form x-show="editingItem?.status_raw === 'pending'" method="POST" :action="editingItem ? editingItem.update_url : '#'" @submit="if (isEditInsufficient) { $event.preventDefault(); return false; } saving = true" :aria-busy="saving" class="space-y-4">
             @csrf
             @method('PUT')
 
@@ -520,15 +542,25 @@
             <div class="work-field">
                 <label for="edit-funding">Sumber Dana <span class="text-red-500">*</span></label>
                 <select id="edit-funding" name="source_funding" x-model="editFunding" required>
+                    @foreach($bosSources as $source)<option value="{{ $source }}">{{ $source }}</option>@endforeach
                     <option value="BOS">BOS (Bantuan Operasional Sekolah)</option>
                     <option value="Komite">Komite (Operasional Rutin)</option>
                 </select>
             </div>
 
             {{-- Jenis Pengeluaran / Akun Anggaran sesuai Sumber Dana --}}
-            <div class="work-field" x-show="editFunding === 'BOS'">
+            <div class="work-field" x-show="/^(BOS|BOP|DAK)/i.test(editFunding)">
+                <label for="edit-bos-plan">Kegiatan BOS yang Disetujui</label>
+                <select id="edit-bos-plan" name="budget_plan_id" x-model="editBudgetPlanId" :required="/^(BOS|BOP|DAK)/i.test(editFunding)" :disabled="!/^(BOS|BOP|DAK)/i.test(editFunding)">
+                    <option value="">Pilih kegiatan anggaran aktif</option>
+                    @foreach($bosBudgets as $plan)
+                        <option value="{{ $plan->id }}">{{ $plan->program_name }} / {{ $plan->activity_name }} — {{ $plan->source_funding }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="work-field" x-show="/^(BOS|BOP|DAK)/i.test(editFunding)">
                 <label for="edit-budget-category">Jenis Pengeluaran BOS (Akun Anggaran RKAS) <span class="text-red-500">*</span></label>
-                <select id="edit-budget-category" name="budget_category_id" x-model="editCategoryId" :required="editFunding === 'BOS'">
+                <select id="edit-budget-category" name="budget_category_id" x-model="editCategoryId" :required="/^(BOS|BOP|DAK)/i.test(editFunding)" :disabled="!/^(BOS|BOP|DAK)/i.test(editFunding)">
                     <option value="">-- Pilih Jenis Pengeluaran BOS --</option>
                     @foreach($categories as $cat)
                         <option value="{{ $cat->id }}">{{ $cat->code }} - {{ $cat->name }}</option>
@@ -538,7 +570,7 @@
 
             <div class="work-field" x-show="editFunding === 'Komite'" x-cloak>
                 <label for="edit-expense-type">Jenis Pengeluaran Komite <span class="text-red-500">*</span></label>
-                <select id="edit-expense-type" name="expense_type_id" x-model="editExpenseTypeId" :required="editFunding === 'Komite'">
+                <select id="edit-expense-type" name="expense_type_id" x-model="editExpenseTypeId" :required="editFunding === 'Komite'" :disabled="editFunding !== 'Komite'">
                     <option value="">-- Pilih Jenis Pengeluaran Komite --</option>
                     @foreach($komiteExpenseTypes as $et)
                         <option value="{{ $et->id }}">{{ $et->code }} - {{ $et->name }}</option>
@@ -568,7 +600,7 @@
             {{-- Asal Dana: Dompet Virtual untuk Komite, Rekening untuk BOS --}}
             <div class="work-field" x-show="editFunding === 'Komite'" x-cloak>
                 <label for="edit-virtual-wallet">Asal Dana: Dompet Virtual <span class="text-red-500">*</span></label>
-                <select id="edit-virtual-wallet" name="virtual_wallet_id" x-model="editVirtualWalletId" :required="editFunding === 'Komite'">
+                <select id="edit-virtual-wallet" name="virtual_wallet_id" x-model="editVirtualWalletId" :required="editFunding === 'Komite'" :disabled="editFunding !== 'Komite'">
                     <option value="">-- Pilih Dompet Virtual Sumber Dana --</option>
                     @foreach($virtualWallets as $vw)
                         <option value="{{ $vw->id }}">{{ $vw->name }} (Saldo: Rp {{ number_format($vw->nominal, 0, ',', '.') }})</option>
@@ -577,15 +609,26 @@
             </div>
 
             {{-- Warning Saldo Dompet Virtual pada Edit --}}
+            <template x-if="editFunding === 'Komite'">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div class="work-field"><label for="edit-op-method">Metode Pembayaran</label><select id="edit-op-method" name="payment_method" x-model="editPaymentMethod" @change="editAccountId = ''"><option value="Tunai">Tunai</option><option value="Transfer">Transfer</option><option value="Transfer Bank">Transfer Bank</option></select></div>
+                    <div class="work-field"><label for="edit-op-account">Kas / Rekening Pembayaran</label><select id="edit-op-account" name="account_id" x-model="editAccountId" required>
+                        <option value="">Pilih kas atau rekening bank</option>
+                        @foreach($schoolAccounts->filter(fn ($account) => strtolower($account->source_funding ?? '') !== 'bos' && in_array(strtolower($account->type), ['cash', 'tunai', 'bank'])) as $account)
+                            <template x-if="(editPaymentMethod === 'Tunai') === @js(in_array(strtolower($account->type), ['cash', 'tunai']))"><option value="{{ $account->id }}">{{ $account->name }}</option></template>
+                        @endforeach
+                    </select></div>
+                </div>
+            </template>
             <div x-show="isEditWalletBalanceInsufficient" x-cloak
                 class="p-3 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 text-xs flex items-center gap-2">
                 <svg class="w-4 h-4 shrink-0 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                 <span><strong>Peringatan Saldo Dompet:</strong> Saldo dompet virtual tidak mencukupi untuk jumlah belanja ini (Saldo: <span x-text="formatRupiah(editSelectedWalletBalance)"></span>, Belanja: <span x-text="formatRupiah(parseNum(editAmount))"></span>).</span>
             </div>
 
-            <div class="work-field" x-show="editFunding === 'BOS'">
+            <div class="work-field" x-show="/^(BOS|BOP|DAK)/i.test(editFunding)">
                 <label for="edit-account">Rekening Pembayaran BOS <span class="text-red-500">*</span></label>
-                <select id="edit-account" name="account_id" x-model="editAccountId" :required="editFunding === 'BOS'">
+                <select id="edit-account" name="account_id" x-model="editAccountId" :required="/^(BOS|BOP|DAK)/i.test(editFunding)" :disabled="!/^(BOS|BOP|DAK)/i.test(editFunding)">
                     <option value="">-- Pilih Rekening Sekolah --</option>
                     @foreach($schoolAccounts as $acc)
                         <option value="{{ $acc->id }}">
@@ -593,7 +636,7 @@
                         </option>
                     @endforeach
                 </select>
-                <input type="hidden" name="payment_method" value="Transfer" />
+                <input type="hidden" name="payment_method" value="Transfer" :disabled="!/^(BOS|BOP|DAK)/i.test(editFunding)" />
             </div>
 
             {{-- Warning Saldo Rekening Sekolah pada Edit --}}

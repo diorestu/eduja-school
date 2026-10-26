@@ -60,6 +60,24 @@ class Invoice extends Model
                 ->whereHas('academicYear', fn ($year) => $year->where('school_id', $schoolId)->orWhereNull('school_id'))));
     }
 
+    public function scopeCommitteeOnly($query, int $schoolId)
+    {
+        return $query->where(function ($q) use ($schoolId) {
+            $q->whereHas('billingItem', fn ($bill) => $bill->where('school_id', $schoolId)->whereHas('incomeType', fn ($type) => $type->where('school_id', $schoolId)->whereRaw('LOWER(category) = ?', ['komite'])))
+                ->orWhere(function ($legacy) use ($schoolId) {
+                    $legacy->whereNull('billing_item_id')->whereHas('invoiceItems', function ($line) use ($schoolId) {
+                        $line->where('is_late_fee', false)
+                            ->whereRaw('invoice_items.id = (SELECT MIN(first_line.id) FROM invoice_items AS first_line WHERE first_line.invoice_id = invoices.id AND first_line.is_late_fee = 0)')
+                            ->whereRaw('(SELECT COUNT(*) FROM billing_items AS matching_bills WHERE matching_bills.school_id = ? AND matching_bills.name = invoice_items.name) = 1', [$schoolId])
+                            ->whereExists(function ($match) use ($schoolId) {
+                                $match->selectRaw('1')->from('billing_items as legacy_bill')->join('income_types as legacy_type', 'legacy_type.id', '=', 'legacy_bill.income_type_id')
+                                    ->whereColumn('legacy_bill.name', 'invoice_items.name')->where('legacy_bill.school_id', $schoolId)->where('legacy_type.school_id', $schoolId)->whereRaw('LOWER(legacy_type.category) = ?', ['komite']);
+                            });
+                    });
+                });
+        });
+    }
+
     public function billingPeriod(): BelongsTo
     {
         return $this->belongsTo(BillingPeriod::class);
@@ -94,6 +112,13 @@ class Invoice extends Model
      */
     public function getPaidAmountAttribute()
     {
+        if (array_key_exists('approved_paid_total', $this->attributes)) {
+            return $this->attributes['approved_paid_total'] ?? 0;
+        }
+        if ($this->relationLoaded('transactions')) {
+            return $this->transactions->whereIn('status', ['approved', 'confirmed'])->sum('amount_paid');
+        }
+
         return $this->transactions()->whereIn('status', ['approved', 'confirmed'])->sum('amount_paid');
     }
 

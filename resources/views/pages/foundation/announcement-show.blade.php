@@ -21,6 +21,14 @@
             </div>
         </div>
         <p class="work-muted mt-3">Tautan hanya dapat dibuka oleh penerima yang memiliki akses.</p>
+        @if((int) $announcement->created_by === auth()->id() || auth()->user()->hasRole(['kepsek','tu','staf_tu']))
+        <details class="mt-6"><summary>Ubah pengumuman</summary><form method="POST" action="{{ route('announcements.update',$announcement) }}" class="work-fields">@csrf @method('PUT')
+            <x-work.field name="title" label="Judul" :value="$announcement->title" required maxlength="160" />
+            <x-work.field name="category" label="Kategori" :value="$announcement->category" maxlength="40" />
+            <label>Isi pengumuman<textarea name="body" required>{{ $announcement->body }}</textarea></label><button class="work-btn">Simpan perubahan</button>
+        </form></details>
+        <form method="POST" action="{{ route('announcements.destroy',$announcement) }}" class="mt-3">@csrf @method('DELETE')<button class="work-btn">Hapus pengumuman</button></form>
+        @endif
         <div class="mt-8">
         @if($readAt)
             <p class="work-notice" role="status">Sudah dibaca pada {{ \Carbon\Carbon::parse($readAt)->translatedFormat('d M Y, H:i') }}.</p>

@@ -21,8 +21,7 @@ class OperationsFoundationController extends Controller
         $user = request()->user();
         $canReview = $user->hasRole(['kepsek', 'wakasek', 'tu', 'staf_tu', 'wali_kelas']);
         $status = request()->validate(['status' => ['nullable', 'in:pending,approved,rejected']])['status'] ?? null;
-        $query = AttendanceRequest::where('school_id', $schoolId)
-            ->when(! $canReview, fn ($q) => $q->where(fn ($own) => $own->where('requester_id', $user->id)->orWhere('submitted_by', $user->id)));
+        $query = app(\App\Services\AbsenceAccess::class)->visible(AttendanceRequest::query(), $user, $schoolId);
         $counts = (clone $query)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
         $requests = $query->when($status, fn ($q) => $q->where('status', $status))
             ->with(['subject', 'requester', 'submittedBy', 'reviewer', 'approvalRequest'])->latest()->paginate(20)->withQueryString();
@@ -32,7 +31,10 @@ class OperationsFoundationController extends Controller
             ->where(fn ($q) => $q->where('user_id', $user->id)->orWhere('guardian_user_id', $user->id))->get();
         $teachers = \App\Models\Teacher::active()->where('school_id', $schoolId)->where('user_id', $user->id)->get();
 
-        return view('pages.foundation.attendance-requests', compact('requests', 'counts', 'status', 'reviewableIds', 'students', 'teachers'));
+        return view('pages.foundation.attendance-requests', compact('requests', 'counts', 'status', 'reviewableIds', 'students', 'teachers') + [
+            'leaveTeachers' => $user->hasRole(['kepsek','tu','staf_tu']) ? \App\Models\Teacher::active()->where('school_id',$schoolId)->orderBy('name')->get() : collect(),
+            'leaveEntitlements' => \Illuminate\Support\Facades\DB::table('teacher_leave_entitlements')->where('school_id',$schoolId)->whereIn('teacher_id',$teachers->pluck('id'))->where('year',today()->year)->get(),
+        ]);
     }
 
     public function rfidSync(): View
@@ -74,6 +76,7 @@ class OperationsFoundationController extends Controller
         abort_unless($announcement->school_id === $schoolContext->activeSchoolIdFor(), 404);
         abort_unless($this->canReceiveAnnouncement($announcement, request()->user()), 403);
 
+        AnnouncementRead::firstOrCreate(['announcement_id' => $announcement->id, 'user_id' => request()->user()->id], ['read_at' => now()]);
         $readAt = $announcement->reads()->where('user_id', request()->user()->id)->value('read_at');
         $bookmarked = \Illuminate\Support\Facades\DB::table('announcement_bookmarks')->where('announcement_id', $announcement->id)->where('user_id', request()->user()->id)->exists();
         return view('pages.foundation.announcement-show', compact('announcement', 'readAt', 'bookmarked'));
@@ -113,7 +116,8 @@ class OperationsFoundationController extends Controller
         $path = $request->file('attachment')?->store('announcement-documents/'.$schoolId, 'local');
 
         try {
-            Announcement::create([
+            \Illuminate\Support\Facades\DB::transaction(function () use ($validated,$schoolId,$request,$targeted,$path) {
+            $announcement = Announcement::create([
             ...$validated,
             'school_id' => $schoolId,
             'created_by' => $request->user()->id,
@@ -124,12 +128,38 @@ class OperationsFoundationController extends Controller
             'attachment_name' => $request->file('attachment')?->getClientOriginalName(),
             'published_at' => now(),
             ]);
+            $recipients = \App\Models\User::whereHas('schoolRoles',fn ($q)=>$q->where('school_id',$schoolId)->where('is_active',true)->where('membership_status','active'))->get()->filter(fn ($recipient)=>$this->canReceiveAnnouncement($announcement,$recipient))->pluck('id');
+            app(\App\Services\NotificationService::class)->notifyUsers($schoolId,$recipients,'announcement',$announcement->title,route('announcements.show',$announcement,false),['announcement_id'=>$announcement->id],'announcement:'.$announcement->id);
+            });
         } catch (\Throwable $exception) {
             if ($path) \Illuminate\Support\Facades\Storage::disk('local')->delete($path);
             throw $exception;
         }
 
         return back()->with('success', 'Pengumuman berhasil diterbitkan.');
+    }
+
+    private function assertAnnouncementAuthor(Announcement $announcement, Request $request, SchoolContext $context): void
+    {
+        abort_unless((int) $announcement->school_id === $context->activeSchoolIdFor(), 404);
+        abort_unless((int) $announcement->created_by === $request->user()->id || $request->user()->hasRole(['kepsek','tu','staf_tu']), 403);
+    }
+
+    public function updateAnnouncement(Announcement $announcement, Request $request, SchoolContext $context): RedirectResponse
+    {
+        $this->assertAnnouncementAuthor($announcement, $request, $context);
+        $data = $request->validate(['title'=>['required','string','max:160'],'body'=>['required','string'],'category'=>['nullable','string','max:40']]);
+        $announcement->update($data);
+        return back()->with('success','Pengumuman diperbarui.');
+    }
+
+    public function destroyAnnouncement(Announcement $announcement, Request $request, SchoolContext $context): RedirectResponse
+    {
+        $this->assertAnnouncementAuthor($announcement, $request, $context);
+        $path = $announcement->attachment_path;
+        $announcement->delete();
+        if ($path) \Illuminate\Support\Facades\Storage::disk('local')->delete($path);
+        return redirect()->route('announcements.index')->with('success','Pengumuman dihapus.');
     }
 
     public function ai(SchoolContext $schoolContext): View

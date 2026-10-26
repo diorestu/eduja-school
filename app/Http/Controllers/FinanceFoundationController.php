@@ -12,7 +12,6 @@ use App\Models\BudgetYear;
 use App\Models\Department;
 use App\Models\Expense;
 use App\Models\ExpenseType;
-use App\Models\FinanceIncome;
 use App\Models\FundAllocation;
 use App\Models\IncomeType;
 use App\Models\Invoice;
@@ -66,6 +65,7 @@ class FinanceFoundationController extends Controller
             'bank_name' => ['exclude_unless:type,Bank', 'required', 'string', 'max:80'],
             'account_number' => ['exclude_unless:type,Bank', 'required', 'string', 'max:100'],
             'opening_balance' => ['required', 'numeric', 'min:0', 'max:9999999999999.99', 'decimal:0,2'],
+            'source_funding' => ['nullable', Rule::in(['komite', 'bos', 'lainnya'])],
         ]);
 
         $finance->createAccount($schoolId, $validated);
@@ -88,11 +88,13 @@ class FinanceFoundationController extends Controller
             'bank_name' => ['exclude_unless:type,Bank', 'required', 'string', 'max:80'],
             'account_number' => ['exclude_unless:type,Bank', 'required', 'string', 'max:100'],
             'is_active' => ['nullable'],
+            'source_funding' => ['nullable', Rule::in(['komite', 'bos', 'lainnya'])],
         ]);
 
         $account->update([
             'name' => $validated['name'],
             'type' => $validated['type'],
+            'source_funding' => array_key_exists('source_funding', $validated) ? $validated['source_funding'] : $account->source_funding,
             'bank_name' => $validated['type'] === 'Bank' ? ($validated['bank_name'] ?? null) : null,
             'account_number' => $validated['type'] === 'Bank' ? ($validated['account_number'] ?? null) : null,
             'is_active' => filter_var($request->input('is_active', true), FILTER_VALIDATE_BOOLEAN),
@@ -134,6 +136,8 @@ class FinanceFoundationController extends Controller
         $amount = (float) $validated['amount'];
 
         DB::transaction(function () use ($schoolId, $validated, $amount) {
+            app(\App\Services\FinancePeriodGuard::class)->assertOpen($schoolId, $validated['transfer_date']);
+            \App\Models\FinanceAccountTransfer::create([...$validated, 'school_id' => $schoolId, 'created_by' => auth()->id()]);
             $fromAccount = SchoolAccount::where('school_id', $schoolId)->lockForUpdate()->findOrFail($validated['from_account_id']);
             $toAccount = SchoolAccount::where('school_id', $schoolId)->lockForUpdate()->findOrFail($validated['to_account_id']);
 
@@ -662,6 +666,12 @@ class FinanceFoundationController extends Controller
             'status' => ['required', 'string', Rule::in(['active', 'closed'])],
         ]);
 
+        if ($validated['status'] !== $budgetYear->status) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['status' => 'Status tahun anggaran mengikuti Tutup Buku Tahunan dan pembukaan kembali oleh pengguna berwenang.']);
+        }
+        if ($budgetYear->status === 'closed') {
+            throw \Illuminate\Validation\ValidationException::withMessages(['budget_year_id' => 'Buka kembali tahun anggaran sebelum mengubah data.']);
+        }
         $budgetYear->update($validated);
 
         return back()->with('success', 'Tahun anggaran berhasil diperbarui.');
@@ -703,8 +713,9 @@ class FinanceFoundationController extends Controller
             ['label' => 'Total Anggaran', 'value' => 'Rp '.number_format($budgetPlans->sum('amount'), 0, ',', '.')],
         ];
 
-        $bosSources = ['BOS Reguler', 'BOS Kinerja', 'BOP', 'DAK', 'Lainnya'];
-        $bosComponents = ['Pembelajaran', 'Belanja pegawai', 'Belanja barang', 'Belanja modal', 'Pemeliharaan', 'Lainnya'];
+        $bosSources = app(\App\Services\BosIncomeService::class)->sources((int) $schoolId)->all();
+        $bosComponents = \App\Models\BudgetCategory::where('school_id', $schoolId)->where('is_active', true)->pluck('name')->unique()->values()->all();
+        if ($bosComponents === []) { $bosComponents = ['Pembelajaran', 'Belanja pegawai', 'Belanja barang', 'Belanja modal', 'Pemeliharaan']; }
 
         return view('pages.keuangan.budgets', [
             'budgetYears' => $budgetYears,
@@ -763,9 +774,15 @@ class FinanceFoundationController extends Controller
     {
         $schoolId = $this->activeSchoolId($request, $schoolContext);
         abort_unless((int) $budgetPlan->school_id === $schoolId, 404);
+        if ($budgetPlan->status === 'approved') {
+            throw \Illuminate\Validation\ValidationException::withMessages(['amount' => 'Anggaran yang disetujui harus diubah melalui Revisi Anggaran dan persetujuan kepala sekolah.']);
+        }
+        if ($budgetPlan->budgetYear?->status !== 'active') {
+            throw \Illuminate\Validation\ValidationException::withMessages(['budget_year_id' => 'Tahun anggaran sudah ditutup.']);
+        }
 
         $validated = $request->validate([
-            'budget_year_id' => ['required', 'integer', Rule::exists('budget_years', 'id')->where(fn ($query) => $query->where('school_id', $schoolId))],
+            'budget_year_id' => ['required', 'integer', Rule::exists('budget_years', 'id')->where(fn ($query) => $query->where('school_id', $schoolId)->where('status', 'active'))],
             'source_funding' => ['required', 'string', 'max:50'],
             'program_name' => ['required', 'string', 'max:160'],
             'activity_name' => ['required', 'string', 'max:160'],
@@ -781,9 +798,19 @@ class FinanceFoundationController extends Controller
     {
         $schoolId = $this->activeSchoolId($request, $schoolContext);
 
+        $budgetCategoryId = null;
+        if ($request->filled('bos_component') && strcasecmp($request->input('source_funding', ''), 'Komite') !== 0) {
+            $component = \App\Models\BudgetCategory::where('school_id', $schoolId)->where('source_funding', $request->input('source_funding'))
+                ->where('name', $request->input('bos_component'))->where('is_active', true)->first();
+            if (! $component) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['bos_component' => 'Tambahkan pasangan sumber dana dan komponen di master BOS sebelum menyusun anggaran.']);
+            }
+            $budgetCategoryId = $component->id;
+        }
+
         if ($request->has('programs') && is_array($request->input('programs'))) {
             $validated = $request->validate([
-                'budget_year_id' => ['required', 'integer', Rule::exists('budget_years', 'id')->where(fn ($query) => $query->where('school_id', $schoolId))],
+                'budget_year_id' => ['required', 'integer', Rule::exists('budget_years', 'id')->where(fn ($query) => $query->where('school_id', $schoolId)->where('status', 'active'))],
                 'source_funding' => ['required', 'string', 'max:100'],
                 'programs' => ['required', 'array', 'min:1'],
                 'programs.*.name' => ['required', 'string', 'max:160'],
@@ -799,11 +826,13 @@ class FinanceFoundationController extends Controller
 
             $sourceFunding = $validated['source_funding'];
 
+            DB::transaction(function () use ($validated, $finance, $schoolId, $request, $sourceFunding, $budgetCategoryId) {
             foreach ($validated['programs'] as $prog) {
                 $progName = $prog['name'];
                 foreach ($prog['activities'] as $act) {
                     $finance->createBudgetPlan($schoolId, $request->user()->id, [
                         'budget_year_id' => $validated['budget_year_id'],
+                        'budget_category_id' => $budgetCategoryId,
                         'source_funding' => $sourceFunding,
                         'program_name' => $progName,
                         'activity_name' => $act['name'],
@@ -812,20 +841,22 @@ class FinanceFoundationController extends Controller
                 }
             }
 
+            });
+
             return back()
                 ->with('success_modal', true)
                 ->with('success', 'Susunan anggaran disimpan');
         }
 
         $validated = $request->validate([
-            'budget_year_id' => ['required', 'integer', Rule::exists('budget_years', 'id')->where(fn ($query) => $query->where('school_id', $schoolId))],
+            'budget_year_id' => ['required', 'integer', Rule::exists('budget_years', 'id')->where(fn ($query) => $query->where('school_id', $schoolId)->where('status', 'active'))],
             'source_funding' => ['required', 'string', 'max:100'],
             'program_name' => ['required', 'string', 'max:160'],
             'activity_name' => ['required', 'string', 'max:160'],
             'amount' => ['required', 'numeric', 'min:0'],
         ]);
 
-        $finance->createBudgetPlan($schoolId, $request->user()->id, $validated);
+        $finance->createBudgetPlan($schoolId, $request->user()->id, [...$validated, 'budget_category_id' => $budgetCategoryId]);
 
         return back()
             ->with('success_modal', true)
@@ -839,7 +870,7 @@ class FinanceFoundationController extends Controller
 
         $hasExpenses = Expense::where('school_id', $schoolId)
             ->where(function ($q) use ($budgetPlan) {
-                $q->where('expense_name', 'like', "%{$budgetPlan->activity_name}%")
+                $q->where('budget_plan_id', $budgetPlan->id)->orWhere('expense_name', 'like', "%{$budgetPlan->activity_name}%")
                     ->orWhere('expense_name', 'like', "%{$budgetPlan->program_name}%");
             })->exists();
 
@@ -878,9 +909,12 @@ class FinanceFoundationController extends Controller
 
     public function approvals(SchoolContext $schoolContext): View
     {
-        $schoolId = $schoolContext->activeSchoolId();
-        $approvals = ApprovalRequest::with(['requester', 'reviewer'])
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        $roles = app(\App\Services\PermissionService::class)->rolesForActiveSchool(auth()->user());
+        $paymentsOnly = request('type') === 'payment' || (in_array('teller', $roles, true) && ! array_intersect($roles, ['bendahara', 'kepsek', 'super_admin']));
+        $approvals = ApprovalRequest::with(['requester', 'reviewer', 'approvable'])
             ->where('school_id', $schoolId)
+            ->when($paymentsOnly, fn ($query) => $query->where('type', 'payment')->where('approvable_type', PaymentSubmission::class))
             ->latest()
             ->get();
 
@@ -892,8 +926,10 @@ class FinanceFoundationController extends Controller
         ];
 
         return view('pages.keuangan.approvals', [
+            'title' => $paymentsOnly ? 'Approval Tunggakan' : 'Antrian Approval Keuangan',
             'approvals' => $approvals,
             'metrics' => $metrics,
+            'paymentsOnly' => $paymentsOnly,
         ]);
     }
 
@@ -1141,171 +1177,15 @@ class FinanceFoundationController extends Controller
         $category = strtolower($request->input('category', 'komite'));
 
         if ($category === 'bos') {
-            $validated = $request->validate([
-                'source_funding' => ['required', 'string', 'max:100'],
-                'bos_year' => ['required', 'integer', 'min:2020', 'max:2099'],
-                'amount' => ['required', 'numeric', 'min:1'],
-                'received_date' => ['required', 'date'],
-                'proof' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,heic', 'max:10240'],
-            ], [
-                'amount.required' => 'Nominal tidak boleh kosong.',
-                'amount.min' => 'Nominal harus lebih dari 0.',
-                'source_funding.required' => 'Sumber dana BOS harus dipilih.',
-                'received_date.required' => 'Tanggal harus diisi.',
-            ]);
-
-            $proofPath = null;
-            if ($request->hasFile('proof')) {
-                $proofPath = $request->file('proof')->store('finance/income_proofs', 'public');
-            }
-
-            $bosAccount = SchoolAccount::where('school_id', $schoolId)->where(function ($q) {
-                $q->where('type', 'bos')->orWhere('name', 'like', '%BOS%');
-            })->first();
-
-            DB::transaction(function () use ($schoolId, $validated, $proofPath, $bosAccount) {
-                FinanceIncome::create([
-                    'school_id' => $schoolId,
-                    'account_id' => $bosAccount?->id,
-                    'source_funding' => $validated['source_funding'],
-                    'bos_year' => $validated['bos_year'],
-                    'amount' => $validated['amount'],
-                    'received_date' => $validated['received_date'],
-                    'payment_method' => 'Transfer Bank',
-                    'proof_path' => $proofPath,
-                    'status' => 'confirmed',
-                    'posted_at' => now(),
-                ]);
-
-                if ($bosAccount) {
-                    $bosAccount->increment('current_balance', $validated['amount']);
-                }
-            });
-
-            return back()->with('success', 'Transaksi berhasil disimpan');
+            return app(BosIncomeController::class)->store($request, $schoolContext, app(\App\Services\BosIncomeService::class));
         }
 
         if ($category === 'hibah') {
-            $validated = $request->validate([
-                'donor_name' => ['required', 'string', 'max:160'],
-                'amount' => ['required', 'numeric', 'min:1'],
-                'received_date' => ['required', 'date'],
-                'payment_method' => ['required', 'in:Tunai,Transfer'],
-                'account_id' => ['nullable', 'integer'],
-                'proof' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,heic', 'max:10240'],
-            ], [
-                'donor_name.required' => 'Nama donatur tidak boleh kosong.',
-                'amount.required' => 'Nominal tidak boleh kosong.',
-                'received_date.required' => 'Tanggal harus diisi.',
-            ]);
-
-            $proofPath = null;
-            if ($request->hasFile('proof')) {
-                $proofPath = $request->file('proof')->store('finance/income_proofs', 'public');
-            }
-
-            $targetAccount = null;
-            if ($validated['payment_method'] === 'Transfer' && ! empty($validated['account_id'])) {
-                $targetAccount = SchoolAccount::where('school_id', $schoolId)->find($validated['account_id']);
-            } elseif ($validated['payment_method'] === 'Tunai') {
-                $targetAccount = SchoolAccount::where('school_id', $schoolId)->where('type', 'cash')->first();
-            }
-
-            DB::transaction(function () use ($schoolId, $validated, $proofPath, $targetAccount) {
-                FinanceIncome::create([
-                    'school_id' => $schoolId,
-                    'account_id' => $targetAccount?->id,
-                    'source_funding' => 'Hibah',
-                    'donor_name' => $validated['donor_name'],
-                    'amount' => $validated['amount'],
-                    'received_date' => $validated['received_date'],
-                    'payment_method' => $validated['payment_method'],
-                    'proof_path' => $proofPath,
-                    'status' => 'confirmed',
-                    'posted_at' => now(),
-                ]);
-
-                if ($targetAccount) {
-                    $targetAccount->increment('current_balance', $validated['amount']);
-                }
-
-                $allocQuery = FundAllocation::where('school_id', $schoolId)->where('status', 'active');
-                if (! empty($validated['income_type_id']) && FundAllocation::where('school_id', $schoolId)->where('income_type_id', $validated['income_type_id'])->where('status', 'active')->exists()) {
-                    $allocQuery->where('income_type_id', $validated['income_type_id']);
-                }
-                $allocations = $allocQuery->get();
-                foreach ($allocations as $alloc) {
-                    if ($alloc->virtual_wallet_id) {
-                        $allocAmt = in_array(strtolower($alloc->method ?? ''), ['percentage', 'persentase', 'percent', '%'])
-                            ? ($validated['amount'] * ($alloc->amount / 100))
-                            : min($validated['amount'], (float) $alloc->amount);
-                        VirtualWallet::where('id', $alloc->virtual_wallet_id)->increment('nominal', $allocAmt);
-                    }
-                }
-            });
-
-            return back()->with('success', 'Transaksi berhasil disimpan');
+            return app(GrantIncomeController::class)->store($request, $schoolContext, app(\App\Services\GrantIncomeService::class));
         }
 
         if ($category === 'lainnya') {
-            $validated = $request->validate([
-                'source_funding' => ['required', 'string', 'max:160'],
-                'amount' => ['required', 'numeric', 'min:1'],
-                'received_date' => ['required', 'date'],
-                'payment_method' => ['required', 'in:Tunai,Transfer'],
-                'account_id' => ['nullable', 'integer'],
-                'proof' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,heic', 'max:10240'],
-            ], [
-                'source_funding.required' => 'Sumber pendapatan tidak boleh kosong.',
-                'amount.required' => 'Nominal tidak boleh kosong.',
-                'received_date.required' => 'Tanggal harus diisi.',
-            ]);
-
-            $proofPath = null;
-            if ($request->hasFile('proof')) {
-                $proofPath = $request->file('proof')->store('finance/income_proofs', 'public');
-            }
-
-            $targetAccount = null;
-            if ($validated['payment_method'] === 'Transfer' && ! empty($validated['account_id'])) {
-                $targetAccount = SchoolAccount::where('school_id', $schoolId)->find($validated['account_id']);
-            } elseif ($validated['payment_method'] === 'Tunai') {
-                $targetAccount = SchoolAccount::where('school_id', $schoolId)->where('type', 'cash')->first();
-            }
-
-            DB::transaction(function () use ($schoolId, $validated, $proofPath, $targetAccount) {
-                FinanceIncome::create([
-                    'school_id' => $schoolId,
-                    'account_id' => $targetAccount?->id,
-                    'source_funding' => $validated['source_funding'],
-                    'amount' => $validated['amount'],
-                    'received_date' => $validated['received_date'],
-                    'payment_method' => $validated['payment_method'],
-                    'proof_path' => $proofPath,
-                    'status' => 'confirmed',
-                    'posted_at' => now(),
-                ]);
-
-                if ($targetAccount) {
-                    $targetAccount->increment('current_balance', $validated['amount']);
-                }
-
-                $allocQuery = FundAllocation::where('school_id', $schoolId)->where('status', 'active');
-                if (! empty($validated['income_type_id']) && FundAllocation::where('school_id', $schoolId)->where('income_type_id', $validated['income_type_id'])->where('status', 'active')->exists()) {
-                    $allocQuery->where('income_type_id', $validated['income_type_id']);
-                }
-                $allocations = $allocQuery->get();
-                foreach ($allocations as $alloc) {
-                    if ($alloc->virtual_wallet_id) {
-                        $allocAmt = in_array(strtolower($alloc->method ?? ''), ['percentage', 'persentase', 'percent', '%'])
-                            ? ($validated['amount'] * ($alloc->amount / 100))
-                            : min($validated['amount'], (float) $alloc->amount);
-                        VirtualWallet::where('id', $alloc->virtual_wallet_id)->increment('nominal', $allocAmt);
-                    }
-                }
-            });
-
-            return back()->with('success', 'Transaksi berhasil disimpan');
+            return app(OtherIncomeController::class)->store($request, $schoolContext, app(\App\Services\OtherIncomeService::class));
         }
 
         return back()->with('error', 'Kategori pemasukan tidak valid.');
@@ -1342,6 +1222,8 @@ class FinanceFoundationController extends Controller
             'validation' => $validation,
             'accounts' => $accounts,
             'metrics' => $metrics,
+            'budgetYears' => BudgetYear::where('school_id', $schoolId)->where('status', 'active')->get(),
+            'bosSources' => app(\App\Services\BosIncomeService::class)->sources((int) $schoolId),
         ]);
     }
 
@@ -1362,6 +1244,14 @@ class FinanceFoundationController extends Controller
         $closing->close($schoolId, $validated['type'], $period, $request->user()->id);
 
         return back()->with('success', 'Periode finance berhasil ditutup dan saldo telah dikunci.');
+    }
+
+    public function reopenClosing(Request $request, BookClosing $closing, SchoolContext $schoolContext, FinanceClosingService $service): RedirectResponse
+    {
+        abort_unless((int) $closing->school_id === $schoolContext->activeSchoolIdFor(), 403);
+        $validated = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:1000']]);
+        $service->reopen($closing, $request->user(), $validated['reason']);
+        return back()->with('success', 'Periode dibuka kembali. Alasan dan pengguna dicatat dalam audit.');
     }
 
     public function ledger(Request $request, SchoolContext $schoolContext, FinanceLedgerService $ledger): View
@@ -1402,7 +1292,7 @@ class FinanceFoundationController extends Controller
             ['label' => 'Total Pengeluaran', 'value' => 'Rp '.number_format($kreditTotal, 0, ',', '.')],
             ['label' => 'Surplus / (Defisit)', 'value' => 'Rp '.number_format($surplusDefisit, 0, ',', '.')],
             ['label' => 'Sisa Piutang Siswa', 'value' => 'Rp '.number_format($summary['outstanding'], 0, ',', '.')],
-            ['label' => 'Total Saldo Rekening', 'value' => 'Rp '.number_format($summary['account_balance'], 0, ',', '.')],
+            ['label' => 'Total Saldo Rekening', 'value' => 'Rp '.number_format($summary['total_balance'] ?? $summary['account_balance'], 0, ',', '.')],
         ];
 
         return view('pages.keuangan.reports', [
@@ -1437,7 +1327,7 @@ class FinanceFoundationController extends Controller
         return [
             ['label' => 'Terkumpul', 'value' => 'Rp '.number_format($summary['collected'], 0, ',', '.')],
             ['label' => 'Tunggakan', 'value' => 'Rp '.number_format($summary['outstanding'], 0, ',', '.')],
-            ['label' => 'Saldo Rekening', 'value' => 'Rp '.number_format($summary['account_balance'], 0, ',', '.')],
+            ['label' => 'Saldo Rekening', 'value' => 'Rp '.number_format($summary['total_balance'] ?? $summary['account_balance'], 0, ',', '.')],
         ];
     }
 

@@ -55,11 +55,16 @@ class SchoolContext
 
     public function ensureDefaultSchool(User $user): ?School
     {
-        if (session()->has('active_school_id')) {
-            return $this->activeSchool();
-        }
-
         $schools = $this->availableSchools($user);
+
+        if (session()->has('active_school_id')) {
+            $school = $schools->firstWhere('id', session('active_school_id'));
+            if (! $school) {
+                session()->forget('active_school_id');
+            }
+
+            return $school;
+        }
 
         if ($schools->count() === 1) {
             session(['active_school_id' => $schools->first()->id]);

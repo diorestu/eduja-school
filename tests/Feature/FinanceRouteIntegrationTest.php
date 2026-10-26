@@ -472,12 +472,12 @@ it('implements datatable ui for perencanaan anggaran with clean antislop standar
         'name' => 'Tahun Anggaran 2026/2027 Revisi',
         'start_date' => '2026-07-01',
         'end_date' => '2027-06-30',
-        'status' => 'closed',
+        'status' => 'active',
     ])->assertRedirect()->assertSessionHas('success');
 
     $updatedYear = DB::table('budget_years')->where('id', $year->id)->first();
     expect($updatedYear->name)->toBe('Tahun Anggaran 2026/2027 Revisi')
-        ->and($updatedYear->status)->toBe('closed');
+        ->and($updatedYear->status)->toBe('active');
 
     // 4. Budgets Page (Susun & Revisi Anggaran) renders modern data-table UI
     $responseBudgets = $this->get(route('finance.budgets'))->assertOk();
@@ -1224,6 +1224,7 @@ it('implements Flow Input Pemasukan BOS, Hibah, and Lainnya matching Menu Bendah
         'school_id' => $schoolId,
         'name' => 'Rekening Operasional Bank BRI',
         'type' => 'bank',
+        'source_funding' => 'komite',
         'bank_name' => 'BRI',
         'account_number' => '1122334455',
         'opening_balance' => 5000000,
@@ -1321,6 +1322,7 @@ it('implements Flow Input Pengeluaran Komite and BOS matching Menu Bendahara pag
     $resp->assertSee('data-table', false);
 
     // 2. Submit Operasional Expense (Page 30-31)
+    $cash = \App\Models\SchoolAccount::create(['school_id' => $schoolId, 'name' => 'Kas Komite', 'type' => 'Tunai', 'is_active' => true, 'current_balance' => 1000000]);
     $this->post(route('bos.belanja.store'), [
         'category' => 'Operasional',
         'source_funding' => 'Komite',
@@ -1332,6 +1334,7 @@ it('implements Flow Input Pengeluaran Komite and BOS matching Menu Bendahara pag
         'transaction_date' => '2026-07-28',
         'payment_method' => 'Tunai',
         'recipient_name' => 'Catering Bu Siti',
+        'account_id' => $cash->id,
     ])->assertRedirect()->assertSessionHas('success');
 
     $expenseOp = DB::table('expenses')
@@ -1408,6 +1411,7 @@ it('implements Flow Revisi Anggaran according to workflow specification and plac
     $schoolId = makeFinanceRouteSchool('SMK Revisi Anggaran');
     $user = makeFinanceRouteUser($schoolId);
     $this->actingAs($user);
+    session(['active_school_id' => $schoolId]);
 
     // 1. Sidebar menu verification: Dompet Virtual is in Master Data Keuangan, not a standalone single menu
     $navItems = collect(MenuHelper::getMainNavItems());
@@ -1676,6 +1680,7 @@ it('implements Flow Lihat Tunggakan Murid dan Pembayaran matching the 10-step wo
         'student_id' => $studentId,
         'academic_year_id' => $ayId,
         'invoice_number' => 'INV-2025-07-001',
+        'billing_item_id' => $billId,
         'total_amount' => 500000,
         'status' => 'Belum Lunas',
         'due_date' => now()->subDays(5)->toDateString(),
@@ -2007,12 +2012,17 @@ it('records expense with account_id and deducts account balance upon approval', 
     ]);
 
     // Bendahara submits expense using this account
+    $expenseType = \App\Models\ExpenseType::create(['school_id' => $schoolId, 'code' => 'KMT-ATK', 'name' => 'ATK', 'source_funding' => 'komite']);
+    $wallet = \App\Models\VirtualWallet::create(['school_id' => $schoolId, 'name' => 'Dompet ATK', 'status' => 'active', 'nominal' => 2000000]);
     $this->actingAs($bendahara)->withSession(['active_school_id' => $schoolId]);
     $response = $this->post('/bos/belanja', [
         'category' => 'Operasional',
         'source_funding' => 'Komite',
         'academic_year_id' => $academicYearId,
         'expense_name' => 'Pembelian ATK Kantor',
+        'expense_type_id' => $expenseType->id,
+        'virtual_wallet_id' => $wallet->id,
+        'recipient_name' => 'Toko ATK',
         'amount' => '1.200.000',
         'transaction_date' => '2026-10-06',
         'payment_method' => 'Transfer',
@@ -2108,11 +2118,14 @@ it('rejects recording expense when amount exceeds selected account or virtual wa
     expect(\App\Models\Expense::where('school_id', $schoolId)->where('expense_name', 'Pengadaan Laptop Sekolah')->exists())->toBeFalse();
 
     // 2. Submit Komite expense exceeding virtual wallet balance (2.500.000 > 2.000.000)
+    $expenseType = \App\Models\ExpenseType::create(['school_id' => $schoolId, 'code' => 'KMT-TENDA', 'name' => 'Sewa tenda', 'source_funding' => 'komite']);
     $responseKomite = $this->post('/bos/belanja', [
         'category' => 'Operasional',
         'source_funding' => 'Komite',
         'academic_year_id' => $academicYearId,
         'expense_name' => 'Sewa Tenda Rapat Komite',
+        'expense_type_id' => $expenseType->id,
+        'recipient_name' => 'Penyewaan Tenda',
         'amount' => 2500000,
         'transaction_date' => '2026-10-08',
         'payment_method' => 'Transfer',

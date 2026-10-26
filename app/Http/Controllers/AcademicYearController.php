@@ -23,6 +23,15 @@ class AcademicYearController extends Controller
 
     public function store(Request $request, SchoolContext $schoolContext, AcademicLifecycleService $service)
     {
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        abort_unless($schoolId, 403);
+        if ($request->input('action') === 'delete') {
+            $data = $request->validate(['academic_year_id' => ['required', 'integer']]);
+            $year = AcademicYear::where('school_id', $schoolId)->findOrFail($data['academic_year_id']);
+            if ($year->is_active) return back()->withErrors(['academic_year_id' => 'Tahun ajaran aktif tidak dapat dihapus.']);
+            $service->deleteUnused($year, 'academic_year_id', ['school_classes', 'invoices', 'spp_tariffs', 'expenses', 'student_savings', 'billing_items', 'student_class_histories'], 'academic_year_id');
+            return back()->with('success', 'Tahun ajaran yang belum digunakan dihapus.');
+        }
         $validated = $request->validate([
             'year' => ['required', 'string', 'max:20'],
             'semester' => ['required', 'in:Ganjil,Genap'],
@@ -33,6 +42,12 @@ class AcademicYearController extends Controller
 
         $schoolId = $schoolContext->activeSchoolIdFor();
         abort_unless($schoolId, 403);
+        if ($request->input('action') === 'update') {
+            $data = $request->validate(['academic_year_id' => ['required', 'integer']]);
+            $year = AcademicYear::where('school_id', $schoolId)->findOrFail($data['academic_year_id']);
+            $year->update(collect($validated)->except('is_active')->all());
+            return back()->with('success', 'Tahun ajaran berhasil diperbarui.');
+        }
         $service->createAcademicYear($schoolId, $validated);
 
         return redirect()->route('akademik.index')->with('success', 'Tahun Akademik berhasil ditambahkan.');

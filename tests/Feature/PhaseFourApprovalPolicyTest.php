@@ -123,6 +123,8 @@ it('approves a student request for an eligible same-school reviewer and maps its
     approvalPolicyMembership($requester, $school, 'siswa');
     approvalPolicyMembership($reviewer, $school, 'wali_kelas');
     [$student, $classId] = approvalPolicyStudent($school, $requester);
+    $homeroom = approvalPolicyTeacher($school, $reviewer, 'Wali Assigned');
+    DB::table('school_classes')->where('id', $classId)->update(['teacher_id' => $homeroom->id]);
     session(['active_school_id' => $school->id]);
     $approval = approvalPolicyRequest($school, $requester, Student::class, $student->id, 'dispensasi', '2026-09-16');
 
@@ -227,7 +229,9 @@ it('returns a handled-state error for duplicate decisions without mutation', fun
     $reviewer = User::factory()->create(['role' => 'wali_kelas']);
     approvalPolicyMembership($requester, $school, 'siswa');
     approvalPolicyMembership($reviewer, $school, 'wali_kelas');
-    [$student] = approvalPolicyStudent($school, $requester, 'APP-003');
+    [$student, $classId] = approvalPolicyStudent($school, $requester, 'APP-003');
+    $homeroom = approvalPolicyTeacher($school, $reviewer, 'Wali Duplicate');
+    DB::table('school_classes')->where('id', $classId)->update(['teacher_id' => $homeroom->id]);
     session(['active_school_id' => $school->id]);
     $approval = approvalPolicyRequest($school, $requester, Student::class, $student->id, 'izin', '2026-09-21');
     $service = app(AttendanceApprovalService::class);

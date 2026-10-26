@@ -22,10 +22,84 @@ class PortalFoundationController extends Controller
 {
     public function guru(SchoolContext $schoolContext): View
     {
-        return $this->portal('Portal Guru & Wali Kelas', 'Dashboard kelas, presensi siswa, tunggakan wali kelas, dan approval izin.', [
-            ['label' => 'Siswa Aktif', 'value' => Student::where('school_id', $schoolContext->activeSchoolId())->where('status', 'active')->count()],
-            ['label' => 'Izin Pending', 'value' => AttendanceRequest::where('school_id', $schoolContext->activeSchoolId())->where('status', 'pending')->count()],
-        ]);
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        $classes = app(\App\Services\ActiveEnrollment::class)->assignedClasses($schoolId, auth()->user())
+            ->with(['students'=>fn ($q)=>$q->active()->where('students.school_id',$schoolId)])->get();
+        $arrears = auth()->user()->hasRole('wali_kelas') ? \App\Models\Invoice::where('school_id',$schoolId)->whereIn('student_id',$classes->flatMap->students->pluck('id'))->get()->groupBy('student_id') : collect();
+        [$start,$end] = app(\App\Services\PortalAttendancePeriod::class)->dates();
+        $teacher = \App\Models\Teacher::active()->where('school_id',$schoolId)->where('user_id',auth()->id())->first();
+        $history = \App\Models\TeacherAttendance::where('school_id',$schoolId)->where('teacher_id',$teacher?->id)
+            ->whereBetween('attendance_date',[$start,$end])->latest('attendance_date')->paginate(25)->withQueryString();
+        return view('pages.portal.guru', compact('classes','history','teacher','start','end','arrears'));
+    }
+
+    public function storeClassAttendance(Request $request, SchoolContext $context, AttendanceCommandService $attendance): RedirectResponse
+    {
+        $schoolId = $context->activeSchoolIdFor();
+        $data = $request->validate(['school_class_id'=>['required','integer'],'student_id'=>['required','integer'],
+            'attendance_date'=>['required','date_format:Y-m-d','before_or_equal:today'],'status'=>['required','in:H,S,I,D,A'],'note'=>['nullable','string','max:255']]);
+        abort_unless(auth()->user()->hasRole('wali_kelas') && app(\App\Services\ActiveEnrollment::class)->assignedClasses($schoolId,$request->user())->whereKey($data['school_class_id'])->exists(),403);
+        try { $attendance->recordStudent($schoolId,$data['student_id'],$data); }
+        catch (InvalidArgumentException $e) { throw ValidationException::withMessages(['attendance'=>$e->getMessage()]); }
+        return back()->with('success','Presensi kelas disimpan.');
+    }
+
+    public function storeTeacherAttendance(Request $request, SchoolContext $context, AttendanceCommandService $attendance): RedirectResponse
+    {
+        $schoolId = $context->activeSchoolIdFor($request->user());
+        $teacher = \App\Models\Teacher::active()->where('school_id', $schoolId)->where('user_id', $request->user()->id)->first();
+        if (! $teacher) {
+            return back()->withErrors(['attendance' => 'Akun belum terhubung ke data GTK aktif di sekolah ini.']);
+        }
+
+        $data = $request->validate([
+            'type' => ['required', 'in:masuk,pulang'],
+            'location.latitude' => ['required', 'numeric', 'between:-90,90'],
+            'location.longitude' => ['required', 'numeric', 'between:-180,180'],
+            'photo' => ['nullable', 'image', 'max:5120'],
+        ], ['location.latitude.required' => 'Lokasi perangkat diperlukan untuk presensi.', 'location.longitude.required' => 'Lokasi perangkat diperlukan untuk presensi.']);
+
+        $gps = (new ConfiguredGpsAttendancePolicy(config('services.attendance.gps', [])))->evaluate(
+            $schoolId,
+            (float) $data['location']['latitude'],
+            (float) $data['location']['longitude'],
+        );
+        if (! $gps['accepted']) {
+            return back()->withErrors(['location' => $gps['reason']]);
+        }
+
+        $today = today()->toDateString();
+        $existing = \App\Models\TeacherAttendance::where('school_id', $schoolId)->where('teacher_id', $teacher->id)->whereDate('attendance_date', $today)->first();
+        if ($data['type'] === 'masuk' && $existing?->clock_in_at) {
+            return back()->with('error', 'Presensi masuk sudah tercatat hari ini.');
+        }
+        if ($data['type'] === 'pulang' && ! $existing?->clock_in_at) {
+            return back()->with('error', 'Presensi masuk perlu dicatat lebih dulu.');
+        }
+        if ($data['type'] === 'pulang' && $existing?->clock_out_at) {
+            return back()->with('error', 'Presensi pulang sudah tercatat hari ini.');
+        }
+
+        $photoPath = $request->hasFile('photo') ? $request->file('photo')->store('attendance/teachers/'.$schoolId, 'local') : $existing?->photo_path;
+
+        $attributes = [
+            'attendance_date' => $today,
+            'status' => $existing?->status ?? 'H',
+            'source' => 'gps',
+            'latitude' => $gps['latitude'],
+            'longitude' => $gps['longitude'],
+            'photo_path' => $photoPath,
+        ];
+        if ($data['type'] === 'masuk') {
+            $attributes['clock_in_at'] = now()->toTimeString();
+        } else {
+            $attributes['clock_in_at'] = $existing->clock_in_at;
+            $attributes['clock_out_at'] = now()->toTimeString();
+        }
+
+        $attendance->recordTeacher($schoolId, $teacher->id, $attributes);
+
+        return back()->with('success', $data['type'] === 'masuk' ? 'Presensi masuk berhasil dicatat.' : 'Presensi pulang berhasil dicatat.');
     }
 
     public function siswa(SchoolContext $schoolContext, IdentityResolver $identityResolver, PortalMapService $maps): View
@@ -75,9 +149,7 @@ class PortalFoundationController extends Controller
             'location.longitude' => ['required', 'numeric', 'between:-180,180'],
         ], ['location.latitude.required' => 'Lokasi perangkat diperlukan untuk presensi.', 'location.longitude.required' => 'Lokasi perangkat diperlukan untuk presensi.']);
 
-        $classId = \App\Models\ClassStudent::query()->where('student_id', $student->id)
-            ->whereHas('schoolClass', fn ($query) => $query->where('school_id', $schoolId))
-            ->value('school_class_id');
+        $classId = app(\App\Services\ActiveEnrollment::class)->forStudent($schoolId, $student->id)?->id;
         if (! $classId) {
             return back()->withErrors(['attendance' => 'Kelas aktif siswa belum terhubung pada sekolah ini.']);
         }
@@ -157,29 +229,34 @@ class PortalFoundationController extends Controller
 
     private function portalData(Student $student, int $schoolId): array
     {
-        $class = \App\Models\ClassStudent::query()->where('student_id', $student->id)
-            ->whereHas('schoolClass', fn ($query) => $query->where('school_id', $schoolId))
-            ->with('schoolClass.teacher')->first()?->schoolClass;
+        $class = app(\App\Services\ActiveEnrollment::class)->forStudent($schoolId, $student->id);
         $attendance = StudentAttendance::query()->where('school_id', $schoolId)->where('student_id', $student->id);
-        $hadir = (clone $attendance)->where('status', 'H')->count();
-        $sakit = (clone $attendance)->where('status', 'S')->count();
-        $izin = (clone $attendance)->where('status', 'I')->count();
-        $alpa = (clone $attendance)->where('status', 'A')->count();
-        $total = $hadir + $sakit + $izin + $alpa;
+        [$start,$end] = app(\App\Services\PortalAttendancePeriod::class)->dates();
+        $periodAttendance = (clone $attendance)->whereBetween('attendance_date',[$start,$end]);
+        $hadir = (clone $periodAttendance)->where('status', 'H')->count();
+        $sakit = (clone $periodAttendance)->where('status', 'S')->count();
+        $izin = (clone $periodAttendance)->where('status', 'I')->count();
+        $alpa = (clone $periodAttendance)->where('status', 'A')->count();
+        $dispensasi = (clone $periodAttendance)->where('status', 'D')->count();
+        $total = $hadir + $sakit + $izin + $alpa + $dispensasi;
         $savings = \App\Models\StudentSaving::query()->where('school_id', $schoolId)->where('student_id', $student->id)->latest('transaction_date')->get();
 
         return [
             'student' => $student,
             'schoolId' => $schoolId,
+            'guardianFinanceAllowed' => (bool) \App\Models\School::whereKey($schoolId)->value('guardian_finance_allowed'),
             'className' => $class?->name ?? 'Kelas belum terhubung',
             'homeroomTeacher' => $class?->teacher,
             'todayAttendance' => (clone $attendance)->whereDate('attendance_date', today())->first(),
-            'attendanceHistory' => (clone $attendance)->latest('attendance_date')->limit(7)->get(),
+            'attendanceHistory' => (clone $periodAttendance)->latest('attendance_date')->paginate(25)->withQueryString(),
+            'periodStart' => $start, 'periodEnd' => $end,
             'permissionRequests' => AttendanceRequest::query()->where('school_id', $schoolId)->where('subject_type', Student::class)->where('subject_id', $student->id)->latest()->limit(5)->get(),
-            'invoices' => \App\Models\Invoice::query()->where('school_id', $schoolId)->where('student_id', $student->id)->latest()->get(),
+            'invoices' => \App\Models\Invoice::ownedBySchool($schoolId)->where('student_id', $student->id)->latest()->get(),
+            'bankAccounts' => \App\Models\SchoolAccount::where('school_id',$schoolId)->where('is_active',true)->whereRaw('LOWER(type) = ?', ['bank'])->orderBy('name')->get(),
+            'paymentSubmissions' => \App\Models\PaymentSubmission::where('school_id',$schoolId)->where('student_id',$student->id)->latest()->get(),
             'savings' => $savings,
             'savingsBalance' => $savings->sum(fn ($saving) => $saving->type === 'credit' ? $saving->amount : -$saving->amount),
-            'stats' => ['hadir' => $hadir, 'sakit' => $sakit, 'izin' => $izin, 'alpa' => $alpa, 'rate' => $total ? round($hadir / $total * 100) : null],
+            'stats' => ['dispensasi' => $dispensasi, 'hadir' => $hadir, 'sakit' => $sakit, 'izin' => $izin, 'alpa' => $alpa, 'rate' => $total ? round($hadir / $total * 100) : null],
         ];
     }
 

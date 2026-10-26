@@ -30,3 +30,23 @@ Pembayaran baru mencatat rekening tujuan yang sebenarnya pada transaksi, termasu
 Sesuai instruksi pengguna, tidak ada provider WhatsApp yang diintegrasikan atau diaktifkan. Pengingat disimpan dalam `billing_reminders`; `unconfigured` berarti belum dapat dikirim, `missing_recipient` berarti nomor wali belum valid, dan `cancelled` berarti kewajiban sudah lunas. `sent` hanya boleh digunakan adapter mendatang ketika provider mengonfirmasi penerimaan pengiriman; ini bukan bukti pesan dibaca atau diterima di perangkat.
 
 Kontrak `BillingWhatsAppGateway` tersedia untuk integrasi mendatang. Default `DeferredBillingWhatsAppGateway` selalu tidak terkonfigurasi. Pengiriman harus memakai nomor wali yang sah dan identitas idempotensi per pengingat; hasil pengiriman tidak pasti perlu direkonsiliasi sebelum dicoba lagi. UI tidak mengklaim notifikasi terkirim selama integrasi ditunda.
+
+## Tunggakan Siswa
+
+Menu `/finance/arrears` tersedia untuk Bendahara dan Teller di sekolah aktif. Pencarian mencakup nama, NIS, NISN; filter kelas, bulan, tahun serta urutan nominal diterapkan sebelum daftar dipaginasi. Bulan dan tahun memakai tanggal mulai periode tagihan; invoice lama tanpa periode memakai deadline. Siswa tidak aktif yang masih memiliki utang tetap tampil. Tagihan lunas tetap tersedia pada rincian siswa, tetapi tidak menambah saldo tunggakan.
+
+Pembayaran Tunai masuk ke kas aktif berkategori Komite atau kas umum yang belum dikategorikan; kas BOS tidak dipilih. Transfer wajib memilih rekening bank aktif bertanda Komite. Atur **Kategori Dana → Komite** pada Rekening Sekolah terlebih dahulu; rekening lama tidak diklasifikasikan otomatis berdasarkan namanya. Rekening bank berkategori kosong belum dianggap sebagai rekening Komite.
+
+Saldo rekening, transaksi, status invoice, dan alokasi dompet diperbarui atomik. Alokasi hanya memakai jenis pemasukan tagihan yang dibayar dan dompet aktif milik sekolah yang sama. Jika tidak ada aturan yang cocok, tidak ada alokasi; aturan dari jenis pemasukan lain tidak digunakan sebagai fallback. Total alokasi tidak boleh melebihi pembayaran. Pembayaran melalui approval menggunakan service alokasi yang sama.
+
+Foto siswa dapat diunggah melalui Data Murid (JPG/PNG/WebP, maksimal 2 MB). File disimpan privat dan disajikan melalui route yang memeriksa sekolah serta akses ke tunggakan; tanpa foto, daftar memakai inisial. Melihat daftar/rincian menghitung tampilan denda terkini tanpa menulis invoice; penyimpanan denda tetap dilakukan scheduler atau saat pembayaran di bawah penguncian invoice.
+
+## Pemasukan Komite Manual
+
+Pada menu Pemasukan, pilih kategori Komite. Daftar memakai pencarian Nama/NIS/NISN, kelas, bulan, tahun, dan urutan nominal yang sama dengan Tunggakan Siswa, tetapi hanya mencakup kewajiban yang dapat dibuktikan sebagai Komite. Untuk invoice lama tanpa relasi langsung, pencocokan nama hanya diterima jika item pertama menunjuk satu konfigurasi unik di sekolah yang sama dan jenis pemasukan konfigurasi itu Komite; nama ambigu tidak dipakai.
+
+Klik siswa, pilih satu atau beberapa tagihan, lalu isi metode pembayaran dan tanggal. Transfer memerlukan bank Komite aktif. Nominal awal adalah seluruh sisa setiap tagihan; nominal cicilan tetap mengikuti aturan invoice. Form menerima pemisah ribuan titik dan desimal koma, tanpa mengubah nilai pecahan.
+
+Satu penerimaan mempunyai nomor utama `PK...` dan rincian transaksi untuk setiap invoice. Saldo rekening bertambah sekali sebesar total penerimaan; dompet dialokasikan berdasarkan jenis pemasukan masing-masing invoice. Record `committee_receipts` adalah metadata penerimaan, bukan pemasukan tambahan dalam ledger. Seluruh baris, status, saldo, dan alokasi disimpan atomik: jika satu baris atau alokasi gagal, semua perubahan dibatalkan.
+
+Kunci form dan sidik data mencegah pengiriman ulang identik menggandakan pembayaran. Pengiriman dengan kunci sama tetapi data berbeda ditolak; buka form baru untuk penerimaan baru. Notifikasi pembayaran kepada orang tua disiapkan setelah commit melalui adapter notifikasi yang masih berupa log; pengiriman WhatsApp nyata tetap ditunda.
