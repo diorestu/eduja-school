@@ -3,8 +3,6 @@
     use App\Helpers\MenuHelper;
     $menuGroups = MenuHelper::getMenuGroups();
 
-    // Get current path
-    $currentPath = request()->path();
 @endphp
 
 <aside id="sidebar"
@@ -16,15 +14,12 @@
             this.initializeActiveMenus();
         },
         initializeActiveMenus() {
-            const currentPath = '{{ $currentPath }}';
-
             @foreach ($menuGroups as $groupIndex => $menuGroup)
                 @foreach ($menuGroup['items'] as $itemIndex => $item)
                     @if (isset($item['subItems']))
                         // Check if any submenu item matches current path
                         @foreach ($item['subItems'] as $subItem)
-                            if (currentPath === '{{ ltrim($subItem['path'], '/') }}' ||
-                                window.location.pathname === '{{ $subItem['path'] }}') {
+                            if (this.isActive('{{ $subItem['path'] }}')) {
                                 this.openSubmenus['{{ $groupIndex }}-{{ $itemIndex }}'] = true;
                             } @endforeach
             @endif
@@ -49,8 +44,12 @@
         isActive(path) {
             if (!path) return false;
             const locPath = (window.location.pathname.replace(/\/+$/, '') || '/');
-            const cleanPath = ('/' + path.replace(/^\/+/, '').replace(/\/+$/, '')) || '/';
-            return locPath === cleanPath;
+            const target = new URL(path, window.location.origin);
+            const cleanPath = target.pathname.replace(/\/+$/, '') || '/';
+            const currentQuery = new URLSearchParams(window.location.search);
+            return locPath === cleanPath &amp;&amp; Array.from(target.searchParams).every(
+                ([key, value]) => currentQuery.get(key) === value
+            );
         }
     }"
     :class="{

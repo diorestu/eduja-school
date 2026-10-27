@@ -102,7 +102,16 @@ class MenuHelper
             ],
             ['icon' => 'tables', 'name' => 'Tagihan', 'subItems' => [['name' => 'Tagihan', 'path' => '/finance/billing', 'permission' => 'finance.billing', 'roles' => ['bendahara'], 'pro' => false]]],
             ['icon' => 'tables', 'name' => 'Tunggakan Siswa', 'path' => '/finance/arrears', 'permission' => 'finance.arrears', 'roles' => ['bendahara', 'teller']],
-            ['icon' => 'ecommerce', 'name' => 'Pemasukan', 'subItems' => [['name' => 'Pemasukan', 'path' => '/spp/transaksi', 'permission' => 'spp.transactions', 'roles' => ['bendahara'], 'pro' => false]]],
+            [
+                'icon' => 'ecommerce',
+                'name' => 'Pemasukan',
+                'subItems' => [
+                    ['name' => 'Komite', 'path' => '/spp/transaksi?category=komite', 'permission' => 'spp.transactions', 'roles' => ['bendahara'], 'pro' => false],
+                    ['name' => 'BOS', 'path' => '/spp/transaksi?category=bos', 'permission' => 'spp.transactions', 'roles' => ['bendahara'], 'pro' => false],
+                    ['name' => 'Hibah', 'path' => '/spp/transaksi?category=hibah', 'permission' => 'spp.transactions', 'roles' => ['bendahara'], 'pro' => false],
+                    ['name' => 'Lainnya', 'path' => '/spp/transaksi?category=lainnya', 'permission' => 'spp.transactions', 'roles' => ['bendahara'], 'pro' => false],
+                ],
+            ],
             ['icon' => 'forms', 'name' => 'Pengeluaran', 'subItems' => [['name' => 'Pengeluaran', 'path' => '/bos/belanja', 'permission' => 'bos.expenses', 'roles' => ['bendahara'], 'pro' => false]]],
             ['icon' => 'forms', 'name' => 'Approval', 'subItems' => [['name' => 'Approval', 'path' => '/finance/approvals', 'permission' => 'finance.approvals', 'roles' => ['bendahara', 'kepsek'], 'pro' => false]]],
             ['icon' => 'forms', 'name' => 'Approval Tunggakan', 'path' => '/finance/approvals?type=payment', 'permission' => 'finance.approvals', 'roles' => ['bendahara', 'teller']],

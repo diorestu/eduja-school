@@ -88,9 +88,17 @@ it('organizes the bendahara navigation around the requested finance workflow', f
     expect(collect($items->firstWhere('name', 'Perencanaan Anggaran')['subItems'])->pluck('name')->all())
         ->toEqual(['Tahun Anggaran', 'Susun Anggaran', 'Revisi Anggaran']);
 
+    $incomeMenu = $items->firstWhere('name', 'Pemasukan');
+    expect($incomeMenu)->not->toHaveKey('path');
+    expect(collect($incomeMenu['subItems'])->pluck('path', 'name')->all())->toEqual([
+        'Komite' => '/spp/transaksi?category=komite',
+        'BOS' => '/spp/transaksi?category=bos',
+        'Hibah' => '/spp/transaksi?category=hibah',
+        'Lainnya' => '/spp/transaksi?category=lainnya',
+    ]);
+
     foreach ([
         'Tagihan' => '/finance/billing',
-        'Pemasukan' => '/spp/transaksi',
         'Pengeluaran' => '/bos/belanja',
         'Approval' => '/finance/approvals',
         'Laporan' => '/finance/reports',

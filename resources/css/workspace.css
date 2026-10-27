@@ -19,11 +19,11 @@ html, body { overflow-x: clip; }
 .work-field label, .work legend { font-size: .8125rem; font-weight: 600; color: var(--color-work-ink); }
 .work :is(input:not([type=hidden]):not([type=radio]):not([type=checkbox]),select,textarea) {
   width: 100%; min-width: 0; min-height: 38px; border: 1px solid var(--color-work-rule);
-  border-radius: .5rem; background: var(--color-work-paper); color: var(--color-work-ink);
+  border-radius: .5rem; background-color: var(--color-work-paper); color: var(--color-work-ink);
   padding: .5rem .75rem; font: inherit; font-size: .875rem; line-height: 1.25;
 }
 .work select {
-  padding-right: 2.25rem;
+  padding-right: 2.75rem;
 }
 .work textarea { min-height: 6rem; resize: vertical; }
 .work input::placeholder, .work textarea::placeholder { color: var(--color-work-muted); font-size: .8125rem; }

@@ -15,6 +15,22 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Selects with appearance-none already provide an inset SVG arrow in their markup. */
+select:not([multiple]):not(.appearance-none):not([size]),
+select:not([multiple]):not(.appearance-none)[size="1"] {
+  appearance: none;
+  padding-right: 2.75rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='m5 7.5 5 5 5-5' stroke='%23667085' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1.25rem;
+}
+
+.dark select:not([multiple]):not(.appearance-none):not([size]),
+.dark select:not([multiple]):not(.appearance-none)[size="1"] {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='m5 7.5 5 5 5-5' stroke='%2398a2b3' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
 @theme {
   --font-*: initial;
   --font-inter: Inter, sans-serif;

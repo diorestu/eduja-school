@@ -18,7 +18,7 @@
 .portal-form { display: grid; gap: 1rem; margin-top: 1rem; }
 .portal-field { display: grid; gap: .375rem; }
 .portal-field label { font-size: .875rem; font-weight: 700; }
-.portal-field :is(input, select, textarea) { min-height: 44px; border: 1px solid var(--color-work-rule); border-radius: .5rem; padding: .625rem .75rem; background: var(--color-work-paper); color: var(--color-work-ink); font: inherit; }
+.portal-field :is(input, select, textarea) { min-height: 44px; border: 1px solid var(--color-work-rule); border-radius: .5rem; padding: .625rem .75rem; background-color: var(--color-work-paper); color: var(--color-work-ink); font: inherit; }
 .portal-field textarea { min-height: 7rem; resize: vertical; }
 .portal-field :is(input,select,textarea):focus-visible, .portal-action:focus-visible { outline: 3px solid var(--color-work-accent); outline-offset: 3px; }
 .portal-action { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--color-work-rule); border-radius: .5rem; padding: .625rem .875rem; background: var(--color-work-paper); color: var(--color-work-ink); font-weight: 700; font-size: .875rem; }
