@@ -207,6 +207,7 @@ class SppTransactionController extends Controller
             'payment_method' => 'required|in:Tunai,Transfer,Transfer Bank,E-Wallet',
             'payment_date' => 'required|date',
             'account_id' => 'nullable|integer',
+            'proof' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
 
         $schoolId = $schoolContext->activeSchoolIdFor();
@@ -218,84 +219,100 @@ class SppTransactionController extends Controller
         $trxData = null;
 
         $arrearsFlow = $request->routeIs('finance.arrears.pay');
-        DB::transaction(function () use ($invoice, $schoolId, $validated, $payments, $arrearsFlow, &$trxData) {
-            $invoice = Invoice::ownedBySchool($schoolId)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
-            if (! $invoice->school_id) {
-                $invoice->update(['school_id' => $schoolId]);
-            }
-            $payments->refreshCharges($invoice, now());
-            $payments->validatePayment($invoice, $validated['amount_paid']);
-            $remaining = $payments->remainingCents($invoice);
-            $paymentDate = Carbon::parse($validated['payment_date']);
-            $datePrefix = 'TRX'.$paymentDate->format('Ymd');
-            $seq = Transaction::where('receipt_number', 'like', $datePrefix.'%')->count() + 1;
-            $rcpNumber = $datePrefix.str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
-            while (Transaction::where('receipt_number', $rcpNumber)->exists()) {
-                $seq++;
+        $proofPath = null;
+        try {
+            DB::transaction(function () use ($request, $invoice, $schoolId, $validated, $payments, $arrearsFlow, &$trxData, &$proofPath) {
+                $invoice = Invoice::ownedBySchool($schoolId)->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+                if (! $invoice->school_id) {
+                    $invoice->update(['school_id' => $schoolId]);
+                }
+                $payments->refreshCharges($invoice, now());
+                $payments->validatePayment($invoice, $validated['amount_paid']);
+                $remaining = $payments->remainingCents($invoice);
+                $paymentDate = Carbon::parse($validated['payment_date']);
+                $datePrefix = 'TRX'.$paymentDate->format('Ymd');
+                $seq = Transaction::where('receipt_number', 'like', $datePrefix.'%')->count() + 1;
                 $rcpNumber = $datePrefix.str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+                while (Transaction::where('receipt_number', $rcpNumber)->exists()) {
+                    $seq++;
+                    $rcpNumber = $datePrefix.str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+                }
+
+                $schoolId = $invoice->school_id;
+                $targetAccount = $payments->destinationAccount($schoolId, $validated['payment_method'], ! empty($validated['account_id']) ? (int) $validated['account_id'] : null, $arrearsFlow || (bool) $invoice->billing_period_id, $arrearsFlow);
+
+                if ($validated['payment_method'] !== 'Tunai' && $request->hasFile('proof')) {
+                    $proofPath = $request->file('proof')->store('payment-proofs/'.$schoolId, 'local');
+                    if (! $proofPath) {
+                        throw new \RuntimeException('Bukti transfer gagal disimpan.');
+                    }
+                }
+
+                $tx = Transaction::create([
+                    'invoice_id' => $invoice->id,
+                    'school_id' => $schoolId,
+                    'amount_paid' => $validated['amount_paid'],
+                    'payment_date' => $validated['payment_date'],
+                    'payment_method' => $validated['payment_method'],
+                    'account_id' => $targetAccount?->id,
+                    'receipt_number' => $rcpNumber,
+                    'recipient_name' => auth()->user() ? auth()->user()->name : 'Bendahara',
+                    'status' => 'approved',
+                    'proof_path' => $proofPath,
+                ]);
+
+                $newRemaining = ($remaining - $payments::cents($validated['amount_paid'])) / 100;
+                $payments->syncStatus($invoice);
+
+                // Update School Account (Kas jika Tunai, Bank jika Transfer)
+                if ($targetAccount) {
+                    $targetAccount->increment('current_balance', $validated['amount_paid']);
+                }
+
+                app(\App\Services\InvoiceWalletAllocationService::class)->allocate($invoice, $tx);
+
+                // Sistem otomatis mengirimkan notifikasi ke orang tua setiap ada transaksi uang masuk
+                $student = $invoice->student;
+                $parentPhone = $student?->parent_phone;
+                $parentName = $student?->parent_name
+                    ?? $student?->guardianUser?->name
+                    ?? 'Orang Tua/Wali '.($student?->name ?? 'Siswa');
+
+                $formattedAmount = 'Rp '.number_format($validated['amount_paid'], 0, ',', '.');
+                $newRemainingFormatted = 'Rp '.number_format(max(0, $newRemaining), 0, ',', '.');
+                $statusNotification = $newRemaining <= 0 ? 'Lunas' : 'Cicilan (Sisa: '.$newRemainingFormatted.')';
+
+                $notificationMessage = "Yth. Bpk/Ibu {$parentName},\n"
+                    ."Pembayaran untuk murid {$student?->name} (NIS: {$student?->nis}) telah berhasil diterima pada ".$paymentDate->translatedFormat('d F Y').".\n"
+                    ."No. Transaksi: {$rcpNumber}\n"
+                    ."Nominal: {$formattedAmount}\n"
+                    ."Metode: {$validated['payment_method']}\n"
+                    ."Status: {$statusNotification}\n"
+                    .'Terima kasih atas pembayaran Anda.';
+
+                // Receipt delivery is independent of payment posting; log adapters do not prove delivery.
+                if ($parentPhone) {
+                    DB::afterCommit(function () use ($parentPhone, $notificationMessage) {
+                        app(NotificationService::class)->send('whatsapp', $parentPhone, $notificationMessage);
+                    });
+                }
+
+                $trxData = [
+                    'rcp_number' => $rcpNumber,
+                    'amount' => $validated['amount_paid'],
+                    'method' => $validated['payment_method'],
+                    'date' => $paymentDate->translatedFormat('d F Y'),
+                    'account_name' => $targetAccount ? ($targetAccount->bank_name ? $targetAccount->bank_name.' - '.$targetAccount->account_number : $targetAccount->account_name) : 'Kas Sekolah',
+                    'is_lunas' => $newRemaining <= 0,
+                    'parent_phone' => $parentPhone,
+                ];
+            });
+        } catch (\Throwable $exception) {
+            if ($proofPath && ! Transaction::where('proof_path', $proofPath)->exists()) {
+                \Illuminate\Support\Facades\Storage::disk('local')->delete($proofPath);
             }
-
-            $schoolId = $invoice->school_id;
-            $targetAccount = $payments->destinationAccount($schoolId, $validated['payment_method'], ! empty($validated['account_id']) ? (int) $validated['account_id'] : null, $arrearsFlow || (bool) $invoice->billing_period_id, $arrearsFlow);
-
-            $tx = Transaction::create([
-                'invoice_id' => $invoice->id,
-                'school_id' => $schoolId,
-                'amount_paid' => $validated['amount_paid'],
-                'payment_date' => $validated['payment_date'],
-                'payment_method' => $validated['payment_method'],
-                'account_id' => $targetAccount?->id,
-                'receipt_number' => $rcpNumber,
-                'recipient_name' => auth()->user() ? auth()->user()->name : 'Bendahara',
-                'status' => 'approved',
-            ]);
-
-            $newRemaining = ($remaining - $payments::cents($validated['amount_paid'])) / 100;
-            $payments->syncStatus($invoice);
-
-            // Update School Account (Kas jika Tunai, Bank jika Transfer)
-            if ($targetAccount) {
-                $targetAccount->increment('current_balance', $validated['amount_paid']);
-            }
-
-            app(\App\Services\InvoiceWalletAllocationService::class)->allocate($invoice, $tx);
-
-            // Sistem otomatis mengirimkan notifikasi ke orang tua setiap ada transaksi uang masuk
-            $student = $invoice->student;
-            $parentPhone = $student?->parent_phone;
-            $parentName = $student?->parent_name
-                ?? $student?->guardianUser?->name
-                ?? 'Orang Tua/Wali '.($student?->name ?? 'Siswa');
-
-            $formattedAmount = 'Rp '.number_format($validated['amount_paid'], 0, ',', '.');
-            $newRemainingFormatted = 'Rp '.number_format(max(0, $newRemaining), 0, ',', '.');
-            $statusNotification = $newRemaining <= 0 ? 'Lunas' : 'Cicilan (Sisa: '.$newRemainingFormatted.')';
-
-            $notificationMessage = "Yth. Bpk/Ibu {$parentName},\n"
-                ."Pembayaran untuk murid {$student?->name} (NIS: {$student?->nis}) telah berhasil diterima pada ".$paymentDate->translatedFormat('d F Y').".\n"
-                ."No. Transaksi: {$rcpNumber}\n"
-                ."Nominal: {$formattedAmount}\n"
-                ."Metode: {$validated['payment_method']}\n"
-                ."Status: {$statusNotification}\n"
-                .'Terima kasih atas pembayaran Anda.';
-
-            // Receipt delivery is independent of payment posting; log adapters do not prove delivery.
-            if ($parentPhone) {
-                DB::afterCommit(function () use ($parentPhone, $notificationMessage) {
-                    app(NotificationService::class)->send('whatsapp', $parentPhone, $notificationMessage);
-                });
-            }
-
-            $trxData = [
-                'rcp_number' => $rcpNumber,
-                'amount' => $validated['amount_paid'],
-                'method' => $validated['payment_method'],
-                'date' => $paymentDate->translatedFormat('d F Y'),
-                'account_name' => $targetAccount ? ($targetAccount->bank_name ? $targetAccount->bank_name.' - '.$targetAccount->account_number : $targetAccount->account_name) : 'Kas Sekolah',
-                'is_lunas' => $newRemaining <= 0,
-                'parent_phone' => $parentPhone,
-            ];
-        });
+            throw $exception;
+        }
 
         return redirect()->back()
             ->with('success', 'Transaksi berhasil disimpan')

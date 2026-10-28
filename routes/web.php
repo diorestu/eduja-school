@@ -226,6 +226,7 @@ Route::middleware('auth')->group(function () {
                 Route::get('/arrears/{student}', [\App\Http\Controllers\StudentArrearsController::class, 'show'])->name('arrears.show');
                 Route::get('/arrears/{student}/photo', [\App\Http\Controllers\StudentArrearsController::class, 'photo'])->name('arrears.photo');
                 Route::post('/arrears/{student}/pay', [\App\Http\Controllers\StudentArrearsController::class, 'pay'])->name('arrears.pay');
+                Route::get('/arrears/{student}/transactions/{transaction}/proof', [\App\Http\Controllers\StudentArrearsController::class, 'proof'])->name('arrears.proof');
             });
             Route::middleware('permission:finance.billing,super_admin,bendahara')->group(function () {
                 Route::get('/billing', [FinanceFoundationController::class, 'billing'])->name('billing');

@@ -13,6 +13,42 @@ use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
+it('offers active unclassified banks and posts transfers with a private proof', function () {
+    Illuminate\Support\Facades\Storage::fake('local');
+    [$school, $student, $invoice] = arrearsFixture($this, 'teller');
+    $bank = SchoolAccount::create(['school_id' => $school, 'name' => 'Bank Umum Legacy', 'type' => 'Bank', 'is_active' => true, 'current_balance' => 0]);
+    $this->get('/finance/arrears/'.$student->id)->assertOk()->assertViewHas('bankAccounts', fn ($accounts) => $accounts->contains('id', $bank->id));
+    $this->post('/finance/arrears/'.$student->id.'/pay', ['invoice_id' => $invoice->id, 'amount_paid' => 100000, 'payment_method' => 'Transfer', 'account_id' => $bank->id, 'payment_date' => '2026-10-11', 'proof' => Illuminate\Http\UploadedFile::fake()->image('bukti.png')])->assertSessionHasNoErrors();
+    $transaction = App\Models\Transaction::where('invoice_id', $invoice->id)->sole();
+    expect($bank->fresh()->current_balance)->toBe('100000.00')->and($transaction->proof_path)->toStartWith('payment-proofs/'.$school.'/');
+    Illuminate\Support\Facades\Storage::disk('local')->assertExists($transaction->proof_path);
+    $this->get(route('finance.arrears.proof', [$student, $transaction]))->assertOk();
+    $this->get('/finance/arrears/'.$student->id)->assertSee('Bukti transfer');
+    $otherStudent = Student::create(['school_id' => $school, 'nis' => 'OTHER-PROOF', 'name' => 'Other Student', 'gender' => 'L']);
+    $this->get(route('finance.arrears.proof', [$otherStudent, $transaction]))->assertNotFound();
+    $otherSchool = DB::table('schools')->insertGetId(['name' => 'Other Proof School', 'level' => 'sma', 'ownership' => 'swasta']);
+    $student->update(['school_id' => $otherSchool]);
+    $this->get(route('finance.arrears.proof', [$student, $transaction]))->assertNotFound();
+});
+
+it('rejects invalid transfer proofs without recording payment or storing files', function () {
+    Illuminate\Support\Facades\Storage::fake('local');
+    [$school, $student, $invoice] = arrearsFixture($this);
+    $bank = SchoolAccount::create(['school_id' => $school, 'name' => 'Bank Komite', 'type' => 'Bank', 'source_funding' => 'komite', 'is_active' => true]);
+    foreach ([Illuminate\Http\UploadedFile::fake()->create('script.txt', 1, 'text/plain'), Illuminate\Http\UploadedFile::fake()->create('large.pdf', 5121, 'application/pdf')] as $proof) {
+        $this->post('/finance/arrears/'.$student->id.'/pay', ['invoice_id' => $invoice->id, 'amount_paid' => 100000, 'payment_method' => 'Transfer', 'account_id' => $bank->id, 'payment_date' => '2026-10-11', 'proof' => $proof])->assertSessionHasErrors('proof');
+    }
+    expect(App\Models\Transaction::count())->toBe(0)->and(Illuminate\Support\Facades\Storage::disk('local')->allFiles())->toBe([]);
+});
+
+it('does not leave transfer proofs behind when payment exceeds the outstanding balance', function () {
+    Illuminate\Support\Facades\Storage::fake('local');
+    [$school, $student, $invoice] = arrearsFixture($this);
+    $bank = SchoolAccount::create(['school_id' => $school, 'name' => 'Bank Komite', 'type' => 'Bank', 'source_funding' => 'komite', 'is_active' => true]);
+    $this->post('/finance/arrears/'.$student->id.'/pay', ['invoice_id' => $invoice->id, 'amount_paid' => 400000, 'payment_method' => 'Transfer', 'account_id' => $bank->id, 'payment_date' => '2026-10-11', 'proof' => Illuminate\Http\UploadedFile::fake()->image('bukti.png')])->assertSessionHasErrors('amount_paid');
+    expect(App\Models\Transaction::count())->toBe(0)->and(Illuminate\Support\Facades\Storage::disk('local')->allFiles())->toBe([]);
+});
+
 function arrearsFixture($test, string $role = 'bendahara'): array
 {
     $school = DB::table('schools')->insertGetId(['name' => 'Sekolah Tunggakan', 'level' => 'sma', 'ownership' => 'swasta', 'is_active' => true, 'status' => 'active']);

@@ -17,7 +17,7 @@ class BillingPaymentService
             if ($method === 'Tunai') {
                 $query->where(fn ($q) => $q->whereNull('source_funding')->orWhere('source_funding', 'komite'));
             } else {
-                $query->whereRaw('LOWER(type) = ?', ['bank'])->where('source_funding', 'komite');
+                $query->whereRaw('LOWER(type) = ?', ['bank'])->where(fn ($q) => $q->whereNull('source_funding')->orWhere('source_funding', 'komite'));
             }
         }
         $account = $accountId

@@ -15,7 +15,7 @@ class FinanceHealthService
 
         $invoices = Invoice::query()
             ->where('school_id', $schoolId)
-            ->withSum('transactions', 'amount_paid')
+            ->withSum(['transactions' => fn ($query) => $query->whereIn('status', ['approved', 'confirmed'])], 'amount_paid')
             ->get(['id', 'student_id', 'total_amount']);
 
         $totalBilled = (float) $invoices->sum('total_amount');

@@ -49,10 +49,11 @@ class StudentArrearsController extends Controller
         abort_unless((int) $student->school_id === $schoolId, 404);
         $student->load('schoolClasses.academicYear');
         $invoices = $arrears->invoices($schoolId, [], $student->id);
+        $invoices->load('transactions');
 
         return view('pages.keuangan.arrears.show', [
             'title' => 'Tagihan '.$student->name, 'row' => $arrears->studentRow($student, $invoices), 'arrears' => $arrears,
-            'bankAccounts' => SchoolAccount::where('school_id', $schoolId)->where('is_active', true)->whereRaw('LOWER(type) = ?', ['bank'])->where('source_funding', 'komite')->orderBy('name')->get(),
+            'bankAccounts' => SchoolAccount::where('school_id', $schoolId)->where('is_active', true)->whereRaw('LOWER(type) = ?', ['bank'])->where(fn ($q) => $q->whereNull('source_funding')->orWhere('source_funding', 'komite'))->orderBy('name')->get(),
         ]);
     }
 
@@ -66,10 +67,23 @@ class StudentArrearsController extends Controller
         $request->validate([
             'invoice_id' => ['required', 'integer'], 'payment_method' => ['required', Rule::in(['Tunai', 'Transfer'])],
             'account_id' => [Rule::requiredIf($request->input('payment_method') === 'Transfer'), 'nullable', 'integer',
-                Rule::exists('school_accounts', 'id')->where(fn ($q) => $q->where('school_id', $schoolId)->where('is_active', true)->whereRaw('LOWER(type) = ?', ['bank'])->where('source_funding', 'komite'))],
+                Rule::exists('school_accounts', 'id')->where(fn ($q) => $q->where('school_id', $schoolId)->where('is_active', true)->whereRaw('LOWER(type) = ?', ['bank'])->where(fn ($source) => $source->whereNull('source_funding')->orWhere('source_funding', 'komite')))],
         ]);
         $invoice = Invoice::ownedBySchool($schoolId)->where('student_id', $student->id)->findOrFail($request->input('invoice_id'));
 
         return app(SppTransactionController::class)->pay($request, $invoice->id, $context, $payments);
+    }
+
+    public function proof(Student $student, \App\Models\Transaction $transaction, SchoolContext $context)
+    {
+        $schoolId = $context->activeSchoolIdFor();
+        abort_unless((int) $student->school_id === $schoolId && (int) $transaction->school_id === $schoolId, 404);
+        abort_unless($transaction->invoice()->where('student_id', $student->id)->exists(), 404);
+        $path = $transaction->proof_path ?? '';
+        abort_unless(str_starts_with($path, 'payment-proofs/'.$schoolId.'/') && ! str_contains($path, '..'), 404);
+        $disk = \Illuminate\Support\Facades\Storage::disk('local');
+        abort_unless($disk->exists($path), 404);
+
+        return response()->file($disk->path($path), ['Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff']);
     }
 }

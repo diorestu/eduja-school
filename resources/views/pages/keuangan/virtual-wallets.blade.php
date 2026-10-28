@@ -5,28 +5,18 @@
     $walletColumns = [
         ['key' => 'name', 'label' => 'Nama Dompet', 'bold' => true],
         ['key' => 'nominal', 'label' => 'Nominal', 'type' => 'currency', 'minimumFractionDigits' => 0],
-        ['key' => 'source_label', 'label' => 'Asal Alokasi Dana', 'bold' => true, 'subKey' => 'notes_short'],
         ['key' => 'status_label', 'label' => 'Status', 'type' => 'badge'],
         ['key' => 'aksi', 'label' => 'Aksi', 'sortable' => false, 'onlyEdit' => true],
     ];
 
     $walletRows = $wallets->map(function ($wallet) {
-        $linkedIncomes = $wallet->fundAllocations->map(fn ($fa) => $fa->incomeType?->name)->filter()->unique()->values();
-        $sourceText = $wallet->source;
-        if (empty($sourceText) && $linkedIncomes->isNotEmpty()) {
-            $sourceText = $linkedIncomes->implode(', ');
-        }
-
         return [
             'id' => $wallet->id,
             'name' => $wallet->name,
             'nominal' => (float) $wallet->nominal,
-            'source' => $wallet->source ?? '',
-            'source_label' => filled($sourceText) ? $sourceText : 'Alokasi Bebas / Khusus',
             'status' => $wallet->status,
             'status_label' => in_array(strtolower($wallet->status), ['active', 'aktif']) ? 'Aktif' : 'Nonaktif',
             'notes' => $wallet->notes ?? '',
-            'notes_short' => filled($wallet->notes) ? \Illuminate\Support\Str::limit($wallet->notes, 40) : null,
             'update_url' => route('finance.virtual-wallets.update', $wallet),
             'only_edit' => true,
         ];
@@ -46,7 +36,6 @@
                 id: row.id,
                 name: row.name,
                 nominal: window.formatCurrencyMask ? window.formatCurrencyMask(row.nominal) : row.nominal,
-                source: row.source || '',
                 status: (row.status === 'inactive' || row.status === 'Nonaktif') ? 'inactive' : 'active',
                 notes: row.notes || ''
             };
@@ -92,7 +81,7 @@
         :rows="$walletRows"
         :columns="$walletColumns"
         caption="Daftar Dompet Virtual"
-        search-label="Cari dompet atau asal alokasi..."
+        search-label="Cari dompet..."
         row-label="dompet virtual"
         subtitle="Kantong alokasi dana khusus pada sekolah aktif"
         :show-actions="false"
@@ -139,25 +128,6 @@
                         @if($errors->has('nominal')) aria-invalid="true" aria-describedby="error-nominal" @endif>
                 </div>
                 @error('nominal')<p id="error-nominal" class="work-muted work-error">{{ $message }}</p>@enderror
-            </div>
-
-            {{-- Asal Alokasi Dana --}}
-            <div class="work-field">
-                <label for="wallet-source">Asal Alokasi Dana</label>
-                <input id="wallet-source" name="source" value="{{ old('source') }}" type="text" maxlength="120" list="source-options" placeholder="Contoh: SPP, BOS Reguler, Komite, Infaq"
-                    @if($firstError === 'source') autofocus @endif
-                    @if($errors->has('source')) aria-invalid="true" aria-describedby="error-source" @endif>
-                <datalist id="source-options">
-                    @foreach($incomeTypes as $income)
-                        <option value="{{ $income->name }}"></option>
-                    @endforeach
-                    <option value="SPP Bulanan"></option>
-                    <option value="Dana BOS Reguler"></option>
-                    <option value="Uang Gedung / Komite"></option>
-                    <option value="Infaq & Donasi"></option>
-                </datalist>
-                <p class="work-muted text-xs">Sumber pemasukan atau alokasi yang diarahkan ke kantong dompet ini.</p>
-                @error('source')<p id="error-source" class="work-muted work-error">{{ $message }}</p>@enderror
             </div>
 
             {{-- Status --}}
@@ -215,21 +185,6 @@
                     <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-semibold text-gray-500 pointer-events-none select-none z-10">Rp</span>
                     <input id="edit-wallet-nominal" name="nominal" x-model="editingWallet.nominal" type="text" inputmode="numeric" data-mask="currency" required placeholder="0" class="w-full !pl-11 pr-3 py-2 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white tabular-nums mask-currency" style="padding-left: 2.75rem !important;">
                 </div>
-            </div>
-
-            {{-- Asal Alokasi Dana --}}
-            <div class="work-field">
-                <label for="edit-wallet-source">Asal Alokasi Dana</label>
-                <input id="edit-wallet-source" name="source" x-model="editingWallet.source" type="text" maxlength="120" list="edit-source-options" placeholder="Contoh: SPP, BOS, Komite">
-                <datalist id="edit-source-options">
-                    @foreach($incomeTypes as $income)
-                        <option value="{{ $income->name }}"></option>
-                    @endforeach
-                    <option value="SPP Bulanan"></option>
-                    <option value="Dana BOS Reguler"></option>
-                    <option value="Uang Gedung / Komite"></option>
-                    <option value="Infaq & Donasi"></option>
-                </datalist>
             </div>
 
             {{-- Status --}}

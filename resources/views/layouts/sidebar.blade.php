@@ -6,7 +6,7 @@
 @endphp
 
 <aside id="sidebar"
-    class="fixed flex flex-col mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-99999 border-r border-gray-200"
+    class="dark fixed flex flex-col mt-0 top-0 px-5 left-0 bg-gray-900 text-gray-100 h-screen transition-all duration-300 ease-in-out z-99999 border-r border-gray-800"
     x-data="{
         openSubmenus: {},
         init() {
@@ -72,7 +72,7 @@
                 class="hidden dark:block" src="/images/logo/logo-wide-dark.png" alt="Logo" width="150"
                 height="40" />
             <img x-show="!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen"
-                src="/images/logo/logo-wide.png" alt="Logo" width="40" height="40" style="object-fit:contain" />
+                src="/images/logo/logo-wide-dark.png" alt="Logo" width="40" height="40" style="object-fit:contain" />
 
         </a>
     </div>

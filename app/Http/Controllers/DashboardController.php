@@ -95,6 +95,7 @@ class DashboardController extends Controller
             'latestAnnouncements' => $schoolId ? Announcement::where('school_id', $schoolId)->latest('published_at')->take(5)->get() : collect(),
             'attendanceSeries' => $attendanceSeries,
             'financeSeries' => $financeSeries,
+            'financeDashboard' => $user?->hasRole('bendahara') && $schoolId ? app(\App\Services\FinanceDashboardService::class)->forSchool($schoolId) : null,
         ]);
     }
 }

@@ -1,57 +1,13 @@
 @extends('layouts.app')
 
 @section('content')
-    <x-common.page-breadcrumb pageTitle="Dashboard Ringkasan Operasional & Keuangan" />
-
     @php
         $isTreasurer = auth()->user()?->hasRole('bendahara');
     @endphp
+    <x-common.page-breadcrumb :pageTitle="$isTreasurer ? 'Dashboard Keuangan' : 'Dashboard Ringkasan Operasional & Keuangan'" />
 
     @if ($isTreasurer)
-        <!-- 4-COLUMN STATISTIC COUNTER (TREASURER) -->
-        @include('pages.dashboard.partials.financial-metrics')
-
-        <!-- STATS KESEHATAN PENAGIHAN SPP (DI ATAS GRAFIK CHART) -->
-        @include('pages.dashboard.partials.finance-health')
-
-        <!-- 2-COLUMN CHART (TREASURER) -->
-        <section class="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
-            <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] min-w-0 overflow-hidden">
-                <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-gray-100 dark:border-gray-800/60">
-                    <div>
-                        <h4 class="font-semibold text-gray-800 dark:text-white/90">Pemasukan & Pengeluaran</h4>
-                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Tren komparasi arus kas masuk dan belanja operasional per bulan.</p>
-                    </div>
-                    <div class="flex items-center gap-3 text-xs">
-                        <span class="inline-flex items-center gap-1.5 font-medium text-gray-600 dark:text-gray-300">
-                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Pemasukan
-                        </span>
-                        <span class="inline-flex items-center gap-1.5 font-medium text-gray-600 dark:text-gray-300">
-                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Pengeluaran
-                        </span>
-                    </div>
-                </div>
-                <div class="w-full min-w-0 overflow-hidden">
-                    <div id="treasurer-finance-chart" class="w-full"></div>
-                </div>
-            </div>
-            <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] min-w-0 overflow-hidden">
-                <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-gray-100 dark:border-gray-800/60">
-                    <div>
-                        <h4 class="font-semibold text-gray-800 dark:text-white/90">Arus Kas Bersih (Net Cash Flow)</h4>
-                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Surplus / defisit kas per bulan (Penerimaan dikurangi Pengeluaran).</p>
-                    </div>
-                    <div class="flex items-center gap-3 text-xs">
-                        <span class="inline-flex items-center gap-1.5 font-medium text-gray-600 dark:text-gray-300">
-                            <span class="w-2.5 h-2.5 rounded-full bg-[#087f7a]"></span> Arus Kas Bersih
-                        </span>
-                    </div>
-                </div>
-                <div class="w-full min-w-0 overflow-hidden">
-                    <div id="treasurer-netflow-chart" class="w-full"></div>
-                </div>
-            </div>
-        </section>
+        @include('pages.dashboard.partials.finance-overview', ['summary' => $financeDashboard])
     @else
         <!-- SECTION 1: OPERATIONAL METRICS -->
         <span class="block mb-3 text-xs font-bold uppercase tracking-wider text-gray-400">Ringkasan Operasional Sekolah</span>
@@ -176,6 +132,7 @@
         @include('pages.dashboard.partials.finance-health')
     @endif
 
+    @unless($isTreasurer)
     <!-- Secondary section -->
     <div class="grid grid-cols-12 gap-4 md:gap-6">
         
@@ -295,6 +252,7 @@
 
     </div>
 
+    @endunless
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             if (!window.ApexCharts) return;
@@ -535,7 +493,7 @@
                             element: '#tour-financial-metrics', 
                             popover: { 
                                 title: 'Metrik Finansial Terpadu', 
-                                description: 'Pantau total penerimaan SPP, realisasi belanja operasional, sisa tunggakan SPP murid, dan saldo kas Buku Kas Umum (BKU).', 
+                                description: @js($isTreasurer ? 'Pantau pemasukan dan pengeluaran bulan ini, penerimaan BOS tahun ini, saldo kas tunai, dan saldo rekening sekolah.' : 'Pantau total penerimaan SPP, belanja operasional, sisa tunggakan, dan saldo kas.'),
                                 side: 'bottom', 
                                 align: 'center' 
                             } 

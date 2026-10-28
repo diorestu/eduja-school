@@ -163,8 +163,6 @@ class FinanceFoundationController extends Controller
             ->latest()
             ->get();
 
-        $incomeTypes = IncomeType::where('school_id', $schoolId)->orderBy('name')->get(['id', 'name']);
-
         $totalNominal = $wallets->sum('nominal');
         $activeCount = $wallets->filter(fn ($w) => in_array(strtolower($w->status), ['active', 'aktif']))->count();
         $withAllocationsCount = $wallets->filter(fn ($w) => $w->fundAllocations->isNotEmpty() || filled($w->source))->count();
@@ -179,7 +177,6 @@ class FinanceFoundationController extends Controller
         return view('pages.keuangan.virtual-wallets', [
             'title' => 'Dompet Virtual',
             'wallets' => $wallets,
-            'incomeTypes' => $incomeTypes,
             'metrics' => $metrics,
         ]);
     }
@@ -253,7 +250,7 @@ class FinanceFoundationController extends Controller
             'name' => $validated['name'],
             'nominal' => $validated['nominal'],
             'status' => $status,
-            'source' => $validated['source'] ?? null,
+            ...array_intersect_key($validated, ['source' => true]),
             'notes' => $validated['notes'] ?? null,
         ]);
 

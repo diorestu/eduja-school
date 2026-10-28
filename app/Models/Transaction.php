@@ -21,6 +21,7 @@ class Transaction extends Model
         'recipient_name',
         'status',
         'committee_receipt_id',
+        'proof_path',
     ];
 
     protected $casts = [

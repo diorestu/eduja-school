@@ -34,16 +34,34 @@
             @empty<tr><td colspan="6" class="p-8 text-center text-gray-500">Belum ada tagihan untuk siswa ini.</td></tr>@endforelse
             </tbody></table></div>
     </section>
+    @if($row['invoices']->flatMap->transactions->isNotEmpty())
+        <section class="space-y-3" aria-label="Riwayat pembayaran">
+            <h2 class="font-semibold">Riwayat pembayaran</h2>
+            @foreach($row['invoices'] as $invoice)
+                @foreach($invoice->transactions as $transaction)
+                    <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 p-3 text-sm dark:border-gray-700">
+                        <div><strong>{{ $transaction->receipt_number }}</strong><p class="work-muted">{{ $invoice->invoice_number }} · {{ $transaction->payment_date->format('d M Y') }} · {{ $transaction->payment_method }} · {{ $transaction->status }}</p><p>Rp {{ number_format($transaction->amount_paid, 0, ',', '.') }}</p></div>
+                        @if($transaction->proof_path)<a class="work-btn" href="{{ route('finance.arrears.proof', [$student, $transaction]) }}" target="_blank" rel="noopener">Bukti transfer<span class="sr-only"> {{ $transaction->receipt_number }} (tab baru)</span></a>@endif
+                    </div>
+                @endforeach
+            @endforeach
+        </section>
+    @endif
     <p class="work-muted">Notifikasi pembayaran belum dikirim karena integrasi WhatsApp ditunda.</p>
     <dialog x-ref="payment" class="account-dialog work max-w-lg w-full" aria-labelledby="arrears-payment-title" @close="saving = false" @cancel="if(saving) $event.preventDefault()">
         <div class="account-dialog-head"><h2 id="arrears-payment-title">Pembayaran Tagihan</h2><button type="button" class="work-btn" @click="$refs.payment.close()" :disabled="saving">Tutup</button></div>
-        <form method="POST" action="{{ route('finance.arrears.pay', $student) }}" @submit="saving = true" :aria-busy="saving" class="space-y-4 py-4">
+        <form method="POST" enctype="multipart/form-data" action="{{ route('finance.arrears.pay', $student) }}" @submit="saving = true" :aria-busy="saving" class="space-y-4 py-4">
             @csrf
             @if($errors->any())<div role="alert" class="work-notice work-error">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
             <div class="work-field"><label for="arrears-invoice">Tagihan</label><select id="arrears-invoice" name="invoice_id" x-model="selectedInvoice" @change="const i = invoices.find(i => i.id === selectedInvoice); amount = window.formatCurrencyMask ? window.formatCurrencyMask(i?.remaining || 0) : (i?.remaining || 0)" required><template x-for="invoice in invoices" :key="invoice.id"><option :value="invoice.id" x-text="invoice.name + ' · Sisa Rp ' + invoice.remaining.toLocaleString('id-ID')"></option></template></select></div>
             <div class="work-field"><label for="arrears-amount">Nominal bayar</label><input id="arrears-amount" name="amount_paid" x-model="amount" data-mask="currency" inputmode="numeric" required><p class="work-muted">Cicilan mengikuti aturan tagihan. Nilai awal adalah seluruh sisa pembayaran.</p></div>
             <div class="work-field"><label for="arrears-method">Metode pembayaran</label><select id="arrears-method" name="payment_method" x-model="method"><option value="Tunai">Tunai</option><option value="Transfer">Transfer</option></select></div>
-            <div class="work-field" x-show="method === 'Transfer'" x-cloak><label for="arrears-bank">Rekening Transfer Komite</label><select id="arrears-bank" name="account_id" :required="method === 'Transfer'" :disabled="method !== 'Transfer'"><option value="">Pilih rekening Komite</option>@foreach($bankAccounts as $bank)<option value="{{ $bank->id }}" @selected(old('account_id') == $bank->id)>{{ $bank->name }} · {{ $bank->bank_name }} · {{ $bank->account_number }}</option>@endforeach</select>@if($bankAccounts->isEmpty())<p class="work-muted">Belum ada rekening bank aktif bertanda Komite. Bendahara dapat melengkapinya di Rekening Sekolah.</p>@endif</div>
+            <div class="work-field" x-show="method === 'Transfer'" x-cloak><label for="arrears-bank">Rekening tujuan transfer</label><select id="arrears-bank" name="account_id" :required="method === 'Transfer'" :disabled="method !== 'Transfer'"><option value="">Pilih rekening bank</option>@foreach($bankAccounts as $bank)<option value="{{ $bank->id }}" @selected(old('account_id') == $bank->id)>{{ $bank->name }} · {{ $bank->bank_name }} · {{ $bank->account_number }}</option>@endforeach</select>@if($bankAccounts->isEmpty())<p class="work-muted">Belum ada rekening bank aktif untuk pembayaran ini. Bendahara dapat menambahkan rekening umum atau Komite di Rekening Sekolah.</p>@endif</div>
+            <div class="work-field" x-show="method === 'Transfer'" x-cloak>
+                <label for="arrears-proof">Bukti transfer <span class="font-normal">(opsional)</span></label>
+                <input id="arrears-proof" name="proof" type="file" accept=".pdf,.jpg,.jpeg,.png" :disabled="method !== 'Transfer'" aria-describedby="arrears-proof-help">
+                <p id="arrears-proof-help" class="work-muted">PDF, JPG, atau PNG, maksimal 5 MB.@if($errors->has('proof')) Pilih ulang file sebelum menyimpan.@endif</p>
+            </div>
             <div class="work-field"><label for="arrears-date">Tanggal transaksi</label><input id="arrears-date" type="date" name="payment_date" value="{{ old('payment_date', now()->toDateString()) }}" required></div>
             <div class="account-dialog-actions"><button type="button" class="work-btn" @click="$refs.payment.close()" :disabled="saving">Batal</button><button type="submit" class="work-btn work-btn-primary" :disabled="saving || invoices.length === 0" x-text="saving ? 'Menyimpan…' : 'Simpan'"></button></div>
         </form>

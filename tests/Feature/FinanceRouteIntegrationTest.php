@@ -320,21 +320,22 @@ it('classifies finance collection and arrears health at the specified boundaries
 
     $response = $this->get('/dashboard')->assertOk()
         ->assertDontSee('Ringkasan Operasional Sekolah')
-        ->assertSee('Kesehatan Penagihan SPP')
+        ->assertSee('Kesehatan Keuangan Sekolah')
         ->assertSee('id="tour-financial-metrics"', false)
-        ->assertSee('id="treasurer-finance-chart"', false)
-        ->assertSee('id="treasurer-netflow-chart"', false)
+        ->assertSee('Collection Rate per Kelas')
+        ->assertSee('Collection Rate per Tagihan')
+        ->assertSee('id="finance-collection-trend"', false)
         ->assertViewHas('financeHealth', fn (array $data) => $data['collection']['label'] === 'Lancar');
 
     $html = $response->getContent();
     $counterPos = strpos($html, 'id="tour-financial-metrics"');
-    $healthPos = strpos($html, 'Kesehatan Penagihan SPP');
-    $chartPos = strpos($html, 'id="treasurer-finance-chart"');
+    $healthPos = strpos($html, 'Kesehatan Keuangan Sekolah');
+    $chartPos = strpos($html, 'id="finance-collection-trend"');
     expect($counterPos)->not->toBeFalse()
         ->and($healthPos)->not->toBeFalse()
         ->and($chartPos)->not->toBeFalse()
-        ->and($counterPos)->toBeLessThan($healthPos)
-        ->and($healthPos)->toBeLessThan($chartPos);
+        ->and($counterPos)->toBeLessThan($chartPos)
+        ->and($chartPos)->toBeLessThan($healthPos);
 });
 
 it('implements the complete Master Jenis Pemasukan workflow matching requirements', function () {
