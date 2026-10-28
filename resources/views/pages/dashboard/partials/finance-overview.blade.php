@@ -34,7 +34,10 @@
 
     <section class="finance-collections" aria-label="Kinerja penagihan">
         <article class="finance-panel"><div class="finance-panel-heading"><span class="finance-icon"><i class="bx bx-group" aria-hidden="true"></i></span><h2>Collection Rate per Kelas</h2></div><p class="finance-caption">Pembayaran diterima / total tagihan · kelas siswa saat ini</p>
-            <div class="finance-rate-list">@forelse($summary['byClass'] as $item)<div><div class="finance-rate-label"><span>{{ $item['name'] }}</span><strong>{{ $item['percentage'] }}%</strong></div><div class="finance-track"><span style="width: {{ $item['percentage'] }}%"></span></div><span class="sr-only">{{ $rupiah($item['paid']) }} dari {{ $rupiah($item['billed']) }}</span></div>@empty<p class="finance-empty">Belum ada tagihan per kelas.</p>@endforelse</div>
+            @if($summary['byClass']->isNotEmpty())
+                <div class="overflow-x-auto"><div id="finance-collection-class" style="min-width: {{ max(280, $summary['byClass']->count() * 52) }}px" aria-label="Grafik batang persentase pembayaran per kelas"></div></div>
+                <details class="finance-caption"><summary class="cursor-pointer">Lihat rincian per kelas</summary><div class="overflow-x-auto"><table class="mt-2 w-full"><thead><tr><th class="text-left">Kelas</th><th class="text-right">Collection Rate</th></tr></thead><tbody>@foreach($summary['byClass'] as $item)<tr><td>{{ $item['name'] }}</td><td class="text-right">{{ $item['percentage'] }}%</td></tr>@endforeach</tbody></table></div></details>
+            @else<p class="finance-empty">Belum ada tagihan per kelas.</p>@endif
         </article>
         <article class="finance-panel"><div class="finance-panel-heading"><span class="finance-icon"><i class="bx bx-receipt" aria-hidden="true"></i></span><h2>Collection Rate per Tagihan</h2></div><p class="finance-caption">Pembayaran diterima / total tiap jenis tagihan</p>
             <div class="finance-rate-list">@forelse($summary['byBill'] as $item)<div><div class="finance-rate-label"><span>{{ $item['name'] }}</span><strong>{{ $item['percentage'] }}%</strong></div><div class="finance-track"><span style="width: {{ $item['percentage'] }}%; background-color: {{ $colors[$loop->index % count($colors)] }}"></span></div><span class="sr-only">{{ $rupiah($item['paid']) }} dari {{ $rupiah($item['billed']) }}</span></div>@empty<p class="finance-empty">Belum ada tagihan untuk dihitung.</p>@endforelse</div>
@@ -62,6 +65,39 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     if (!window.ApexCharts) return;
+    const mountChart = (host, options, minimumWidth = 0) => {
+        const chart = new ApexCharts(host, options);
+        chart.render().then(() => {
+            let width = host.clientWidth;
+            new ResizeObserver(([entry]) => {
+                const nextWidth = Math.max(minimumWidth, Math.round(entry.contentRect.width));
+                if (nextWidth > 0 && Math.abs(width - nextWidth) > 1) {
+                    width = nextWidth;
+                    chart.updateOptions({ chart: { width } }, false, false);
+                }
+            }).observe(host.parentElement);
+            new MutationObserver(() => chart.updateOptions({
+                theme: { mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light' },
+                dataLabels: { style: { colors: [document.documentElement.classList.contains('dark') ? '#b8c6d6' : '#526579'] } }
+            })).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        });
+    };
+    const classHost = document.getElementById('finance-collection-class');
+    if (classHost) {
+        const classes = @json($summary['byClass']);
+        mountChart(classHost, {
+            chart: { type: 'bar', height: 260, toolbar: { show: false }, fontFamily: 'Inter, sans-serif', background: 'transparent', animations: { enabled: false } },
+            series: [{ name: 'Collection Rate', data: classes.map(item => item.percentage) }],
+            colors: @json($colors),
+            plotOptions: { bar: { horizontal: false, columnWidth: '55%', borderRadius: 4, distributed: true, dataLabels: { position: 'top' } } },
+            dataLabels: { enabled: true, offsetY: -18, formatter: value => value + '%', style: { colors: [document.documentElement.classList.contains('dark') ? '#b8c6d6' : '#526579'], fontSize: '10px', fontWeight: 600 } },
+            xaxis: { categories: classes.map(item => item.name), labels: { rotate: -45, hideOverlappingLabels: false } },
+            yaxis: { min: 0, max: 100, tickAmount: 4, labels: { formatter: value => value + '%' } },
+            tooltip: { y: { formatter: value => value + '%' } },
+            grid: { borderColor: '#94a3b833', padding: { top: 12 } }, legend: { show: false },
+            theme: { mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light' }
+        }, Math.max(280, classes.length * 52));
+    }
     const host = document.getElementById('finance-collection-trend');
     if (!host) return;
     const trend = @json($summary['trend']);
@@ -73,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
             label: { text: value + '%', borderColor: '#cbd5e1', style: { color: '#163344', background: '#ffffff' } }
         }]);
     });
-    const chart = new ApexCharts(host, {
+    mountChart(host, {
         chart: { type: 'line', height: 240, toolbar: { show: false }, fontFamily: 'Inter, sans-serif', background: 'transparent', animations: { enabled: false } },
         series: [{ name: '{{ now()->year }}', data: trend.current }, { name: '{{ now()->year - 1 }}', data: trend.previous }],
         colors: ['#3885ed', '#94a3b8'], stroke: { width: [3, 2], curve: 'straight', dashArray: [0, 5] },
@@ -82,17 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
         theme: { mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light' },
         noData: { text: 'Belum ada data collection' }, legend: { position: 'top', horizontalAlign: 'right' },
         annotations: { points: isolatedPoints }
-    });
-    chart.render().then(() => {
-        let width = host.clientWidth;
-        new ResizeObserver(([entry]) => {
-            const nextWidth = Math.round(entry.contentRect.width);
-            if (nextWidth > 0 && Math.abs(width - nextWidth) > 1) {
-                width = nextWidth;
-                chart.updateOptions({ chart: { width } }, false, false);
-            }
-        }).observe(host.parentElement);
-        new MutationObserver(() => chart.updateOptions({ theme: { mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light' } })).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     });
 });
 </script>
