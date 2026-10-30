@@ -8,6 +8,7 @@
         ['Total Pengeluaran Bulan Ini', $summary['expenseMonth'], 'bx-trending-down', 'finance-rose', 'Belanja disetujui · '.$dashboardDate->translatedFormat('F Y')],
         ['Saldo Kas Tunai', $summary['cashBalance'], 'bx-wallet', 'finance-violet', 'Saldo kas aktif tercatat'],
         ['Saldo Rekening Sekolah', $summary['bankBalance'], 'bxs-bank', 'finance-blue', 'Seluruh rekening bank aktif'],
+        ['Total Tunggakan Siswa', $summary['totalOutstanding'] ?? ($financeHealth['totalOutstanding'] ?? 0), 'bx-error-circle', 'finance-amber', 'Sisa tagihan belum lunas'],
     ];
 @endphp
 <div class="finance-dashboard">

@@ -330,4 +330,18 @@ class SppTransactionController extends Controller
             ->with('parent_notification_sent', false)
             ->with('parent_phone', $trxData['parent_phone'] ?? '');
     }
+
+    public function proof(Transaction $transaction, SchoolContext $schoolContext)
+    {
+        $schoolId = $schoolContext->activeSchoolIdFor();
+        abort_unless((int) $transaction->school_id === $schoolId, 404);
+        abort_unless($transaction->proof_path && str_starts_with($transaction->proof_path, 'payment-proofs/'.$schoolId.'/'), 404);
+        $disk = \Illuminate\Support\Facades\Storage::disk('local');
+        abort_unless($disk->exists($transaction->proof_path), 404);
+
+        return response()->file($disk->path($transaction->proof_path), [
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
 }

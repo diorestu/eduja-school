@@ -54,3 +54,62 @@ it('calculates collection from accepted receipts and budget realization from lin
         ->and($summary['budgets']['bos']['percentage'])->toBe(25.0)->and($summary['budgets']['bos']['remaining'])->toBe(750.0);
     expect(app(App\Services\FinanceHealthService::class)->forSchool($school)['collection']['percentage'])->toBe(50.0);
 });
+
+it('accurately displays student arrears data and status on treasurer and kepsek dashboards', function () {
+    $this->travelTo(now()->setDate(2026, 10, 28));
+    $school = DB::table('schools')->insertGetId(['name' => 'Arrears Dashboard School', 'level' => 'sma', 'ownership' => 'swasta', 'is_active' => true, 'status' => 'active']);
+    $year = App\Models\AcademicYear::create(['school_id' => $school, 'year' => '2026/2027', 'semester' => 'Ganjil', 'is_active' => true]);
+    $class = App\Models\SchoolClass::create(['school_id' => $school, 'academic_year_id' => $year->id, 'name' => 'X-1', 'grade' => 'X']);
+    $student1 = App\Models\Student::create(['school_id' => $school, 'nis' => 'ARR01', 'name' => 'Student Arrears 1', 'gender' => 'L', 'is_active' => true, 'status' => 'active']);
+    $student2 = App\Models\Student::create(['school_id' => $school, 'nis' => 'ARR02', 'name' => 'Student Arrears 2', 'gender' => 'P', 'is_active' => true, 'status' => 'active']);
+    $class->students()->attach([$student1->id, $student2->id]);
+
+    // Student 1: invoice 200.000, paid 120.000 (remaining 80.000)
+    $inv1 = App\Models\Invoice::create(['school_id' => $school, 'student_id' => $student1->id, 'academic_year_id' => $year->id, 'invoice_number' => 'INV-01', 'due_date' => '2026-10-15', 'total_amount' => 200000, 'status' => 'Cicilan']);
+    App\Models\Transaction::create(['invoice_id' => $inv1->id, 'school_id' => $school, 'amount_paid' => 120000, 'status' => 'approved', 'receipt_number' => 'TX-01', 'payment_date' => '2026-10-20', 'payment_method' => 'Tunai']);
+
+    // Student 2: invoice 250.000, paid 0 (remaining 250.000)
+    App\Models\Invoice::create(['school_id' => $school, 'student_id' => $student2->id, 'academic_year_id' => $year->id, 'invoice_number' => 'INV-02', 'due_date' => '2026-10-15', 'total_amount' => 250000, 'status' => 'Belum Lunas']);
+
+    $health = app(App\Services\FinanceHealthService::class)->forSchool($school);
+    expect($health['totalOutstanding'])->toBe(330000.0)
+        ->and($health['delinquentStudents']['count'])->toBe(2)
+        ->and($health['arrears']['label'])->toBe('Sangat Tinggi')
+        ->and($health['arrears']['label'])->not->toBe('Tidak Ada Tunggakan');
+
+    // 1. Treasurer view
+    $treasurer = User::factory()->create(['role' => 'bendahara', 'onboarding_status' => 'active']);
+    DB::table('school_user_roles')->insert(['school_id' => $school, 'user_id' => $treasurer->id, 'role' => 'bendahara', 'is_active' => true, 'membership_status' => 'active']);
+
+    $responseTreasurer = $this->actingAs($treasurer)->withSession(['active_school_id' => $school])->get('/dashboard')->assertOk();
+    $responseTreasurer->assertSee('Total Tunggakan Siswa')
+        ->assertSee('Rp 330.000')
+        ->assertSee('Sangat Tinggi')
+        ->assertSee('2')
+        ->assertDontSee('Tidak Ada Tunggakan');
+
+    // 2. Kepsek / Principal view
+    $kepsek = User::factory()->create(['role' => 'kepsek', 'onboarding_status' => 'active']);
+    DB::table('school_user_roles')->insert(['school_id' => $school, 'user_id' => $kepsek->id, 'role' => 'kepsek', 'is_active' => true, 'membership_status' => 'active']);
+
+    $responseKepsek = $this->actingAs($kepsek)->withSession(['active_school_id' => $school])->get('/dashboard')->assertOk();
+    $responseKepsek->assertSee('Sisa Tunggakan SPP')
+        ->assertSee('Rp 330.000')
+        ->assertSee('Sangat Tinggi')
+        ->assertSee('2 dari 2 murid aktif');
+
+    // 3. When remaining bills are fully paid (no arrears)
+    App\Models\Transaction::create(['invoice_id' => $inv1->id, 'school_id' => $school, 'amount_paid' => 80000, 'status' => 'approved', 'receipt_number' => 'TX-02', 'payment_date' => '2026-10-21', 'payment_method' => 'Tunai']);
+    $inv2 = App\Models\Invoice::where('invoice_number', 'INV-02')->first();
+    App\Models\Transaction::create(['invoice_id' => $inv2->id, 'school_id' => $school, 'amount_paid' => 250000, 'status' => 'approved', 'receipt_number' => 'TX-03', 'payment_date' => '2026-10-21', 'payment_method' => 'Tunai']);
+
+    $healthClean = app(App\Services\FinanceHealthService::class)->forSchool($school);
+    expect($healthClean['totalOutstanding'])->toBe(0.0)
+        ->and($healthClean['delinquentStudents']['count'])->toBe(0)
+        ->and($healthClean['arrears']['label'])->toBe('Tidak Ada Tunggakan');
+
+    $responseClean = $this->actingAs($treasurer)->withSession(['active_school_id' => $school])->get('/dashboard')->assertOk();
+    $responseClean->assertSee('Total Tunggakan Siswa')
+        ->assertSee('Rp 0')
+        ->assertSee('Tidak Ada Tunggakan');
+});

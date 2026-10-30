@@ -33,7 +33,10 @@ class DashboardController extends Controller
             }
         }
 
-        $schoolId = $schoolContext->activeSchoolId();
+        $schoolId = $schoolContext->activeSchoolId() ?? ($user ? ($schoolContext->ensureDefaultSchool($user)?->id ?? $schoolContext->availableSchools($user)->first()?->id) : null);
+        if ($schoolId && ! session()->has('active_school_id')) {
+            session(['active_school_id' => $schoolId]);
+        }
         $scope = fn ($query) => $schoolId ? $query->where('school_id', $schoolId) : $query;
 
         // 1. Core operational stats
@@ -42,9 +45,13 @@ class DashboardController extends Controller
         $totalClasses = $scope(SchoolClass::query())->count();
 
         // 2. Core financial stats (SPP + BOS)
-        $totalCollected = (float) Transaction::whereHas('invoice', fn ($query) => $query->where('school_id', $schoolId))->sum('amount_paid'); // Income from SPP
+        $invoices = $schoolId ? Invoice::ownedBySchool($schoolId)
+            ->withSum(['transactions' => fn ($query) => $query->whereIn('status', ['approved', 'confirmed'])], 'amount_paid')
+            ->get(['id', 'student_id', 'total_amount']) : collect();
+
+        $totalCollected = (float) $invoices->sum(fn (Invoice $invoice) => (float) ($invoice->transactions_sum_amount_paid ?? 0));
         $totalExpenses = (float) $scope(Expense::query())->where('status', 'approved')->sum('amount'); // Approved expenditures
-        $totalOutstanding = (float) ($scope(Invoice::query())->sum('total_amount') - $totalCollected); // Outstanding SPP
+        $totalOutstanding = (float) $invoices->sum(fn (Invoice $invoice) => max(0, (float) $invoice->total_amount - (float) ($invoice->transactions_sum_amount_paid ?? 0))); // Outstanding SPP
 
         $netBalance = $totalCollected - $totalExpenses; // Current cash balance
         $financeHealth = $financeHealthService->forSchool($schoolId);
@@ -58,7 +65,8 @@ class DashboardController extends Controller
 
         // 5. Recent transaction logs (SPP)
         $recentTransactions = Transaction::with(['invoice.student'])
-            ->whereHas('invoice', fn ($query) => $query->where('school_id', $schoolId))
+            ->whereHas('invoice', fn ($query) => $schoolId ? $query->ownedBySchool($schoolId) : $query)
+            ->whereIn('status', ['approved', 'confirmed'])
             ->orderBy('created_at', 'desc')
             ->take(5)
             ->get();
@@ -72,7 +80,7 @@ class DashboardController extends Controller
         ];
         $financeSeries = [
             'months' => $attendanceSeries['months'],
-            'income' => $months->map(fn (Carbon $month) => (float) Transaction::whereHas('invoice', fn ($query) => $query->where('school_id', $schoolId))->whereDate('payment_date', '>=', $month)->whereDate('payment_date', '<', $month->copy()->addMonth())->sum('amount_paid'))->values()->all(),
+            'income' => $months->map(fn (Carbon $month) => (float) Transaction::whereHas('invoice', fn ($query) => $schoolId ? $query->ownedBySchool($schoolId) : $query)->whereIn('status', ['approved', 'confirmed'])->whereDate('payment_date', '>=', $month)->whereDate('payment_date', '<', $month->copy()->addMonth())->sum('amount_paid'))->values()->all(),
             'expenses' => $months->map(fn (Carbon $month) => (float) Expense::where('school_id', $schoolId)->where('status', 'approved')->whereDate('transaction_date', '>=', $month)->whereDate('transaction_date', '<', $month->copy()->addMonth())->sum('amount'))->values()->all(),
         ];
 

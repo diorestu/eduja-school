@@ -137,6 +137,8 @@
         },
         openPayArrears(row) {
             this.selectedStudent = row;
+            this.arrearsPayMethod = 'Tunai';
+            this.arrearsPayAccountId = '';
             if (row.invoices && row.invoices.length > 0) {
                 this.selectedArrearsInvoiceId = row.invoices[0].id;
                 this.arrearsPayAmount = row.invoices[0].remaining_amount;
@@ -429,7 +431,7 @@
             </div>
         </div>
 
-        <form :action="'/spp/transaksi/' + selectedArrearsInvoiceId + '/bayar'" method="POST" @submit="saving = true" :aria-busy="saving" class="space-y-4">
+        <form :action="'/spp/transaksi/' + selectedArrearsInvoiceId + '/bayar'" method="POST" enctype="multipart/form-data" @submit="saving = true" :aria-busy="saving" class="space-y-4">
             @csrf
 
             <div class="work-field">
@@ -450,18 +452,30 @@
                 <label for="arrears-select-method">Metode Pembayaran <span class="text-red-500">*</span></label>
                 <select id="arrears-select-method" name="payment_method" x-model="arrearsPayMethod" required>
                     <option value="Tunai">Tunai / Cash</option>
-                    <option value="Transfer Bank">Transfer Bank</option>
+                    <option value="Transfer">Transfer Bank</option>
+                    <option value="Transfer Bank">Transfer Bank (Lainnya)</option>
                 </select>
             </div>
 
-            <div x-show="arrearsPayMethod === 'Transfer Bank'" x-cloak class="work-field">
+            <div x-show="arrearsPayMethod === 'Transfer' || arrearsPayMethod === 'Transfer Bank'" x-cloak class="work-field">
                 <label for="arrears-select-account">Pilih Rekening Transfer <span class="text-red-500">*</span></label>
-                <select id="arrears-select-account" name="account_id" x-model="arrearsPayAccountId">
-                    <option value="">-- Pilih Rekening Komite Sekolah --</option>
-                    @foreach($schoolAccounts as $acc)
+                <select id="arrears-select-account" name="account_id" x-model="arrearsPayAccountId" :required="arrearsPayMethod === 'Transfer' || arrearsPayMethod === 'Transfer Bank'">
+                    <option value="">-- Pilih Rekening Bank Tujuan --</option>
+                    @php
+                        $bankAccountsOnly = $schoolAccounts->filter(fn ($acc) => strtolower($acc->type ?? '') === 'bank');
+                        $accountsToShow = $bankAccountsOnly->isNotEmpty() ? $bankAccountsOnly : $schoolAccounts;
+                    @endphp
+                    @foreach($accountsToShow as $acc)
                         <option value="{{ $acc->id }}">{{ $acc->name }} ({{ $acc->bank_name ?? $acc->type }}) - {{ $acc->account_number ?? '-' }}</option>
                     @endforeach
                 </select>
+            </div>
+
+            <div x-show="arrearsPayMethod === 'Transfer' || arrearsPayMethod === 'Transfer Bank'" x-cloak class="work-field">
+                <label for="arrears-proof">Bukti Transfer <span class="font-normal text-gray-500 dark:text-gray-400">(opsional, PDF/JPG/PNG maks 5MB)</span></label>
+                <input id="arrears-proof" name="proof" type="file" accept=".pdf,.jpg,.jpeg,.png"
+                    class="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
+                <p class="text-[11px] text-gray-400 mt-1">Upload foto atau scan bukti transfer jika ada.</p>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -540,7 +554,7 @@
             </div>
         </div>
 
-        <form :action="'/spp/transaksi/' + activeInvoice.id + '/bayar'" method="POST" @submit="saving = true" :aria-busy="saving" class="space-y-4">
+        <form :action="'/spp/transaksi/' + activeInvoice.id + '/bayar'" method="POST" enctype="multipart/form-data" @submit="saving = true" :aria-busy="saving" class="space-y-4">
             @csrf
 
             <div class="work-field">
@@ -555,19 +569,27 @@
                 <label for="pay-method">Metode Pembayaran <span class="text-red-500">*</span></label>
                 <select id="pay-method" name="payment_method" x-model="payMethod" required>
                     <option value="Tunai">Tunai / Cash</option>
-                    <option value="Transfer Bank">Transfer Bank</option>
+                    <option value="Transfer">Transfer Bank</option>
+                    <option value="Transfer Bank">Transfer Bank (Lainnya)</option>
                     <option value="E-Wallet">E-Wallet (Gopay/Ovo/Dana)</option>
                 </select>
             </div>
 
-            <div x-show="payMethod === 'Transfer Bank'" x-cloak class="work-field">
+            <div x-show="payMethod === 'Transfer Bank' || payMethod === 'Transfer'" x-cloak class="work-field">
                 <label for="pay-account">Rekening Tujuan Transfer</label>
                 <select id="pay-account" name="account_id" x-model="payAccountId">
-                    <option value="">-- Pilih Rekening Sekolah --</option>
-                    @foreach($schoolAccounts as $acc)
-                        <option value="{{ $acc->id }}">{{ $acc->name }} ({{ $acc->bank_name ?? $acc->type }})</option>
+                    <option value="">-- Pilih Rekening Bank Tujuan --</option>
+                    @foreach($accountsToShow as $acc)
+                        <option value="{{ $acc->id }}">{{ $acc->name }} ({{ $acc->bank_name ?? $acc->type }}) - {{ $acc->account_number ?? '-' }}</option>
                     @endforeach
                 </select>
+            </div>
+
+            <div x-show="payMethod === 'Transfer Bank' || payMethod === 'Transfer'" x-cloak class="work-field">
+                <label for="pay-proof">Bukti Transfer <span class="font-normal text-gray-500 dark:text-gray-400">(opsional, PDF/JPG/PNG maks 5MB)</span></label>
+                <input id="pay-proof" name="proof" type="file" accept=".pdf,.jpg,.jpeg,.png"
+                    class="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
+                <p class="text-[11px] text-gray-400 mt-1">Upload foto atau scan bukti transfer jika ada.</p>
             </div>
 
             <div class="work-field">

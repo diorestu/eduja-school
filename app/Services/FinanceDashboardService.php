@@ -44,7 +44,7 @@ class FinanceDashboardService
             $spent = (float) (clone $expenses)->whereIn('budget_plan_id', $plans->pluck('id'))->sum('amount');
             $budgets[$source] = ['amount' => $total, 'spent' => $spent, 'remaining' => $total - $spent, 'percentage' => $total > 0 ? round($spent / $total * 100, 1) : null];
         }
-        $invoices = Invoice::where('school_id', $schoolId)->with(['student.schoolClasses.academicYear', 'billingItem', 'invoiceItems',
+        $invoices = Invoice::ownedBySchool($schoolId)->with(['student.schoolClasses.academicYear', 'billingItem', 'invoiceItems',
             'transactions' => fn ($q) => $q->whereIn('status', ['approved', 'confirmed'])])->get();
         $collection = fn ($group) => $this->rate($group);
         $byClass = $invoices->groupBy(function ($invoice) use ($schoolId) {
@@ -65,12 +65,16 @@ class FinanceDashboardService
             }
         }
 
+        $totalOutstanding = (float) $invoices->sum(fn ($inv) => max(0, (float) $inv->total_amount - (float) $inv->transactions->sum('amount_paid')));
+        $delinquentCount = $invoices->filter(fn ($inv) => (float) $inv->transactions->sum('amount_paid') < (float) $inv->total_amount)->pluck('student_id')->unique()->count();
+
         return ['incomeMonth' => $incomeMonth, 'expenseMonth' => $expenseMonth, 'cashflow' => $incomeMonth - $expenseMonth,
             'bosYear' => (float) (clone $incomes)->bos()->whereYear('received_date', $year)->sum('amount'),
             'cashBalance' => (float) $accounts->filter(fn ($a) => in_array(strtolower($a->type), ['tunai', 'cash']))->sum('current_balance'),
             'bankBalance' => (float) $accounts->filter(fn ($a) => strtolower($a->type) === 'bank')->sum('current_balance'),
             'bosBalance' => (float) $accounts->filter(fn ($a) => preg_match('/^(bos|bop|dak)/i', $a->source_funding ?? ''))->sum('current_balance'),
-            'wallets' => $walletShares, 'walletTotal' => $walletTotal, 'budgets' => $budgets, 'byClass' => $byClass, 'byBill' => $byBill, 'trend' => $trend];
+            'wallets' => $walletShares, 'walletTotal' => $walletTotal, 'budgets' => $budgets, 'byClass' => $byClass, 'byBill' => $byBill, 'trend' => $trend,
+            'totalOutstanding' => $totalOutstanding, 'delinquentCount' => $delinquentCount];
     }
 
     private function rate(Collection $invoices, $cutoff = null): array

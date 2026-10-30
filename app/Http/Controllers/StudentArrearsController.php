@@ -51,9 +51,24 @@ class StudentArrearsController extends Controller
         $invoices = $arrears->invoices($schoolId, [], $student->id);
         $invoices->load('transactions');
 
+        $bankAccounts = SchoolAccount::where('school_id', $schoolId)
+            ->where('is_active', true)
+            ->whereRaw('LOWER(type) = ?', ['bank'])
+            ->where(fn ($q) => $q->whereNull('source_funding')->orWhere('source_funding', 'komite'))
+            ->orderBy('name')
+            ->get();
+
+        if ($bankAccounts->isEmpty()) {
+            $bankAccounts = SchoolAccount::where('school_id', $schoolId)
+                ->where('is_active', true)
+                ->whereRaw('LOWER(type) = ?', ['bank'])
+                ->orderBy('name')
+                ->get();
+        }
+
         return view('pages.keuangan.arrears.show', [
             'title' => 'Tagihan '.$student->name, 'row' => $arrears->studentRow($student, $invoices), 'arrears' => $arrears,
-            'bankAccounts' => SchoolAccount::where('school_id', $schoolId)->where('is_active', true)->whereRaw('LOWER(type) = ?', ['bank'])->where(fn ($q) => $q->whereNull('source_funding')->orWhere('source_funding', 'komite'))->orderBy('name')->get(),
+            'bankAccounts' => $bankAccounts,
         ]);
     }
 
@@ -65,9 +80,10 @@ class StudentArrearsController extends Controller
             $request->merge(['account_id' => null]);
         }
         $request->validate([
-            'invoice_id' => ['required', 'integer'], 'payment_method' => ['required', Rule::in(['Tunai', 'Transfer'])],
-            'account_id' => [Rule::requiredIf($request->input('payment_method') === 'Transfer'), 'nullable', 'integer',
+            'invoice_id' => ['required', 'integer'], 'payment_method' => ['required', Rule::in(['Tunai', 'Transfer', 'Transfer Bank'])],
+            'account_id' => [Rule::requiredIf(in_array($request->input('payment_method'), ['Transfer', 'Transfer Bank'])), 'nullable', 'integer',
                 Rule::exists('school_accounts', 'id')->where(fn ($q) => $q->where('school_id', $schoolId)->where('is_active', true)->whereRaw('LOWER(type) = ?', ['bank'])->where(fn ($source) => $source->whereNull('source_funding')->orWhere('source_funding', 'komite')))],
+            'proof' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
         ]);
         $invoice = Invoice::ownedBySchool($schoolId)->where('student_id', $student->id)->findOrFail($request->input('invoice_id'));
 

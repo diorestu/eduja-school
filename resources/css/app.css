@@ -235,7 +235,7 @@ select:not([multiple]):not(.appearance-none)[size="1"] {
 .finance-intro h1 { font-size: 22px; font-weight: 700; letter-spacing: -.025em; }
 .finance-intro p, .finance-intro time { font-size: 12px; color: #526579; margin-top: 5px; }
 .finance-stats, .finance-funds, .finance-collections, .finance-health-grid { display: grid; gap: 14px; min-width: 0; }
-.finance-stats { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.finance-stats { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .finance-funds { grid-template-columns: 1fr 1.55fr 1fr 1fr; }
 .finance-collections { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .finance-panel { min-width: 0; padding: 20px; border: 1px solid #dce6ee; border-radius: 12px; background-color: #fff; }

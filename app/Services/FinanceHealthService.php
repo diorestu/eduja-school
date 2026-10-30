@@ -14,7 +14,7 @@ class FinanceHealthService
         }
 
         $invoices = Invoice::query()
-            ->where('school_id', $schoolId)
+            ->ownedBySchool($schoolId)
             ->withSum(['transactions' => fn ($query) => $query->whereIn('status', ['approved', 'confirmed'])], 'amount_paid')
             ->get(['id', 'student_id', 'total_amount']);
 
@@ -51,7 +51,7 @@ class FinanceHealthService
             'totalPaid' => $totalPaid,
             'totalOutstanding' => $totalOutstanding,
             'collection' => $totalBilled > 0 ? $this->collectionHealth($collectionRate) : $noBilling,
-            'arrears' => $totalBilled > 0 ? $this->arrearsHealth($arrearsRate) : $noBilling,
+            'arrears' => $totalBilled > 0 ? $this->arrearsHealth($arrearsRate, $totalOutstanding) : $noBilling,
             'delinquentStudents' => [
                 'count' => $delinquentStudents,
                 'total' => $activeStudents,
@@ -76,8 +76,18 @@ class FinanceHealthService
         }
     }
 
-    private function arrearsHealth(float $percentage): array
+    private function arrearsHealth(float $percentage, float $totalOutstanding = 0.0): array
     {
+        if ($totalOutstanding <= 0 || $percentage <= 0.0) {
+            return [
+                'percentage' => 0.0,
+                'label' => 'Tidak Ada Tunggakan',
+                'headline' => 'Semua tagihan tertagih dengan baik.',
+                'description' => 'Tidak ada tagihan tertunggak pada sekolah aktif saat ini.',
+                'color' => 'green',
+            ];
+        }
+
         foreach ([
             [0, 5, 'Sangat Terkendali', 'Pembayaran murid sangat tertib.', 'Hanya sebagian kecil tagihan yang masih tertunggak. Kondisi tunggakan sekolah sangat terkendali.', 'green'],
             [5, 10, 'Terkendali', 'Sebagian besar pembayaran berjalan tertib.', 'Tunggakan masih berada pada tingkat yang relatif terkendali. Tetap pantau tagihan yang mulai melewati jatuh tempo.', 'green'],
@@ -86,9 +96,17 @@ class FinanceHealthService
             [25, 40, 'Tinggi', 'Cukup banyak tagihan masih tertunda.', 'Tingkat tunggakan sudah cukup tinggi dan dapat menghambat arus kas sekolah. Prioritaskan tagihan yang telah lama tertunda.', 'red'],
             [40, INF, 'Sangat Tinggi', 'Porsi tagihan tertunda sangat besar.', 'Sebagian besar tagihan belum terselesaikan. EDUJA menyarankan bendahara memprioritaskan penanganan tunggakan dan memantau arus kas sekolah.', 'red'],
         ] as [$minimum, $maximum, $label, $headline, $description, $color]) {
-            if ($percentage >= $minimum && $percentage <= $maximum) {
+            if ($percentage > $minimum && $percentage <= $maximum) {
                 return compact('percentage', 'label', 'headline', 'description', 'color');
             }
         }
+
+        return [
+            'percentage' => $percentage,
+            'label' => 'Sangat Tinggi',
+            'headline' => 'Porsi tagihan tertunda sangat besar.',
+            'description' => 'Sebagian besar tagihan belum terselesaikan. EDUJA menyarankan bendahara memprioritaskan penanganan tunggakan dan memantau arus kas sekolah.',
+            'color' => 'red',
+        ];
     }
 }

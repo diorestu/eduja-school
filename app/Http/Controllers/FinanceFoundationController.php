@@ -159,19 +159,16 @@ class FinanceFoundationController extends Controller
     {
         $schoolId = $schoolContext->activeSchoolIdFor();
         $wallets = VirtualWallet::where('school_id', $schoolId)
-            ->with(['fundAllocations.incomeType'])
             ->latest()
             ->get();
 
         $totalNominal = $wallets->sum('nominal');
         $activeCount = $wallets->filter(fn ($w) => in_array(strtolower($w->status), ['active', 'aktif']))->count();
-        $withAllocationsCount = $wallets->filter(fn ($w) => $w->fundAllocations->isNotEmpty() || filled($w->source))->count();
 
         $metrics = [
             ['label' => 'Total Dompet Virtual', 'value' => (string) $wallets->count()],
             ['label' => 'Total Saldo / Nominal', 'value' => 'Rp '.number_format($totalNominal, 0, ',', '.')],
             ['label' => 'Dompet Aktif', 'value' => (string) $activeCount],
-            ['label' => 'Terhubung Alokasi', 'value' => (string) $withAllocationsCount],
         ];
 
         return view('pages.keuangan.virtual-wallets', [

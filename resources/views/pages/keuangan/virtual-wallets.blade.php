@@ -58,7 +58,7 @@
     @endif
 
     {{-- METRIC SUMMARY CARDS --}}
-    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4 mb-2">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-2">
         @foreach($metrics as $metric)
             <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
                 <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ $metric['label'] }}</p>
@@ -69,7 +69,7 @@
 
     {{-- HEADER ACTION --}}
     <div class="work-head mb-0">
-        <p class="work-muted">Kantong-kantong dompet virtual untuk alokasi dana dan keperluan khusus operasional sekolah.</p>
+        <p class="work-muted">Kantong-kantong dompet virtual untuk pos simpanan dan keperluan khusus operasional sekolah.</p>
         <button type="button" class="work-btn work-btn-primary" @click="$refs.walletModal.showModal()">
             <svg class="w-4 h-4 mr-1.5 -ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             Dompet Virtual Baru
@@ -83,7 +83,7 @@
         caption="Daftar Dompet Virtual"
         search-label="Cari dompet..."
         row-label="dompet virtual"
-        subtitle="Kantong alokasi dana khusus pada sekolah aktif"
+        subtitle="Kantong simpanan dana khusus pada sekolah aktif"
         :show-actions="false"
         :show-avatar="false"
         :exportable="true"
@@ -99,7 +99,7 @@
         <div class="account-dialog-head">
             <div class="min-w-0">
                 <h2 id="wallet-modal-title">Tambah Dompet Virtual</h2>
-                <p id="wallet-modal-help" class="work-muted mt-1">Siapkan kantong dompet untuk alokasi dana keperluan khusus.</p>
+                <p id="wallet-modal-help" class="work-muted mt-1">Siapkan kantong dompet untuk pos keperluan khusus.</p>
             </div>
             <button type="button" class="work-btn" @click="$refs.walletModal.close()" :disabled="saving" aria-label="Tutup form dompet virtual">Tutup</button>
         </div>
@@ -164,7 +164,7 @@
         <div class="account-dialog-head">
             <div class="min-w-0">
                 <h2 id="edit-wallet-modal-title">Edit Dompet Virtual</h2>
-                <p class="work-muted mt-1">Perbarui rincian kantong alokasi dana khusus.</p>
+                <p class="work-muted mt-1">Perbarui rincian kantong dompet khusus.</p>
             </div>
             <button type="button" class="work-btn" @click="$refs.editWalletModal.close()" :disabled="saving" aria-label="Tutup form edit">Tutup</button>
         </div>

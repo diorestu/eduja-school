@@ -3,7 +3,7 @@
         <h2 id="committee-payment-title" class="font-semibold">Pembayaran Tagihan</h2>
         <button type="button" class="work-btn" @click="closePaymentModal()" :disabled="savingPay" aria-label="Tutup pembayaran">Tutup</button>
     </div>
-    <form x-ref="payForm" method="POST" :action="'/spp/transaksi/' + payInvoiceId + '/bayar'" class="space-y-4 py-4 text-sm">
+    <form x-ref="payForm" method="POST" enctype="multipart/form-data" :action="'/spp/transaksi/' + payInvoiceId + '/bayar'" class="space-y-4 py-4 text-sm">
         @csrf
         <input type="hidden" name="invoice_id" :value="payInvoiceId">
         <input type="hidden" name="_billing_action" value="payment">
@@ -23,14 +23,30 @@
         </div>
         <div>
             <label for="committee-pay-method" class="block mb-1">Metode pembayaran</label>
-            <select id="committee-pay-method" name="payment_method" x-model="payMethod" class="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"><option>Tunai</option><option>Transfer Bank</option><option>E-Wallet</option></select>
+            <select id="committee-pay-method" name="payment_method" x-model="payMethod" class="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800">
+                <option value="Tunai">Tunai</option>
+                <option value="Transfer">Transfer Bank</option>
+                <option value="Transfer Bank">Transfer Bank (Lainnya)</option>
+                <option value="E-Wallet">E-Wallet</option>
+            </select>
         </div>
-        <div>
-            <label for="committee-pay-account" class="block mb-1">Rekening sekolah</label>
+        <div x-show="payMethod === 'Transfer' || payMethod === 'Transfer Bank'" x-cloak>
+            <label for="committee-pay-account" class="block mb-1">Rekening Tujuan Transfer</label>
             <select id="committee-pay-account" name="account_id" x-model="payAccountId" class="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800">
                 <option value="">Pilih otomatis sesuai metode</option>
-                @foreach($schoolAccounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach
+                @php
+                    $bankAccountsForCommittee = $schoolAccounts->filter(fn ($a) => strtolower($a->type ?? '') === 'bank');
+                    $accountsForCommittee = $bankAccountsForCommittee->isNotEmpty() ? $bankAccountsForCommittee : $schoolAccounts;
+                @endphp
+                @foreach($accountsForCommittee as $account)
+                    <option value="{{ $account->id }}">{{ $account->name }} ({{ $account->bank_name ?? $account->type }}) - {{ $account->account_number ?? '-' }}</option>
+                @endforeach
             </select>
+        </div>
+        <div x-show="payMethod === 'Transfer' || payMethod === 'Transfer Bank'" x-cloak>
+            <label for="committee-pay-proof" class="block mb-1">Bukti Transfer <span class="text-gray-400 font-normal text-xs">(opsional, PDF/JPG/PNG maks 5MB)</span></label>
+            <input id="committee-pay-proof" name="proof" type="file" accept=".pdf,.jpg,.jpeg,.png"
+                class="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
         </div>
         <div>
             <label for="committee-pay-date" class="block mb-1">Tanggal pembayaran</label>

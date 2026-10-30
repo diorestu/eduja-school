@@ -359,6 +359,7 @@ Route::middleware('auth')->group(function () {
                 Route::get('/transaksi', [SppTransactionController::class, 'index'])->name('transaksi.index');
                 Route::post('/transaksi/generate', [SppTransactionController::class, 'generateInvoices'])->name('transaksi.generate');
                 Route::post('/transaksi/{id}/bayar', [SppTransactionController::class, 'pay'])->name('transaksi.pay');
+                Route::get('/transaksi/{transaction}/proof', [SppTransactionController::class, 'proof'])->name('transaksi.proof');
                 Route::post('/transaksi/pemasukan', [FinanceFoundationController::class, 'storeIncome'])->name('transaksi.pemasukan');
             });
             Route::middleware('permission:spp.reports,super_admin,kepsek,bendahara')->get('/laporan', [SppReportController::class, 'index'])->name('laporan.index');
