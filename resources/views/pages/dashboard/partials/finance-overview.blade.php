@@ -11,8 +11,6 @@
     ];
 @endphp
 <div class="finance-dashboard">
-    <div class="finance-intro"><div><h1>Ringkasan Keuangan Sekolah</h1><p>Pantau penerimaan, saldo, anggaran, dan pembayaran siswa.</p></div><time datetime="{{ $dashboardDate->toDateString() }}">{{ $dashboardDate->translatedFormat('l, d F Y') }}</time></div>
-
     <section id="tour-financial-metrics" class="finance-stats" aria-label="Ringkasan keuangan">
         @foreach($stats as [$label, $amount, $icon, $tone, $period])
             <article class="finance-panel finance-stat {{ $tone }}"><div class="finance-panel-heading"><span class="finance-icon"><i class="bx {{ $icon }}" aria-hidden="true"></i></span><h2>{{ $label }}</h2></div><strong class="finance-amount">{{ $rupiah($amount) }}</strong><p class="finance-caption">{{ $period }}</p></article>

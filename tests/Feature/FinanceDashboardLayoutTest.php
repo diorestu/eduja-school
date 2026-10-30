@@ -27,6 +27,7 @@ it('scopes monthly income yearly bos and account balances to the active school',
     $response = $this->actingAs($user)->withSession(['active_school_id' => $school])->get('/dashboard')->assertOk();
     $response->assertSeeInOrder(['Total Pemasukan Bulan Ini', 'Saldo BOS', 'Collection Rate per Kelas', 'Kesehatan Keuangan Sekolah']);
     $response->assertSee('Dana BOS Diterima Tahun Ini')->assertSee('Saldo Kas Tunai')->assertSee('Saldo Rekening Sekolah');
+    $response->assertDontSee('Ringkasan Keuangan Sekolah')->assertDontSee('Pantau penerimaan, saldo, anggaran, dan pembayaran siswa.');
 });
 
 it('calculates collection from accepted receipts and budget realization from linked approved expenses', function () {
