@@ -14,12 +14,12 @@
 <div class="finance-dashboard">
     <section id="tour-financial-metrics" class="finance-stats" aria-label="Ringkasan keuangan">
         @foreach($stats as [$label, $amount, $icon, $tone, $period])
-            <article class="finance-panel finance-stat {{ $tone }}"><div class="finance-panel-heading"><span class="finance-icon"><i class="bx {{ $icon }}" aria-hidden="true"></i></span><h2>{{ $label }}</h2></div><strong class="finance-amount">{{ $rupiah($amount) }}</strong><p class="finance-caption">{{ $period }}</p></article>
+            <article class="finance-panel finance-stat {{ $tone }}"><div class="finance-panel-heading"><span class="finance-icon"><i class="bx {{ $icon }}" aria-hidden="true"></i></span><h2>{{ $label }}</h2></div><strong class="finance-amount" title="{{ $rupiah($amount) }}">{{ $rupiah($amount) }}</strong><p class="finance-caption">{{ $period }}</p></article>
         @endforeach
     </section>
 
     <section class="finance-funds" aria-label="Saldo dan anggaran dana">
-        <article class="finance-panel finance-blue"><div class="finance-panel-heading"><span class="finance-icon"><i class="bx bxs-bank" aria-hidden="true"></i></span><h2>Saldo BOS</h2></div><strong class="finance-amount">{{ $rupiah($summary['bosBalance']) }}</strong><p class="finance-caption">Saldo rekening aktif khusus BOS, BOP, dan DAK.</p><a href="{{ route('finance.accounts') }}" class="finance-link">Lihat rekening <span aria-hidden="true">↗</span></a></article>
+        <article class="finance-panel finance-blue"><div class="finance-panel-heading"><span class="finance-icon"><i class="bx bxs-bank" aria-hidden="true"></i></span><h2>Saldo BOS</h2></div><strong class="finance-amount" title="{{ $rupiah($summary['bosBalance']) }}">{{ $rupiah($summary['bosBalance']) }}</strong><p class="finance-caption">Saldo rekening aktif khusus BOS, BOP, dan DAK.</p><a href="{{ route('finance.accounts') }}" class="finance-link">Lihat rekening <span aria-hidden="true">↗</span></a></article>
         <article class="finance-panel finance-wallets"><div class="finance-panel-heading"><span class="finance-icon"><i class="bx bx-wallet" aria-hidden="true"></i></span><div><h2>Dompet Virtual</h2><p class="finance-caption">Komposisi saldo dompet aktif</p></div><a href="{{ route('finance.virtual-wallets') }}" class="finance-link ml-auto">Lihat detail</a></div>
             @if($summary['walletTotal'] > 0)
                 <div class="finance-wallet-stack" role="img" aria-label="Komposisi saldo dompet virtual; rincian di bawah">@foreach($summary['wallets'] as $wallet)<span style="width: {{ $wallet['percentage'] }}%; background-color: {{ $colors[$loop->index % count($colors)] }}"></span>@endforeach</div>
@@ -53,7 +53,7 @@
                 <article><h3>{{ $label }}</h3><div class="finance-ring finance-ring-{{ $key }}" style="--progress: {{ min(100, max(0, $metric['percentage'])) }}"><strong>{{ $metric['percentage'] }}%</strong></div><strong class="finance-health-label">{{ $metric['label'] }}</strong><p class="finance-caption">{{ $metric['description'] }}</p></article>
             @endforeach
             <article><h3>Siswa Menunggak</h3><strong class="finance-health-number">{{ $financeHealth['delinquentStudents']['count'] }} <span>siswa</span></strong><p class="finance-caption">dari {{ $financeHealth['delinquentStudents']['total'] }} siswa aktif ({{ $financeHealth['delinquentStudents']['percentage'] }}%)</p><a href="{{ route('finance.arrears') }}" class="finance-link">Lihat tunggakan</a></article>
-            <article><h3>Cashflow</h3><strong class="finance-health-number">{{ $rupiah($summary['cashflow']) }}</strong><p class="finance-caption">Arus kas bersih bulan ini</p><p class="finance-caption mt-4">Pemasukan dikurangi pengeluaran yang disetujui.</p></article>
+            <article><h3>Cashflow</h3><strong class="finance-health-number" title="{{ $rupiah($summary['cashflow']) }}">{{ $rupiah($summary['cashflow']) }}</strong><p class="finance-caption">Arus kas bersih bulan ini</p><p class="finance-caption mt-4">Pemasukan dikurangi pengeluaran yang disetujui.</p></article>
             @foreach(['komite' => 'Realisasi Anggaran Komite', 'bos' => 'Serapan BOS'] as $source => $label)
                 @php($budget = $summary['budgets'][$source])
                 <article><h3>{{ $label }}</h3>@if($budget['percentage'] !== null)<div class="finance-ring {{ $source === 'bos' ? 'finance-ring-bos' : '' }}" style="--progress: {{ min(100, max(0, $budget['percentage'])) }}"><strong>{{ $budget['percentage'] }}%</strong></div><strong class="finance-health-label">{{ $rupiah($budget['spent']) }}</strong><p class="finance-caption">dari {{ $rupiah($budget['amount']) }}</p>@else<p class="finance-empty">Belum ada anggaran disetujui.</p>@endif</article>

@@ -6,7 +6,7 @@
             <i class="bx bx-plus-circle"></i>
         </div>
         <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Penerimaan (SPP)</span>
-        <h4 class="mt-1.5 font-bold text-green-600 text-lg dark:text-green-500">
+        <h4 class="mt-1.5 font-bold text-green-600 text-sm sm:text-base tracking-tight tabular-nums truncate dark:text-green-500" title="Rp {{ number_format($totalCollected, 0, ',', '.') }}">
             Rp {{ number_format($totalCollected, 0, ',', '.') }}
         </h4>
     </div>
@@ -17,7 +17,7 @@
             <i class="bx bx-minus-circle"></i>
         </div>
         <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Belanja Operasional</span>
-        <h4 class="mt-1.5 font-bold text-red-500 text-lg dark:text-red-400">
+        <h4 class="mt-1.5 font-bold text-red-500 text-sm sm:text-base tracking-tight tabular-nums truncate dark:text-red-400" title="Rp {{ number_format($totalExpenses, 0, ',', '.') }}">
             Rp {{ number_format($totalExpenses, 0, ',', '.') }}
         </h4>
     </div>
@@ -28,7 +28,7 @@
             <i class="bx bx-wallet"></i>
         </div>
         <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">Saldo Kas Aktif (BKU)</span>
-        <h4 class="mt-1.5 font-bold text-brand-600 text-lg dark:text-brand-500">
+        <h4 class="mt-1.5 font-bold text-brand-600 text-sm sm:text-base tracking-tight tabular-nums truncate dark:text-brand-500" title="Rp {{ number_format($netBalance, 0, ',', '.') }}">
             Rp {{ number_format($netBalance, 0, ',', '.') }}
         </h4>
     </div>
@@ -39,7 +39,7 @@
             <i class="bx bx-error-circle"></i>
         </div>
         <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">Sisa Tunggakan SPP</span>
-        <h4 class="mt-1.5 font-bold text-yellow-600 text-lg dark:text-yellow-500">
+        <h4 class="mt-1.5 font-bold text-yellow-600 text-sm sm:text-base tracking-tight tabular-nums truncate dark:text-yellow-500" title="Rp {{ number_format($totalOutstanding, 0, ',', '.') }}">
             Rp {{ number_format($totalOutstanding, 0, ',', '.') }}
         </h4>
     </div>
