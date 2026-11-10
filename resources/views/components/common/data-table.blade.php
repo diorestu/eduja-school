@@ -22,7 +22,11 @@
     $totalColCount = count($columns) + ($displayActions && !$hasActionColumn ? 1 : 0);
 @endphp
 
-<section {{ $attributes->class(['data-table']) }} x-data="dataTable(@js(collect($rows)->values()), @js($columns))" aria-label="{{ $tableTitle }}" :aria-busy="loading">
+<section {{ $attributes->class(['data-table']) }}
+    x-data="dataTable(@js(collect($rows)->values()), @js($columns))"
+    @table-set-rows.window="rows = ($event.detail || []).map((row, index) => ({ ...row, __tableKey: index })); page = 1;"
+    aria-label="{{ $tableTitle }}"
+    :aria-busy="loading">
     <div class="data-table-top" x-data="{ searchOpen: false }">
         <div>
             <h2 class="data-table-title">{{ $tableTitle }}</h2>

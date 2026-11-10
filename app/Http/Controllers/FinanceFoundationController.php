@@ -690,21 +690,32 @@ class FinanceFoundationController extends Controller
         return back()->with('success', 'Tahun anggaran berhasil dihapus.');
     }
 
-    public function budgets(SchoolContext $schoolContext): View
+    public function budgets(Request $request, SchoolContext $schoolContext): View
     {
         $schoolId = $schoolContext->activeSchoolIdFor();
 
         $budgetYears = BudgetYear::where('school_id', $schoolId)->orderByDesc('start_date')->get();
-        $budgetPlans = BudgetPlan::with(['budgetYear', 'revisions'])
-            ->where('school_id', $schoolId)
-            ->latest()
-            ->get();
+        $selectedYearId = $request->query('budget_year_id');
+        $selectedSource = $request->query('source_funding');
+
+        $query = BudgetPlan::with(['budgetYear', 'revisions'])
+            ->where('school_id', $schoolId);
+
+        if ($selectedYearId) {
+            $query->where('budget_year_id', $selectedYearId);
+        }
+        if ($selectedSource && $selectedSource !== 'Semua') {
+            $query->where('source_funding', 'like', "%{$selectedSource}%");
+        }
+
+        $budgetPlans = $query->latest()->get();
+        $allPlans = BudgetPlan::where('school_id', $schoolId)->get();
 
         $metrics = [
             ['label' => 'Tahun Anggaran', 'value' => $budgetYears->count()],
-            ['label' => 'Total Rencana', 'value' => $budgetPlans->count()],
-            ['label' => 'Pending Approval', 'value' => $budgetPlans->where('status', 'pending')->count()],
-            ['label' => 'Total Anggaran', 'value' => 'Rp '.number_format($budgetPlans->sum('amount'), 0, ',', '.')],
+            ['label' => 'Total Rencana', 'value' => $allPlans->count()],
+            ['label' => 'Pending Approval', 'value' => $allPlans->where('status', 'pending')->count()],
+            ['label' => 'Total Anggaran', 'value' => 'Rp '.number_format($allPlans->sum('amount'), 0, ',', '.')],
         ];
 
         $bosSources = app(\App\Services\BosIncomeService::class)->sources((int) $schoolId)->all();
@@ -717,6 +728,8 @@ class FinanceFoundationController extends Controller
             'metrics' => $metrics,
             'bosSources' => $bosSources,
             'bosComponents' => $bosComponents,
+            'selectedYearId' => $selectedYearId,
+            'selectedSource' => $selectedSource ?? 'Semua',
         ]);
     }
 

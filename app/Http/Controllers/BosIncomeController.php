@@ -74,8 +74,13 @@ class BosIncomeController extends Controller
     private function validated(Request $request, int $schoolId, BosIncomeService $bos, ?FinanceIncome $income = null): array
     {
         $amount = $request->input('amount');
-        if (is_string($amount) && preg_match('/^(?:\d{1,3}(?:\.\d{3})*|\d+),\d{1,2}$/', $amount)) {
-            $request->merge(['amount' => str_replace(',', '.', str_replace('.', '', $amount))]);
+        if (is_string($amount)) {
+            $trimmed = trim($amount);
+            if (preg_match('/^(?:\d{1,3}(?:\.\d{3})*|\d+),\d{1,2}$/', $trimmed)) {
+                $request->merge(['amount' => str_replace(',', '.', str_replace('.', '', $trimmed))]);
+            } elseif (preg_match('/^\d{1,3}(?:\.\d{3})+$/', $trimmed)) {
+                $request->merge(['amount' => str_replace('.', '', $trimmed)]);
+            }
         }
         $sources = $bos->sources($schoolId)->when($income, fn ($sources) => $sources->push($income->source_funding));
         $attributes = $request->validate([
