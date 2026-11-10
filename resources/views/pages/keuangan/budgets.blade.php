@@ -59,14 +59,14 @@
 <div class="work work-stack"
     x-data="{
         saving: false,
-        filterYear: @js((string) $defaultYearId),
-        filterSource: 'Semua',
+        filterYear: @js((string) ($selectedYearId ?? '')),
+        filterSource: @js($selectedSource ?? 'Semua'),
         allRows: @js($budgetRows),
 
         // Multi-step modal state
         step: 1,
         sourceType: 'BOS', // 'Komite' or 'BOS'
-        yearId: @js((string) $defaultYearId),
+        yearId: @js((string) ($selectedYearId ?? $defaultYearId)),
         bosSource: 'BOS Reguler',
         bosComponent: 'Pembelajaran',
         programs: [
@@ -98,9 +98,25 @@
         get filteredRows() {
             return this.allRows.filter(row => {
                 const matchYear = !this.filterYear || String(row.budget_year_id) === String(this.filterYear);
-                const matchSource = this.filterSource === 'Semua' || String(row.source_funding).toLowerCase().includes(this.filterSource.toLowerCase());
+                const matchSource = !this.filterSource || this.filterSource === 'Semua' || String(row.source_funding).toLowerCase().includes(this.filterSource.toLowerCase());
                 return matchYear && matchSource;
             });
+        },
+
+        applyFilter() {
+            this.$dispatch('table-set-rows', this.filteredRows);
+            const url = new URL(window.location);
+            if (this.filterYear) {
+                url.searchParams.set('budget_year_id', this.filterYear);
+            } else {
+                url.searchParams.delete('budget_year_id');
+            }
+            if (this.filterSource && this.filterSource !== 'Semua') {
+                url.searchParams.set('source_funding', this.filterSource);
+            } else {
+                url.searchParams.delete('source_funding');
+            }
+            window.history.replaceState({}, '', url);
         },
 
         openCreateModal() {
@@ -241,6 +257,11 @@
     @table-edit="openEdit($event.detail)"
     @table-delete="openDelete($event.detail)"
     x-init="
+        $watch('filterYear', () => applyFilter());
+        $watch('filterSource', () => applyFilter());
+        if (filterYear || (filterSource && filterSource !== 'Semua')) {
+            $nextTick(() => applyFilter());
+        }
         @if($errors->any() && !old('_method') && !old('new_amount')) $nextTick(() => $refs.budgetModal.showModal()); @endif
         @if(session('success_modal')) $nextTick(() => $refs.successNotificationModal.showModal()); @endif
     ">
@@ -271,7 +292,7 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-xs">
         <div>
             <label for="filter-year" class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Tahun Anggaran</label>
-            <select id="filter-year" x-model="filterYear" class="w-full text-xs font-medium rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            <select id="filter-year" x-model="filterYear" @change="applyFilter()" class="w-full text-xs font-medium rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
                 <option value="">Semua Tahun Anggaran</option>
                 @foreach($budgetYears as $year)
                     <option value="{{ $year->id }}">
@@ -282,7 +303,7 @@
         </div>
         <div>
             <label for="filter-source" class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Sumber Dana</label>
-            <select id="filter-source" x-model="filterSource" class="w-full text-xs font-medium rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            <select id="filter-source" x-model="filterSource" @change="applyFilter()" class="w-full text-xs font-medium rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
                 @foreach($allSources as $src)
                     <option value="{{ $src }}">{{ $src }}</option>
                 @endforeach

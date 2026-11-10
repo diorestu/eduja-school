@@ -35,7 +35,7 @@ class StudentArrearsController extends Controller
             'page' => ['nullable', 'integer', 'min:1'],
         ]);
         $committeeIncome = (bool) $request->attributes->get('committee_income');
-        $rows = $arrears->rows($schoolId, [...$filters, 'committee_only' => $committeeIncome]);
+        $rows = $arrears->rows($schoolId, [...$filters, 'committee_only' => true]);
         $page = (int) ($filters['page'] ?? 1);
         $students = new LengthAwarePaginator($rows->forPage($page, 15), $rows->count(), 15, $page, ['path' => $request->url(), 'query' => $request->query()]);
 
@@ -48,7 +48,7 @@ class StudentArrearsController extends Controller
         $schoolId = $context->activeSchoolIdFor();
         abort_unless((int) $student->school_id === $schoolId, 404);
         $student->load('schoolClasses.academicYear');
-        $invoices = $arrears->invoices($schoolId, [], $student->id);
+        $invoices = $arrears->invoices($schoolId, ['committee_only' => true], $student->id);
         $invoices->load('transactions');
 
         $bankAccounts = SchoolAccount::where('school_id', $schoolId)

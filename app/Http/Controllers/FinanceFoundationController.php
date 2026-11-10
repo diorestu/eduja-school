@@ -1198,16 +1198,28 @@ class FinanceFoundationController extends Controller
         return back()->with('error', 'Kategori pemasukan tidak valid.');
     }
 
-    public function closing(SchoolContext $schoolContext, FinanceClosingService $closingService): View
+    public function closing(Request $request, SchoolContext $schoolContext, FinanceClosingService $closingService): View
     {
         $schoolId = $schoolContext->activeSchoolIdFor();
+        $tab = strtolower((string) $request->query('tab', $request->query('type', 'komite')));
+        if (! in_array($tab, ['komite', 'bos', 'all'])) {
+            $tab = 'komite';
+        }
 
-        $validation = $closingService->validate($schoolId);
-        $closings = BookClosing::with('closedBy')
+        $closingTypeForValidation = $tab === 'bos' ? 'bos' : 'monthly';
+        $validation = $closingService->validate($schoolId, $closingTypeForValidation);
+
+        $closingsQuery = BookClosing::with('closedBy')
             ->where('school_id', $schoolId)
-            ->latest('closed_at')
-            ->get();
+            ->latest('closed_at');
 
+        if ($tab === 'komite') {
+            $closingsQuery->whereIn('type', ['monthly', 'yearly']);
+        } elseif ($tab === 'bos') {
+            $closingsQuery->where('type', 'bos');
+        }
+
+        $closings = $closingsQuery->get();
         $accounts = SchoolAccount::where('school_id', $schoolId)
             ->orderBy('id')
             ->get();
@@ -1231,6 +1243,7 @@ class FinanceFoundationController extends Controller
             'metrics' => $metrics,
             'budgetYears' => BudgetYear::where('school_id', $schoolId)->where('status', 'active')->get(),
             'bosSources' => app(\App\Services\BosIncomeService::class)->sources((int) $schoolId),
+            'activeTab' => $tab,
         ]);
     }
 
@@ -1284,7 +1297,30 @@ class FinanceFoundationController extends Controller
     public function reports(Request $request, SchoolContext $schoolContext, FinanceLedgerService $ledger): View
     {
         $schoolId = $schoolContext->activeSchoolIdFor();
-        $filters = $request->only(['from', 'to', 'source_funding', 'account_id']);
+        $tab = strtolower((string) $request->query('tab', ''));
+        if (! in_array($tab, ['komite', 'bos', 'all'])) {
+            $sourceQuery = $request->query('source_funding');
+            if ($sourceQuery && strcasecmp($sourceQuery, 'komite') === 0) {
+                $tab = 'komite';
+            } elseif ($sourceQuery && strcasecmp($sourceQuery, 'bos') === 0) {
+                $tab = 'bos';
+            } else {
+                $tab = 'all';
+            }
+        }
+
+        $sourceFunding = match ($tab) {
+            'komite' => 'Komite',
+            'bos' => 'BOS',
+            default => $request->query('source_funding'),
+        };
+
+        $filters = array_filter([
+            'from' => $request->input('from'),
+            'to' => $request->input('to'),
+            'source_funding' => $sourceFunding,
+            'account_id' => $request->input('account_id'),
+        ]);
 
         $summary = $ledger->summary($schoolId);
         $entries = $ledger->entries($schoolId, $filters);
@@ -1294,13 +1330,35 @@ class FinanceFoundationController extends Controller
         $kreditTotal = (float) $entries->sum('kredit');
         $surplusDefisit = $debetTotal - $kreditTotal;
 
-        $metrics = [
-            ['label' => 'Total Penerimaan', 'value' => 'Rp '.number_format($debetTotal, 0, ',', '.')],
-            ['label' => 'Total Pengeluaran', 'value' => 'Rp '.number_format($kreditTotal, 0, ',', '.')],
-            ['label' => 'Surplus / (Defisit)', 'value' => 'Rp '.number_format($surplusDefisit, 0, ',', '.')],
-            ['label' => 'Sisa Piutang Siswa', 'value' => 'Rp '.number_format($summary['outstanding'], 0, ',', '.')],
-            ['label' => 'Total Saldo Rekening', 'value' => 'Rp '.number_format($summary['total_balance'] ?? $summary['account_balance'], 0, ',', '.')],
-        ];
+        if ($tab === 'komite') {
+            $komiteAccounts = $accounts->filter(fn ($a) => strtolower($a->source_funding ?? '') === 'komite' || in_array(strtolower($a->type), ['cash', 'tunai']));
+            $metrics = [
+                ['label' => 'Penerimaan Komite (SPP)', 'value' => 'Rp '.number_format($debetTotal, 0, ',', '.')],
+                ['label' => 'Pengeluaran Komite', 'value' => 'Rp '.number_format($kreditTotal, 0, ',', '.')],
+                ['label' => 'Surplus / (Defisit) Komite', 'value' => 'Rp '.number_format($surplusDefisit, 0, ',', '.')],
+                ['label' => 'Sisa Piutang / Tunggakan Siswa', 'value' => 'Rp '.number_format($summary['outstanding'], 0, ',', '.')],
+                ['label' => 'Saldo Kas & Bank Komite', 'value' => 'Rp '.number_format($komiteAccounts->sum('current_balance'), 0, ',', '.')],
+            ];
+        } elseif ($tab === 'bos') {
+            $bosAccounts = $accounts->filter(fn ($a) => strtolower($a->source_funding ?? '') === 'bos' || strtolower($a->type) === 'bos');
+            $bosTaxes = (float) Expense::where('school_id', $schoolId)->where('status', 'approved')
+                ->where(fn ($q) => $q->where('source_funding', 'like', 'BOS%')->orWhereIn('source_funding', ['BOP', 'DAK']))->sum('tax_amount');
+            $metrics = [
+                ['label' => 'Penerimaan BOS (SP2D)', 'value' => 'Rp '.number_format($debetTotal, 0, ',', '.')],
+                ['label' => 'Realisasi Belanja BOS', 'value' => 'Rp '.number_format($kreditTotal, 0, ',', '.')],
+                ['label' => 'Surplus / (Defisit) BOS', 'value' => 'Rp '.number_format($surplusDefisit, 0, ',', '.')],
+                ['label' => 'Pajak Belanja BOS', 'value' => 'Rp '.number_format($bosTaxes, 0, ',', '.')],
+                ['label' => 'Saldo Kas & Bank BOS', 'value' => 'Rp '.number_format($bosAccounts->sum('current_balance'), 0, ',', '.')],
+            ];
+        } else {
+            $metrics = [
+                ['label' => 'Total Penerimaan', 'value' => 'Rp '.number_format($debetTotal, 0, ',', '.')],
+                ['label' => 'Total Pengeluaran', 'value' => 'Rp '.number_format($kreditTotal, 0, ',', '.')],
+                ['label' => 'Surplus / (Defisit)', 'value' => 'Rp '.number_format($surplusDefisit, 0, ',', '.')],
+                ['label' => 'Sisa Piutang Siswa', 'value' => 'Rp '.number_format($summary['outstanding'], 0, ',', '.')],
+                ['label' => 'Total Saldo Rekening', 'value' => 'Rp '.number_format($summary['total_balance'] ?? $summary['account_balance'], 0, ',', '.')],
+            ];
+        }
 
         return view('pages.keuangan.reports', [
             'title' => 'Laporan Keuangan & Pembukuan',
@@ -1311,6 +1369,7 @@ class FinanceFoundationController extends Controller
             'accounts' => $accounts,
             'filters' => $filters,
             'metrics' => $metrics,
+            'activeTab' => $tab,
         ]);
     }
 

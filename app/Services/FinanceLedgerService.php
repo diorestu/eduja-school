@@ -46,7 +46,13 @@ class FinanceLedgerService
             ->where('status', 'approved')
             ->when($filters['from'] ?? null, fn ($query, $from) => $query->whereDate('received_date', '>=', $from))
             ->when($filters['to'] ?? null, fn ($query, $to) => $query->whereDate('received_date', '<=', $to))
-            ->when($filters['source_funding'] ?? null, fn ($query, $source) => $query->where('source_funding', $source))
+            ->when($filters['source_funding'] ?? null, function ($query, $source) {
+                if (strcasecmp($source, 'bos') === 0) {
+                    $query->where(fn ($q) => $q->where('source_funding', 'like', 'BOS%')->orWhereIn('source_funding', ['BOP', 'DAK']));
+                } else {
+                    $query->where('source_funding', $source);
+                }
+            })
             ->when($filters['account_id'] ?? null, fn ($query, $accountId) => $query->where('account_id', $accountId))
             ->get()
             ->each(function (FinanceIncome $income) use ($entries): void {
@@ -71,7 +77,13 @@ class FinanceLedgerService
             ->where('status', 'approved')
             ->when($filters['from'] ?? null, fn ($query, $from) => $query->whereDate('transaction_date', '>=', $from))
             ->when($filters['to'] ?? null, fn ($query, $to) => $query->whereDate('transaction_date', '<=', $to))
-            ->when($filters['source_funding'] ?? null, fn ($query, $source) => $query->where('source_funding', $source))
+            ->when($filters['source_funding'] ?? null, function ($query, $source) {
+                if (strcasecmp($source, 'bos') === 0) {
+                    $query->where(fn ($q) => $q->where('source_funding', 'like', 'BOS%')->orWhereIn('source_funding', ['BOP', 'DAK']));
+                } else {
+                    $query->where('source_funding', $source);
+                }
+            })
             ->when($filters['account_id'] ?? null, fn ($query, $accountId) => $query->where('account_id', $accountId))
             ->get()
             ->each(function (Expense $expense) use ($entries): void {

@@ -51,7 +51,7 @@
     x-data="{
         saving: false,
         activeSnapshot: null,
-        closingType: 'monthly', // monthly | yearly | bos
+        closingType: @js(($activeTab ?? '') === 'bos' ? 'bos' : 'monthly'), // monthly | yearly | bos
         closePeriodMonthly: '{{ date('Y-m') }}',
         closePeriodYearly: @js((string) ($budgetYears->first()?->id ?? '')),
         closeBosType: 'BOS Reguler',
@@ -67,6 +67,25 @@
         }
     }"
     @table-edit="openDetail($event.detail)">
+
+    {{-- TABS TUTUP BUKU: KOMITE vs BOS vs SEMUA --}}
+    <div class="no-print flex items-center gap-2 border-b border-gray-200 dark:border-gray-800 pb-2 mb-1 overflow-x-auto">
+        <a href="{{ route('finance.closing', ['tab' => 'komite']) }}"
+           class="px-4 py-2 rounded-xl text-xs font-semibold transition-all inline-flex items-center gap-2 {{ ($activeTab ?? 'komite') === 'komite' ? 'bg-brand-50 text-brand-600 border border-brand-200 dark:bg-brand-500/10 dark:text-brand-400 dark:border-brand-500/30 shadow-xs' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white border border-transparent' }}">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+            Tutup Buku Komite (Bulanan & Tahunan)
+        </a>
+        <a href="{{ route('finance.closing', ['tab' => 'bos']) }}"
+           class="px-4 py-2 rounded-xl text-xs font-semibold transition-all inline-flex items-center gap-2 {{ ($activeTab ?? '') === 'bos' ? 'bg-brand-50 text-brand-600 border border-brand-200 dark:bg-brand-500/10 dark:text-brand-400 dark:border-brand-500/30 shadow-xs' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white border border-transparent' }}">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/></svg>
+            Tutup Buku BOS (Kas Pembantu BOS)
+        </a>
+        <a href="{{ route('finance.closing', ['tab' => 'all']) }}"
+           class="px-4 py-2 rounded-xl text-xs font-semibold transition-all inline-flex items-center gap-2 {{ ($activeTab ?? '') === 'all' ? 'bg-brand-50 text-brand-600 border border-brand-200 dark:bg-brand-500/10 dark:text-brand-400 dark:border-brand-500/30 shadow-xs' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white border border-transparent' }}">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Semua Periode (Riwayat Lengkap)
+        </a>
+    </div>
 
     @if(session('success'))
         <div role="status" class="work-notice">{{ session('success') }}</div>
@@ -108,13 +127,13 @@
                             @endif
                         </svg>
                     </span>
-                    Pemeriksaan Kesiapan Tutup Buku (8 Syarat Audit)
+                    Pemeriksaan Kesiapan Tutup Buku {{ ($activeTab ?? '') === 'bos' ? 'BOS' : (($activeTab ?? '') === 'komite' ? 'Komite' : '') }} (8 Syarat Audit)
                 </h3>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     @if($allPassed)
-                        Seluruh persyaratan pembukuan telah terpenuhi. Sistem siap mengunci saldo transaksi periode.
+                        Seluruh persyaratan pembukuan {{ ($activeTab ?? '') === 'bos' ? 'BOS' : (($activeTab ?? '') === 'komite' ? 'Komite' : '') }} telah terpenuhi. Sistem siap mengunci saldo transaksi periode.
                     @else
-                        Terdapat transaksi atau persetujuan yang tertunda di bawah ini sebelum penguncian buku dapat diproses.
+                        Terdapat transaksi atau persetujuan {{ ($activeTab ?? '') === 'bos' ? 'BOS' : (($activeTab ?? '') === 'komite' ? 'Komite' : '') }} yang tertunda di bawah ini sebelum penguncian buku dapat diproses.
                     @endif
                 </p>
             </div>

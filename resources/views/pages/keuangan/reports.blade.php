@@ -70,11 +70,46 @@
 
 <div class="work work-stack" id="printable-report">
 
+    {{-- TABS LAPORAN: KOMITE vs BOS vs SEMUA --}}
+    <div class="no-print flex items-center gap-2 border-b border-gray-200 dark:border-gray-800 pb-2 mb-3 overflow-x-auto">
+        <a href="{{ route('finance.reports', array_merge(request()->except(['tab', 'page']), ['tab' => 'komite'])) }}"
+           class="px-4 py-2 rounded-xl text-xs font-semibold transition-all inline-flex items-center gap-2 {{ ($activeTab ?? 'all') === 'komite' ? 'bg-brand-50 text-brand-600 border border-brand-200 dark:bg-brand-500/10 dark:text-brand-400 dark:border-brand-500/30 shadow-xs' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white border border-transparent' }}">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+            Laporan Komite (Dana Siswa / SPP)
+        </a>
+        <a href="{{ route('finance.reports', array_merge(request()->except(['tab', 'page']), ['tab' => 'bos'])) }}"
+           class="px-4 py-2 rounded-xl text-xs font-semibold transition-all inline-flex items-center gap-2 {{ ($activeTab ?? '') === 'bos' ? 'bg-brand-50 text-brand-600 border border-brand-200 dark:bg-brand-500/10 dark:text-brand-400 dark:border-brand-500/30 shadow-xs' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white border border-transparent' }}">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/></svg>
+            Laporan BOS (Bantuan Operasional Sekolah)
+        </a>
+        <a href="{{ route('finance.reports', array_merge(request()->except(['tab', 'page']), ['tab' => 'all'])) }}"
+           class="px-4 py-2 rounded-xl text-xs font-semibold transition-all inline-flex items-center gap-2 {{ ($activeTab ?? '') === 'all' ? 'bg-brand-50 text-brand-600 border border-brand-200 dark:bg-brand-500/10 dark:text-brand-400 dark:border-brand-500/30 shadow-xs' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white border border-transparent' }}">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Semua Laporan (Konsolidasi)
+        </a>
+    </div>
+
     {{-- REPORT HEADER & PRINT ACTION --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-1">
         <div>
-            <h2 class="text-base font-bold text-gray-900 dark:text-white">Laporan Keuangan & Arus Kas</h2>
-            <p class="text-xs text-gray-500 dark:text-gray-400">Ringkasan transaksi riil yang telah disetujui, realisasi belanja, dan posisi kas rekening.</p>
+            <h2 class="text-base font-bold text-gray-900 dark:text-white">
+                @if(($activeTab ?? '') === 'komite')
+                    Laporan Keuangan Komite & SPP
+                @elseif(($activeTab ?? '') === 'bos')
+                    Laporan Keuangan Dana BOS
+                @else
+                    Laporan Keuangan & Arus Kas Konsolidasi
+                @endif
+            </h2>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+                @if(($activeTab ?? '') === 'komite')
+                    Penerimaan tagihan siswa/SPP, belanja operasional komite, dan saldo kas/bank komite.
+                @elseif(($activeTab ?? '') === 'bos')
+                    Penerimaan dana BOS via SP2D, realisasi belanja operasional BOS per komponen, dan pajak belanja.
+                @else
+                    Ringkasan transaksi riil yang telah disetujui, realisasi belanja, dan posisi kas rekening seluruh sumber dana.
+                @endif
+            </p>
         </div>
         <div class="no-print flex items-center gap-2">
             <button type="button" onclick="window.print()" class="work-btn work-btn-secondary">
@@ -97,6 +132,7 @@
     {{-- FILTER TOOLBAR (NO PRINT) --}}
     <div class="no-print rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900 mb-2">
         <form method="GET" action="{{ route('finance.reports') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+            <input type="hidden" name="tab" value="{{ $activeTab }}">
             <div>
                 <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Dari Tanggal</label>
                 <input type="date" name="from" value="{{ request('from') }}"
