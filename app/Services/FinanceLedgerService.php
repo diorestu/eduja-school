@@ -63,6 +63,7 @@ class FinanceLedgerService
                     'date' => $income->received_date,
                     'ref' => 'INC-'.$income->id,
                     'description' => 'Penerimaan '.$income->source_funding,
+                    'bos_year' => $income->bos_year,
                     'amount' => (float) $income->amount,
                     'debet' => (float) $income->amount,
                     'kredit' => 0.0,
@@ -94,6 +95,8 @@ class FinanceLedgerService
                     'date' => $expense->transaction_date,
                     'ref' => $expense->reference_invoice ?: 'EXP-'.$expense->id,
                     'description' => $expense->expense_name.' ('.$expense->source_funding.')',
+                    'bos_year' => $expense->bos_year,
+                    'budget_plan_id' => $expense->budget_plan_id,
                     'amount' => (float) $expense->amount,
                     'debet' => 0.0,
                     'kredit' => (float) $expense->amount,
@@ -186,6 +189,8 @@ class FinanceLedgerService
                 || ($source === 'bos' && strtolower($account->source_funding ?? '') === 'bos') || strtolower($account->source_funding ?? '') === $source));
         $from = $filters['from'] ?? null;
         $snapshot = $from ? \App\Models\BookClosing::where('school_id', $schoolId)->where('status', 'closed')->get()
+            // A source-specific snapshot cannot freeze other sources in shared physical accounts.
+            ->reject(fn ($closing) => in_array($closing->snapshot['book'] ?? null, ['komite', 'bos'], true))
             ->filter(fn ($closing) => isset($closing->snapshot['next_opening']['date']) && $closing->snapshot['next_opening']['date'] <= $from)
             ->sortByDesc(fn ($closing) => $closing->snapshot['next_opening']['date'])->first()?->snapshot['next_opening'] : null;
         $balances = $accounts->mapWithKeys(function ($account) use ($snapshot) {

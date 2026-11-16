@@ -31,6 +31,40 @@ class FinancePeriodObserver
             return;
         }
         $guard = app(FinancePeriodGuard::class);
+        if ($model instanceof \App\Models\FinanceAccountTransfer) {
+            foreach ($model->exists ? [true, false] : [false] as $original) {
+                $school = $original ? $model->getRawOriginal('school_id') : $schoolId;
+                $date = $original ? $model->getRawOriginal($field) : $model->getAttribute($field);
+                $ids = $original ? [$model->getRawOriginal('from_account_id'), $model->getRawOriginal('to_account_id')] : [$model->from_account_id, $model->to_account_id];
+                foreach (\App\Models\SchoolAccount::where('school_id', $school)->whereIn('id', $ids)->get() as $account) {
+                    $isBos = preg_match('/^(bos|bop|dak)/i', $account->source_funding ?? '') || strcasecmp($account->type, 'bos') === 0;
+                    if ($isBos) {
+                        $guard->assertBosPhysicalOpen((int) $school, $date);
+                    }
+                    $guard->assertOpen((int) $school, $date, $isBos ? ($account->source_funding ?: 'bos') : 'Komite');
+                }
+            }
+
+            return;
+        }
+        if ($model instanceof \App\Models\FinanceWalletMovement) {
+            foreach ($model->exists ? [true, false] : [false] as $original) {
+                $school = $original ? $model->getRawOriginal('school_id') : $schoolId;
+                $date = $original ? $model->getRawOriginal($field) : $model->getAttribute($field);
+                $sourceType = $original ? $model->getRawOriginal('source_type') : $model->source_type;
+                $sourceId = $original ? $model->getRawOriginal('source_id') : $model->source_id;
+                $sourceClass = \Illuminate\Database\Eloquent\Relations\Relation::getMorphedModel($sourceType) ?? $sourceType;
+                $record = in_array($sourceClass, [\App\Models\Expense::class, \App\Models\FinanceIncome::class], true)
+                    ? $sourceClass::where('school_id', $school)->find($sourceId) : null;
+                $wallet = \App\Models\VirtualWallet::where('school_id', $school)->find($original ? $model->getRawOriginal('virtual_wallet_id') : $model->virtual_wallet_id);
+                if (! $record && preg_match('/^(bos|bop|dak)/i', $wallet?->source ?? '')) {
+                    $guard->assertBosPhysicalOpen((int) $school, $date);
+                }
+                $guard->assertOpen((int) $school, $date, $record?->source_funding ?? $wallet?->source ?? 'Komite', $record?->bos_year);
+            }
+
+            return;
+        }
         if ($model->exists) {
             $guard->assertOpen((int) ($model->getRawOriginal('school_id') ?: $schoolId), $model->getRawOriginal($field), $model->getRawOriginal('source_funding') ?: 'Komite', $model->getRawOriginal('bos_year'));
         }

@@ -102,13 +102,16 @@ it('organizes the bendahara navigation around the requested finance workflow', f
         'Pengeluaran' => '/bos/belanja',
         'Approval' => '/finance/approvals',
         'Laporan' => '/finance/reports',
-        'Tutup Buku' => '/finance/closing',
     ] as $name => $path) {
         $item = $items->firstWhere('name', $name);
 
         expect($item)->toHaveKey('path', $path)
             ->and($item)->not->toHaveKey('subItems');
     }
+    expect(collect($items->firstWhere('name', 'Tutup Buku')['subItems'])->pluck('path', 'name')->all())->toEqual([
+        'Tutup Buku Komite' => '/finance/closing?tab=komite',
+        'Tutup Buku BOS' => '/finance/closing?tab=bos',
+    ]);
 });
 
 it('runs finance master and budget workflows with active-school foreign keys', function () {
@@ -233,6 +236,8 @@ it('closes the active school period through the finance controller', function ()
         ->post(route('finance.closing.store'), [
             'type' => 'monthly',
             'period' => '2026-07',
+            'confirmed' => '1',
+            'fingerprint' => app(App\Services\CommitteeClosingService::class)->preview($schoolId, 'monthly', '2026-07')['fingerprint'],
         ])
         ->assertRedirect();
 
@@ -760,9 +765,9 @@ it('renders modern data-table on tagihan, pemasukan, pengeluaran, and approvals 
 
     // 6. Tutup Buku (/finance/closing) dedicated view
     $respClosing = $this->get('/finance/closing')->assertOk();
-    $respClosing->assertSee('Tutup Buku &amp; Penguncian Periode', false);
-    $respClosing->assertSee('Pemeriksaan Kesiapan Tutup Buku', false);
-    $respClosing->assertSee('data-table', false);
+    $respClosing->assertSee('Tutup Buku Komite');
+    $respClosing->assertSee('Cek Kesiapan');
+    $respClosing->assertSee('Riwayat Tutup Buku Komite');
     expect(preg_match('/<button[^>]*>\s*\+/', $respClosing->getContent()))->toBe(0);
 
     // 7. Laporan Keuangan (/finance/reports) dedicated view
@@ -1384,14 +1389,16 @@ it('implements Flow Tutup Buku Komite and BOS matching Menu Bendahara page 34-37
 
     // 1. Visit /finance/closing
     $resp = $this->get(route('finance.closing'))->assertOk();
-    $resp->assertSee('Tutup Buku &amp; Penguncian Periode', false);
-    $resp->assertSee('Pemeriksaan Kesiapan Tutup Buku', false);
+    $resp->assertSee('Tutup Buku Komite');
+    $resp->assertSee('Cek Kesiapan');
 
     // 2. Perform Closing when all 8 conditions are met
     $this->post(route('finance.closing.store'), [
         'type' => 'monthly',
         'period' => '2026-07',
-    ])->assertRedirect()->assertSessionHas('success', 'Periode finance berhasil ditutup dan saldo telah dikunci.');
+        'confirmed' => '1',
+        'fingerprint' => app(App\Services\CommitteeClosingService::class)->preview($schoolId, 'monthly', '2026-07')['fingerprint'],
+    ])->assertRedirect()->assertSessionHas('success');
 
     $closingMonthly = DB::table('book_closings')
         ->where('school_id', $schoolId)
@@ -1405,8 +1412,10 @@ it('implements Flow Tutup Buku Komite and BOS matching Menu Bendahara page 34-37
     $this->post(route('finance.closing.store'), [
         'type' => 'bos',
         'bos_type' => 'BOS Reguler',
-        'period' => '2026-07',
-    ])->assertRedirect()->assertSessionHas('success', 'Periode finance berhasil ditutup dan saldo telah dikunci.');
+        'period' => '2026',
+        'confirmed' => '1',
+        'fingerprint' => app(App\Services\BosClosingService::class)->preview($schoolId, 'BOS Reguler', 2026)['fingerprint'],
+    ])->assertRedirect()->assertSessionHas('success');
 
     $closingBos = DB::table('book_closings')
         ->where('school_id', $schoolId)
@@ -2143,4 +2152,24 @@ it('rejects recording expense when amount exceeds selected account or virtual wa
 
     $responseKomite->assertSessionHasErrors(['amount']);
     expect(\App\Models\Expense::where('school_id', $schoolId)->where('expense_name', 'Sewa Tenda Rapat Komite')->exists())->toBeFalse();
+});
+
+it('requires reviewed data and confirmation and renders all eight committee reports from snapshots', function () {
+    $schoolId = makeFinanceRouteSchool('Sekolah Laporan Komite');
+    $user = makeFinanceRouteUser($schoolId);
+    $this->actingAs($user)->withSession(['active_school_id' => $schoolId]);
+    $this->post(route('finance.closing.store'), ['type' => 'monthly', 'period' => '2026-07'])->assertSessionHasErrors(['fingerprint', 'confirmed']);
+    $response = $this->get(route('finance.closing', ['tab' => 'komite', 'check' => 1, 'type' => 'monthly', 'period' => '2026-07']))->assertOk()->assertSee('Paket Laporan Tutup Buku Komite');
+    $preview = $response->viewData('preview');
+    foreach (App\Services\CommitteeClosingService::REPORTS as $key => $title) {
+        $this->get(route('finance.closing.committee.report', ['type' => 'monthly', 'period' => '2026-07', 'report' => $key]))->assertOk()->assertSee($title)->assertSee('periode belum ditutup');
+    }
+    $this->post(route('finance.closing.store'), ['type' => 'monthly', 'period' => '2026-07', 'fingerprint' => $preview['fingerprint'], 'confirmed' => '1'])->assertSessionHasNoErrors()->assertSessionHas('success');
+    $closing = App\Models\BookClosing::where('school_id', $schoolId)->firstOrFail();
+    foreach (App\Services\CommitteeClosingService::REPORTS as $key => $title) {
+        $this->get(route('finance.closing.committee.report', ['closing_id' => $closing->id, 'report' => $key]))->assertOk()->assertSee('Laporan dari snapshot tersimpan');
+    }
+    $otherSchool = makeFinanceRouteSchool('Sekolah Lain');
+    $otherUser = makeFinanceRouteUser($otherSchool);
+    $this->actingAs($otherUser)->withSession(['active_school_id' => $otherSchool])->get(route('finance.closing.committee.report', ['closing_id' => $closing->id, 'report' => 'income']))->assertNotFound();
 });

@@ -136,7 +136,6 @@ class FinanceFoundationController extends Controller
         $amount = (float) $validated['amount'];
 
         DB::transaction(function () use ($schoolId, $validated, $amount) {
-            app(\App\Services\FinancePeriodGuard::class)->assertOpen($schoolId, $validated['transfer_date']);
             \App\Models\FinanceAccountTransfer::create([...$validated, 'school_id' => $schoolId, 'created_by' => auth()->id()]);
             $fromAccount = SchoolAccount::where('school_id', $schoolId)->lockForUpdate()->findOrFail($validated['from_account_id']);
             $toAccount = SchoolAccount::where('school_id', $schoolId)->lockForUpdate()->findOrFail($validated['to_account_id']);
@@ -1205,6 +1204,12 @@ class FinanceFoundationController extends Controller
         if (! in_array($tab, ['komite', 'bos', 'all'])) {
             $tab = 'komite';
         }
+        if ($tab === 'komite') {
+            return app(CommitteeClosingController::class)->index($request, $schoolContext, app(\App\Services\CommitteeClosingService::class));
+        }
+        if ($tab === 'bos') {
+            return app(BosClosingController::class)->index($request, $schoolContext, app(\App\Services\BosClosingService::class), app(\App\Services\BosIncomeService::class));
+        }
 
         $closingTypeForValidation = $tab === 'bos' ? 'bos' : 'monthly';
         $validation = $closingService->validate($schoolId, $closingTypeForValidation);
@@ -1249,6 +1254,12 @@ class FinanceFoundationController extends Controller
 
     public function storeClosing(Request $request, SchoolContext $schoolContext, FinanceClosingService $closing): RedirectResponse
     {
+        if (in_array($request->input('type'), ['monthly', 'yearly'], true)) {
+            return app(CommitteeClosingController::class)->store($request, $schoolContext, app(\App\Services\CommitteeClosingService::class));
+        }
+        if ($request->input('type') === 'bos') {
+            return app(BosClosingController::class)->store($request, $schoolContext, app(\App\Services\BosClosingService::class));
+        }
         $schoolId = $this->activeSchoolId($request, $schoolContext);
         $validated = $request->validate([
             'type' => ['required', 'in:monthly,yearly,bos'],
@@ -1271,6 +1282,7 @@ class FinanceFoundationController extends Controller
         abort_unless((int) $closing->school_id === $schoolContext->activeSchoolIdFor(), 403);
         $validated = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:1000']]);
         $service->reopen($closing, $request->user(), $validated['reason']);
+
         return back()->with('success', 'Periode dibuka kembali. Alasan dan pengguna dicatat dalam audit.');
     }
 

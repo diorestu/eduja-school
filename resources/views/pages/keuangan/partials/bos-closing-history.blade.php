@@ -1,0 +1,8 @@
+<h2 id="bos-history-title">Riwayat Penutupan Buku BOS</h2>
+@forelse($closings as $item)
+    <details class="mt-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700"><summary>{{ $item->period }} · {{ $item->status === 'closed' ? 'Ditutup' : 'Dibuka kembali' }}</summary>
+        <dl class="space-y-2 text-xs"><div><dt>Ditutup Oleh</dt><dd>{{ $item->closedBy?->name ?? '-' }}</dd></div><div><dt>Tanggal Tutup</dt><dd>{{ $item->closed_at?->format('d/m/Y H:i') }}</dd></div><div><dt>Referensi</dt><dd>{{ $item->audit_metadata['reference'] ?? '#'.$item->id }}</dd></div></dl>
+        <div class="mt-3 flex flex-wrap gap-2"><a class="work-btn text-xs" href="{{ route('finance.closing', ['tab' => 'bos', 'closing_id' => $item->id, 'bos_type' => $item->source_funding ?? $source, 'period' => $item->snapshot['year'] ?? $year]) }}">Lihat Rincian</a>@if(($item->snapshot['book'] ?? null) === 'bos')<a class="work-btn text-xs" target="_blank" rel="noopener" href="{{ route('finance.closing.bos.report', ['closing_id' => $item->id, 'report' => 'receipt']) }}">Bukti Penutupan</a>@endif</div>
+        @if($item->status === 'closed' && auth()->user()?->hasRole(['kepsek', 'super_admin']))<form method="POST" action="{{ route('finance.closing.reopen', $item) }}" class="mt-4 space-y-2">@csrf<div class="work-field"><label for="bos-reopen-{{ $item->id }}">Alasan Buka Kembali</label><textarea id="bos-reopen-{{ $item->id }}" name="reason" required minlength="5" maxlength="1000"></textarea></div><button class="work-btn" type="submit">Buka Kembali Periode</button></form>@endif
+    </details>
+@empty<p class="mt-3 text-sm text-gray-600 dark:text-gray-400">Belum ada penutupan buku BOS.</p>@endforelse

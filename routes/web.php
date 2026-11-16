@@ -240,6 +240,8 @@ Route::middleware('auth')->group(function () {
             Route::middleware('permission:finance.closing,super_admin,bendahara')->group(function () {
                 Route::get('/closing', [FinanceFoundationController::class, 'closing'])->name('closing');
                 Route::post('/closing', [FinanceFoundationController::class, 'storeClosing'])->name('closing.store');
+                Route::get('/closing/committee/report', [\App\Http\Controllers\CommitteeClosingController::class, 'report'])->name('closing.committee.report');
+                Route::get('/closing/bos/report', [\App\Http\Controllers\BosClosingController::class, 'report'])->name('closing.bos.report');
             });
             Route::middleware('permission:finance.ledger,super_admin,bendahara')->get('/ledger', [FinanceFoundationController::class, 'ledger'])->name('ledger');
             Route::middleware('permission:finance.reports,super_admin,bendahara')->get('/reports', [FinanceFoundationController::class, 'reports'])->name('reports');

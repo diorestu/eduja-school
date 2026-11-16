@@ -116,7 +116,10 @@ class MenuHelper
             ['icon' => 'forms', 'name' => 'Approval', 'subItems' => [['name' => 'Approval', 'path' => '/finance/approvals', 'permission' => 'finance.approvals', 'roles' => ['bendahara', 'kepsek'], 'pro' => false]]],
             ['icon' => 'forms', 'name' => 'Approval Tunggakan', 'path' => '/finance/approvals?type=payment', 'permission' => 'finance.approvals', 'roles' => ['bendahara', 'teller']],
             ['icon' => 'charts', 'name' => 'Laporan', 'subItems' => [['name' => 'Laporan', 'path' => '/finance/reports', 'permission' => 'finance.reports', 'roles' => ['bendahara'], 'pro' => false]]],
-            ['icon' => 'forms', 'name' => 'Tutup Buku', 'subItems' => [['name' => 'Tutup Buku', 'path' => '/finance/closing', 'permission' => 'finance.closing', 'roles' => ['bendahara'], 'pro' => false]]],
+            ['icon' => 'forms', 'name' => 'Tutup Buku', 'subItems' => [
+                ['name' => 'Tutup Buku Komite', 'path' => '/finance/closing?tab=komite', 'permission' => 'finance.closing', 'roles' => ['bendahara'], 'pro' => false],
+                ['name' => 'Tutup Buku BOS', 'path' => '/finance/closing?tab=bos', 'permission' => 'finance.closing', 'roles' => ['bendahara'], 'pro' => false],
+            ]],
             [
                 'icon' => 'calendar',
                 'name' => 'Absensi & Komunikasi',

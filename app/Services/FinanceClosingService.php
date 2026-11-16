@@ -2,7 +2,16 @@
 
 namespace App\Services;
 
-use App\Models\{ApprovalRequest, BookClosing, BudgetYear, Expense, FinanceIncome, FinanceWalletMovement, PaymentSubmission, SchoolAccount, User, VirtualWallet};
+use App\Models\ApprovalRequest;
+use App\Models\BookClosing;
+use App\Models\BudgetYear;
+use App\Models\Expense;
+use App\Models\FinanceIncome;
+use App\Models\FinanceWalletMovement;
+use App\Models\PaymentSubmission;
+use App\Models\SchoolAccount;
+use App\Models\User;
+use App\Models\VirtualWallet;
 use Carbon\Carbon;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -12,17 +21,19 @@ class FinanceClosingService
 {
     public function __construct(private readonly FinanceLedgerService $ledger, private readonly FinancePeriodGuard $periods) {}
 
-    public function validate(int $schoolId, ?string $type = null, ?string $period = null): array
+    public function validate(int $schoolId, ?string $type = null, ?string $period = null, bool $committee = false): array
     {
         [$start, $end, $source] = $type && $period ? $this->periods->bounds($schoolId, $type, $period) : [null, null, null];
         $within = fn ($date) => $date && (! $start || Carbon::parse($date)->toDateString() >= $start) && (! $end || Carbon::parse($date)->toDateString() <= $end);
-        $matchesSource = fn ($funding, $bosYear = null) => $type !== 'bos' || ((! $source || strcasecmp($source, $funding ?? '') === 0) && ($bosYear || preg_match('/^(bos|bop|dak)/i', $funding ?? '')));
+        $matchesSource = fn ($funding, $bosYear = null) => $committee
+            ? ! ($bosYear || preg_match('/^(bos|bop|dak)/i', $funding ?? ''))
+            : ($type !== 'bos' || ((! $source || strcasecmp($source, $funding ?? '') === 0) && ($bosYear || preg_match('/^(bos|bop|dak)/i', $funding ?? ''))));
         $expenses = Expense::where('school_id', $schoolId)->get()->filter(fn ($expense) => $within($expense->transaction_date) && $matchesSource($expense->source_funding, $expense->bos_year));
         $payments = PaymentSubmission::where('school_id', $schoolId)->get()->filter(fn ($payment) => $within($payment->payment_date) && $type !== 'bos');
         $incomes = FinanceIncome::where('school_id', $schoolId)->get()->filter(fn ($income) => $within($income->received_date) && $matchesSource($income->source_funding, $income->bos_year));
         $pendingApprovals = ApprovalRequest::where('school_id', $schoolId)->where('status', 'pending')
             ->whereIn('type', ['expense', 'payment', 'budget', 'budget_revision', 'bos_income_revision', 'grant_income_revision', 'other_income_revision'])
-            ->with('approvable')->get()->filter(function ($approval) use ($within, $matchesSource, $start, $end, $type) {
+            ->with('approvable')->get()->filter(function ($approval) use ($within, $matchesSource, $start, $end, $type, $committee) {
                 $record = $approval->approvable;
                 if (! $record) {
                     return true;
@@ -37,11 +48,16 @@ class FinanceClosingService
                     $old = $record->old_data ?? [];
                     $new = $record->new_data ?? [];
                     $income = FinanceIncome::find($record->finance_income_id);
-                    return ($within($old['received_date'] ?? $income?->received_date) || $within($new['received_date'] ?? $income?->received_date))
-                        && $matchesSource($old['source_funding'] ?? $income?->source_funding, $old['bos_year'] ?? $income?->bos_year);
+
+                    return ($within($old['received_date'] ?? $income?->received_date) && $matchesSource($old['source_funding'] ?? $income?->source_funding, $old['bos_year'] ?? $income?->bos_year))
+                        || ($within($new['received_date'] ?? $income?->received_date) && $matchesSource($new['source_funding'] ?? $income?->source_funding, $new['bos_year'] ?? $income?->bos_year));
                 }
                 $plan = $approval->type === 'budget_revision' ? $record->budgetPlan : $record;
+                if ($committee) {
+                    return false;
+                }
                 $year = $plan?->budgetYear;
+
                 return (! $start || ! $year || ($year->start_date->toDateString() <= $end && $year->end_date->toDateString() >= $start))
                     && $matchesSource($plan?->source_funding);
             })->count();
@@ -50,14 +66,31 @@ class FinanceClosingService
         $entries = $this->ledger->entries($schoolId);
         $mismatches = $accounts->filter(function ($account) use ($entries) {
             $movement = $entries->where('account_id', $account->id)->sum(fn ($entry) => BillingPaymentService::cents($entry['debet']) - BillingPaymentService::cents($entry['kredit']));
+
             return BillingPaymentService::cents($account->opening_balance) + $movement !== BillingPaymentService::cents($account->current_balance);
         });
         $negativeAccounts = $accounts->where('current_balance', '<', 0)->count();
         $negativeWallets = VirtualWallet::where('school_id', $schoolId)->where('nominal', '<', 0)->count();
+        if ($committee && $end) {
+            $negativeAccounts = $accounts->filter(function ($account) use ($entries, $end) {
+                $future = $entries->filter(fn ($entry) => $entry['account_id'] == $account->id && $entry['date']->toDateString() > $end)
+                    ->sum(fn ($entry) => BillingPaymentService::cents($entry['debet']) - BillingPaymentService::cents($entry['kredit']));
+
+                return BillingPaymentService::cents($account->current_balance) - $future < 0;
+            })->count();
+            $negativeWallets = VirtualWallet::where('school_id', $schoolId)->get()->filter(function ($wallet) use ($schoolId, $end) {
+                $future = FinanceWalletMovement::where('school_id', $schoolId)->where('virtual_wallet_id', $wallet->id)->whereDate('effective_date', '>', $end)->sum('amount');
+
+                return BillingPaymentService::cents($wallet->nominal) - BillingPaymentService::cents($future) < 0;
+            })->count();
+        }
         $unpaidTaxes = $expenses->where('status', 'approved')->where('tax_amount', '>', 0)->where('is_tax_paid', false)->count();
         $missingDocuments = $expenses->where('status', 'approved')->filter(fn ($expense) => ! $expense->proof_path)->count()
             + $incomes->where('status', 'approved')->filter(fn ($income) => ($income->bos_year || preg_match('/^(bos|bop|dak)/i', $income->source_funding)) && ! $income->proof_path)->count();
         $unposted = $expenses->where('status', 'approved')->whereNull('posted_at')->count() + $payments->where('status', 'approved')->whereNull('posted_at')->count();
+        if ($committee) {
+            $unposted += $incomes->where('status', 'approved')->whereNull('posted_at')->count();
+        }
         $bosMismatches = $mismatches->filter(fn ($account) => strtolower($account->source_funding ?? '') === 'bos' || strtolower($account->type) === 'bos')->count();
         $checks = [
             'pending_approvals' => $pendingApprovals,
@@ -86,18 +119,20 @@ class FinanceClosingService
             }
         }
         $checks['all_passed'] = $checks['error_messages'] === [];
+
         return $checks;
     }
 
-    public function close(int $schoolId, string $type, string $period, int $actorId): BookClosing
+    public function close(int $schoolId, string $type, string $period, int $actorId, bool $committee = false): BookClosing
     {
         [$start, $end, $source, $yearId] = $this->periods->bounds($schoolId, $type, $period);
-        return DB::transaction(function () use ($schoolId, $type, $period, $actorId, $start, $end, $source, $yearId) {
+
+        return DB::transaction(function () use ($schoolId, $type, $period, $actorId, $start, $end, $source, $yearId, $committee) {
             DB::table('schools')->where('id', $schoolId)->lockForUpdate()->first();
             if (BookClosing::where('school_id', $schoolId)->where('status', 'closed')->where('type', $type)->where('period', $period)->exists()) {
                 throw ValidationException::withMessages(['closing' => 'Periode ini sudah ditutup.']);
             }
-            $validation = $this->validate($schoolId, $type, $period);
+            $validation = $this->validate($schoolId, $type, $period, $committee);
             if (! $validation['all_passed']) {
                 throw ValidationException::withMessages(['closing' => 'Tutup buku tidak dapat dilakukan: '.implode(' ', $validation['error_messages'])]);
             }
@@ -105,13 +140,18 @@ class FinanceClosingService
             $after = $entries->filter(fn ($entry) => $entry['date']->toDateString() > $end);
             $accounts = SchoolAccount::where('school_id', $schoolId)->orderBy('id')->get()->map(function ($account) use ($after) {
                 $future = $after->where('account_id', $account->id)->sum(fn ($entry) => BillingPaymentService::cents($entry['debet']) - BillingPaymentService::cents($entry['kredit']));
+
                 return ['id' => $account->id, 'name' => $account->name, 'type' => $account->type, 'balance' => (BillingPaymentService::cents($account->current_balance) - $future) / 100];
             })->all();
             $wallets = VirtualWallet::where('school_id', $schoolId)->orderBy('id')->get()->map(function ($wallet) use ($schoolId, $end) {
                 $future = FinanceWalletMovement::where('school_id', $schoolId)->where('virtual_wallet_id', $wallet->id)->whereDate('effective_date', '>', $end)->sum('amount');
+
                 return ['id' => $wallet->id, 'name' => $wallet->name, 'balance' => (BillingPaymentService::cents($wallet->nominal) - BillingPaymentService::cents($future)) / 100];
             })->all();
             $periodEntries = $entries->filter(fn ($entry) => $entry['date']->toDateString() >= $start && $entry['date']->toDateString() <= $end && (! $source || strcasecmp($entry['source_funding'], $source) === 0));
+            if ($committee) {
+                $periodEntries = $periodEntries->reject(fn ($entry) => preg_match('/^(bos|bop|dak)/i', $entry['source_funding'] ?? '') || ! empty($entry['bos_year']));
+            }
             $closing = BookClosing::create([
                 'school_id' => $schoolId, 'closed_by' => $actorId, 'type' => $type, 'period' => $period, 'period_start' => $start, 'period_end' => $end,
                 'source_funding' => $source, 'budget_year_id' => $yearId, 'status' => 'closed',
@@ -121,9 +161,10 @@ class FinanceClosingService
                     'next_opening' => ['date' => Carbon::parse($end)->addDay()->toDateString(), 'accounts' => $accounts, 'wallets' => $wallets]],
                 'validation_results' => $validation, 'audit_metadata' => ['actor_id' => $actorId, 'closed_at' => now()->toISOString(), 'source' => 'finance_closing'], 'closed_at' => now(),
             ]);
-            if ($yearId) {
+            if ($yearId && ! $committee) {
                 BudgetYear::whereKey($yearId)->update(['status' => 'closed']);
             }
+
             return $closing;
         });
     }
@@ -151,7 +192,7 @@ class FinanceClosingService
                 throw ValidationException::withMessages(['closing' => 'Buka kembali periode berikutnya terlebih dahulu agar saldo awal tetap konsisten.']);
             }
             $closing->update(['status' => 'reopened', 'audit_metadata' => [...($closing->audit_metadata ?? []), 'reopened_by' => $actor->id, 'reopened_at' => now()->toISOString(), 'reopen_reason' => trim($reason)]]);
-            if ($closing->budget_year_id) {
+            if ($closing->budget_year_id && ($closing->snapshot['book'] ?? null) !== 'komite') {
                 BudgetYear::whereKey($closing->budget_year_id)->update(['status' => 'active']);
             }
         });

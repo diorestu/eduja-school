@@ -51,7 +51,7 @@
     x-data="{
         saving: false,
         activeSnapshot: null,
-        closingType: @js(($activeTab ?? '') === 'bos' ? 'bos' : 'monthly'), // monthly | yearly | bos
+        closingType: 'bos',
         closePeriodMonthly: '{{ date('Y-m') }}',
         closePeriodYearly: @js((string) ($budgetYears->first()?->id ?? '')),
         closeBosType: 'BOS Reguler',
@@ -227,10 +227,10 @@
     {{-- HEADER ACTION --}}
     <div class="work-head mb-0">
         <p class="work-muted">Riwayat penutupan buku periode finance yang telah dibekukan beserta snapshot saldo kas & bank.</p>
-        <button type="button" class="work-btn work-btn-primary" @click="$refs.closingModal.showModal()">
+        <a class="work-btn work-btn-primary" href="{{ route('finance.closing', ['tab' => 'bos']) }}">
             <svg class="w-4 h-4 mr-1.5 -ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-            Tutup Buku Baru
-        </button>
+            Buka Alur Tutup Buku BOS
+        </a>
     </div>
 
     {{-- DATA TABLE --}}
@@ -248,90 +248,6 @@
         empty-message="Belum ada periode yang ditutup."
         empty-hint="Pilih Tutup Buku Baru setelah seluruh persyaratan pra-penutupan terpenuhi."
     />
-
-    {{-- MODAL FORM TUTUP BUKU (FLOW TUTUP BUKU KOMITE & BOS PAGE 34-37) --}}
-    <dialog x-ref="closingModal" class="account-dialog work" style="max-width: 36rem; width: 100%;" aria-labelledby="closing-modal-title" aria-describedby="closing-modal-help"
-        @close="saving = false" @cancel="if (saving) $event.preventDefault()"
-        @click="const bounds = $el.getBoundingClientRect(); if (!saving && ($event.clientX < bounds.left || $event.clientX > bounds.right || $event.clientY < bounds.top || $event.clientY > bounds.bottom)) $el.close()">
-        <div class="account-dialog-head">
-            <div class="min-w-0">
-                <h2 id="closing-modal-title" class="text-lg font-semibold text-gray-900 dark:text-white">Form Penutupan Buku</h2>
-                <p id="closing-modal-help" class="work-muted text-xs mt-0.5">Kunci transaksi keuangan dan rekam snapshot saldo kas/bank periode berjalan.</p>
-            </div>
-            <button type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1 rounded-md" @click="$refs.closingModal.close()" :disabled="saving" aria-label="Tutup form">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-        </div>
-
-        @if(!$allPassed)
-            <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
-                <div class="font-semibold mb-1">Peringatan: 8 Syarat Pra-Tutup Buku Belum Lengkap</div>
-                Sistem akan memvalidasi apakah ada pengajuan belum approval atau pajak tertunggak sebelum menyimpan penutupan.
-            </div>
-        @endif
-
-        <form method="POST" action="{{ route('finance.closing.store') }}" @submit="saving = true" :aria-busy="saving" class="space-y-4">
-            @csrf
-
-            {{-- 1. Pilih Menu Tutup Buku (Dropdown: Bulanan, Tahunan, BOS) --}}
-            <div class="work-field">
-                <label for="close-type">Jenis Tutup Buku <span class="text-red-500">*</span></label>
-                <select id="close-type" name="type" x-model="closingType" required>
-                    <option value="monthly">Tutup Buku Komite (Bulanan)</option>
-                    <option value="yearly">Tutup Buku Komite (Tahunan)</option>
-                    <option value="bos">Tutup Buku BOS (Kas Pembantu BOS)</option>
-                </select>
-            </div>
-
-            {{-- OPSI JIKA BULANAN KOMITE (PAGE 34) --}}
-            <div x-show="closingType === 'monthly'" class="work-field">
-                <label for="close-period-month">Pilih Bulan Tutup Buku <span class="text-red-500">*</span></label>
-                <input id="close-period-month" type="month" name="period" x-model="closePeriodMonthly" :required="closingType === 'monthly'" :disabled="closingType !== 'monthly'">
-            </div>
-
-            {{-- OPSI JIKA TAHUNAN KOMITE (PAGE 34) --}}
-            <div x-show="closingType === 'yearly'" x-cloak class="work-field">
-                <label for="close-period-year">Pilih Tahun Anggaran <span class="text-red-500">*</span></label>
-                <select id="close-period-year" name="period" x-model="closePeriodYearly" :required="closingType === 'yearly'" :disabled="closingType !== 'yearly'">
-                    <option value="">Pilih tahun anggaran aktif</option>
-                    @foreach($budgetYears as $year)<option value="{{ $year->id }}">{{ $year->name }}</option>@endforeach
-                </select>
-            </div>
-
-            {{-- OPSI JIKA TUTUP BUKU BOS (PAGE 35-36) --}}
-            <div x-show="closingType === 'bos'" x-cloak class="space-y-4 rounded-xl border border-gray-100 bg-gray-50/70 p-3.5 dark:border-gray-800 dark:bg-gray-800/40">
-                <div class="work-field">
-                    <label for="close-bos-type">Pilih Jenis BOS <span class="text-red-500">*</span></label>
-                    <select id="close-bos-type" name="bos_type" x-model="closeBosType" :required="closingType === 'bos'" :disabled="closingType !== 'bos'">
-                        @foreach($bosSources as $source)<option value="{{ $source }}">{{ $source }}</option>@endforeach
-                    </select>
-                </div>
-                <div class="work-field">
-                    <label for="close-bos-month">Pilih Tahun BOS <span class="text-red-500">*</span></label>
-                    <input id="close-bos-month" type="number" min="2020" max="2099" name="period" x-model="closeBosMonth" :required="closingType === 'bos'" :disabled="closingType !== 'bos'">
-                </div>
-            </div>
-
-            <div class="rounded-xl border border-gray-200 bg-gray-50/70 p-3.5 dark:border-gray-800 dark:bg-gray-800/30 text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                <div class="font-semibold text-gray-900 dark:text-white">Sistem otomatis:</div>
-                <ul class="list-disc list-inside space-y-0.5">
-                    <li>Mengunci transaksi pada periode tersebut agar tidak dapat diubah lagi.</li>
-                    <li>Menghasilkan snapshot saldo awal periode berikutnya.</li>
-                    <li>Membuat log audit lengkap siapa yang menutup buku dan kapan dilakukan.</li>
-                </ul>
-            </div>
-
-            <div class="account-dialog-actions mt-5 pt-3 border-t border-gray-100 dark:border-gray-800">
-                <button type="button" class="work-btn" @click="$refs.closingModal.close()" :disabled="saving">
-                    Batal
-                </button>
-                <button type="submit" class="work-btn work-btn-primary" :disabled="saving">
-                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                    Kunci & Tutup Buku
-                </button>
-            </div>
-        </form>
-    </dialog>
 
     {{-- MODAL DETAIL SNAPSHOT SALDO --}}
     <dialog x-ref="snapshotModal" class="account-dialog work" aria-labelledby="snapshot-modal-title" aria-describedby="snapshot-modal-help"

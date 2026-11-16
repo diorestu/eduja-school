@@ -1,7 +1,17 @@
 <?php
 
-use App\Models\{ApprovalRequest, BookClosing, BudgetPlan, BudgetYear, Expense, FinanceIncome, SchoolAccount, User, VirtualWallet};
-use App\Services\{FinanceClosingService, FinanceLedgerService, FinanceService, ExpensePostingService};
+use App\Models\ApprovalRequest;
+use App\Models\BookClosing;
+use App\Models\BudgetPlan;
+use App\Models\BudgetYear;
+use App\Models\Expense;
+use App\Models\FinanceIncome;
+use App\Models\User;
+use App\Models\VirtualWallet;
+use App\Services\ExpensePostingService;
+use App\Services\FinanceClosingService;
+use App\Services\FinanceLedgerService;
+use App\Services\FinanceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -131,4 +141,75 @@ it('starts a filtered cashbook with opening balances instead of resetting to zer
     [$school] = periodFinanceFixture();
     $book = app(FinanceLedgerService::class)->bku($school, ['from' => '2026-08-01', 'to' => '2026-08-31']);
     expect($book['openingBalance'])->toEqual(1000000)->and($book['balanceKas'])->toEqual(1000000)->and($book['finalBalance'])->toEqual(1000000);
+});
+
+it('checks only committee transactions in the selected period in the committee workflow', function () {
+    [$school, $user, $account] = periodFinanceFixture();
+    FinanceIncome::create(['school_id' => $school, 'source_funding' => 'BOS Reguler', 'bos_year' => 2026, 'amount' => 100, 'received_date' => '2026-07-10', 'status' => 'pending']);
+    FinanceIncome::create(['school_id' => $school, 'source_funding' => 'lainnya', 'amount' => 100, 'received_date' => '2026-08-10', 'status' => 'pending']);
+    $preview = app(App\Services\CommitteeClosingService::class)->preview($school, 'monthly', '2026-07');
+    expect($preview['validation']['all_passed'])->toBeTrue()->and($preview['summary']['collected'])->toEqual(0);
+    FinanceIncome::create(['school_id' => $school, 'source_funding' => 'komite', 'amount' => 100, 'received_date' => '2026-07-10', 'status' => 'pending']);
+    expect(app(App\Services\CommitteeClosingService::class)->preview($school, 'monthly', '2026-07')['validation']['all_passed'])->toBeFalse();
+});
+
+it('rejects stale committee review and freezes the reviewed package without locking BOS', function () {
+    [$school, $user, $account] = periodFinanceFixture();
+    $service = app(App\Services\CommitteeClosingService::class);
+    $preview = $service->preview($school, 'monthly', '2026-07');
+    app(FinanceService::class)->recordBosIncome($school, ['source_funding' => 'lainnya', 'amount' => 100, 'received_date' => '2026-07-10', 'account_id' => $account->id]);
+    expect(fn () => $service->close($school, 'monthly', '2026-07', $user->id, $preview['fingerprint']))->toThrow(ValidationException::class);
+    $preview = $service->preview($school, 'monthly', '2026-07');
+    $closing = $service->close($school, 'monthly', '2026-07', $user->id, $preview['fingerprint']);
+    expect($closing->snapshot['book'])->toBe('komite')->and($closing->snapshot['summary']['collected'])->toEqual(100)
+        ->and($closing->snapshot['next_opening']['date'])->toBe('2026-08-01');
+    app(FinanceService::class)->recordBosIncome($school, ['source_funding' => 'BOS Reguler', 'amount' => 100, 'received_date' => '2026-07-10', 'account_id' => $account->id]);
+    expect(fn () => app(FinanceService::class)->recordBosIncome($school, ['source_funding' => 'lainnya', 'amount' => 100, 'received_date' => '2026-07-10', 'account_id' => $account->id]))->toThrow(ValidationException::class);
+    expect($closing->fresh()->snapshot['summary']['collected'])->toEqual(100);
+});
+
+it('checks historical negative balances even when later receipts make the current balance positive', function () {
+    [$school, $user, $account] = periodFinanceFixture();
+    $account->update(['opening_balance' => -100, 'current_balance' => -100]);
+    app(FinanceService::class)->recordBosIncome($school, ['source_funding' => 'lainnya', 'amount' => 200, 'received_date' => '2026-08-10', 'account_id' => $account->id]);
+    $preview = app(App\Services\CommitteeClosingService::class)->preview($school, 'monthly', '2026-07');
+    expect($preview['validation']['negative_accounts'])->toBe(1)->and($preview['validation']['all_passed'])->toBeFalse()
+        ->and($preview['accounts'][0]['balance'])->toEqual(-100);
+});
+
+it('uses the schools fiscal year dates for annual committee reports and rejects foreign years', function () {
+    [$school, $user] = periodFinanceFixture();
+    $year = BudgetYear::create(['school_id' => $school, 'name' => '2026/2027', 'start_date' => '2026-07-01', 'end_date' => '2027-06-30', 'status' => 'active']);
+    $preview = app(App\Services\CommitteeClosingService::class)->preview($school, 'yearly', (string) $year->id);
+    expect($preview['start'])->toBe('2026-07-01')->and($preview['end'])->toBe('2027-06-30');
+    expect(fn () => app(App\Services\CommitteeClosingService::class)->preview($school + 1000, 'yearly', (string) $year->id))->toThrow(ValidationException::class);
+});
+
+it('rebuilds live ledger openings after BOS receipts in a period closed only for committee', function () {
+    [$school, $user, $account] = periodFinanceFixture();
+    $service = app(App\Services\CommitteeClosingService::class);
+    $preview = $service->preview($school, 'monthly', '2026-07');
+    $closing = $service->close($school, 'monthly', '2026-07', $user->id, $preview['fingerprint']);
+    app(FinanceService::class)->recordBosIncome($school, ['source_funding' => 'BOS Reguler', 'amount' => 50, 'received_date' => '2026-07-10', 'account_id' => $account->id]);
+    $bku = app(FinanceLedgerService::class)->bku($school, ['from' => '2026-08-01', 'to' => '2026-08-31']);
+    expect($bku['openingBalance'])->toEqual(1000050)->and($bku['finalBalance'])->toEqual(1000050)
+        ->and($closing->fresh()->snapshot['next_opening']['accounts'][0]['balance'])->toEqual(1000000);
+});
+
+it('keeps shared BOS fiscal budgets available after annual committee closing and reopening', function () {
+    [$school, $user, $account] = periodFinanceFixture();
+    $account->update(['type' => 'Bank', 'source_funding' => 'bos']);
+    $year = BudgetYear::create(['school_id' => $school, 'name' => '2026', 'start_date' => '2026-01-01', 'end_date' => '2026-12-31', 'status' => 'active']);
+    $plan = BudgetPlan::create(['school_id' => $school, 'budget_year_id' => $year->id, 'source_funding' => 'BOS Reguler', 'program_name' => 'Program', 'activity_name' => 'ATK', 'amount' => 100, 'status' => 'approved']);
+    $academic = App\Models\AcademicYear::create(['school_id' => $school, 'year' => '2026/2027', 'semester' => 'Ganjil', 'is_active' => true]);
+    $service = app(App\Services\CommitteeClosingService::class);
+    $preview = $service->preview($school, 'yearly', (string) $year->id);
+    $closing = $service->close($school, 'yearly', (string) $year->id, $user->id, $preview['fingerprint']);
+    expect($year->fresh()->status)->toBe('active');
+    $expense = Expense::create(['academic_year_id' => $academic->id, 'school_id' => $school, 'budget_plan_id' => $plan->id, 'account_id' => $account->id, 'source_funding' => 'BOS Reguler', 'bos_year' => 2026, 'expense_name' => 'ATK', 'amount' => 70, 'payment_method' => 'Transfer', 'transaction_date' => '2026-07-10', 'status' => 'pending']);
+    app(ExpensePostingService::class)->post($expense, $user->id);
+    expect($expense->fresh()->posted_at)->not->toBeNull();
+    $year->update(['status' => 'closed']);
+    app(FinanceClosingService::class)->reopen($closing, $user, 'Koreksi laporan Komite');
+    expect($year->fresh()->status)->toBe('closed');
 });
