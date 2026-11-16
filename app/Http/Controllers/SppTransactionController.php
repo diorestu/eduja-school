@@ -58,38 +58,29 @@ class SppTransactionController extends Controller
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->first();
 
-        // Calculate student arrears for Tunggakan Siswa tab
-        $arrearsStudents = $students->map(function ($student) use ($invoices) {
-            $studentInvoices = $invoices->where('student_id', $student->id);
-            $totalRemaining = $studentInvoices->sum(fn ($inv) => $inv->remaining_amount);
-            $unpaidInvoices = $studentInvoices->filter(fn ($inv) => $inv->remaining_amount > 0)->values();
+        // Calculate student arrears for Tunggakan Siswa tab using centralized StudentArrearsService
+        $arrearsService = app(\App\Services\StudentArrearsService::class);
+        $committeeInvoices = $arrearsService->invoices($schoolId, ['committee_only' => true]);
+        $groupedInvoices = $committeeInvoices->groupBy('student_id');
 
-            $status = 'lunas';
-            if ($totalRemaining > 0) {
-                $hasOverdue = $unpaidInvoices->contains(fn ($inv) => $inv->due_date && $inv->due_date < now());
-                $hasPaidSome = $unpaidInvoices->contains(fn ($inv) => $inv->paid_amount > 0);
-                if ($hasOverdue) {
-                    $status = 'menunggak';
-                } elseif ($hasPaidSome) {
-                    $status = 'cicil';
-                } else {
-                    $status = 'belum bayar';
-                }
-            }
+        $arrearsStudents = $students->map(function ($student) use ($groupedInvoices, $arrearsService) {
+            $studentInvoices = $groupedInvoices->get($student->id, collect());
+            $row = $arrearsService->studentRow($student, $studentInvoices);
+            $unpaidInvoices = $studentInvoices->filter(fn ($inv) => $inv->remaining_amount > 0 && $inv->status !== 'Lunas')->values();
 
             return [
                 'id' => $student->id,
                 'name' => $student->name,
                 'nis' => $student->nis ?? '-',
                 'nisn' => $student->nisn ?? '-',
-                'class_name' => $student->schoolClasses->first()?->name ?? 'Kelas X',
-                'total_arrears' => (float) $totalRemaining,
-                'status' => $status,
+                'class_name' => $row['class_name'],
+                'total_arrears' => (float) $row['total_arrears'],
+                'status' => strtolower($row['status']),
                 'unpaid_count' => $unpaidInvoices->count(),
                 'invoices' => $unpaidInvoices->map(fn ($inv) => [
                     'id' => $inv->id,
                     'invoice_number' => $inv->invoice_number,
-                    'item_name' => $inv->invoiceItems->first()?->name ?? 'Tagihan Komite',
+                    'item_name' => $inv->invoiceItems->where('is_late_fee', false)->first()?->name ?? 'Tagihan Komite',
                     'total_amount' => (float) $inv->total_amount,
                     'paid_amount' => (float) $inv->paid_amount,
                     'remaining_amount' => (float) $inv->remaining_amount,

@@ -79,12 +79,17 @@
     $bosRemainingBudget = 50000000; // fallback default
 @endphp
 
-<x-common.page-breadcrumb pageTitle="Pencatatan Belanja & Operasional Sekolah" label="Pengeluaran" />
+@php
+    $totalBosRemaining = $bosBudgets->sum('remaining_amount');
+    $komiteWalletBalance = $virtualWallets->where('source', 'komite')->sum('nominal');
+@endphp
+
+<x-common.page-breadcrumb :pageTitle="$title" label="Pengeluaran" />
 
 <div class="work work-stack"
     x-data="{
         saving: false,
-        expenseCategory: @js(old('_expense_form') === 'create' ? old('category', 'Operasional') : 'Operasional'),
+        expenseCategory: @js(old('_expense_form') === 'create' ? old('category', ($activeTab === 'bos' ? 'BOS' : 'Operasional')) : ($activeTab === 'bos' ? 'BOS' : 'Operasional')),
         createAmount: 0,
         createOpAmount: @js(old('_expense_form') === 'create' ? old('amount', 0) : 0),
         createOpWalletId: @js((string) old('virtual_wallet_id', $virtualWallets->first()?->id ?? '')),
@@ -203,6 +208,25 @@
     }"
     @table-edit="openEdit($event.detail)">
 
+    {{-- TABS PENGELUARAN: KOMITE vs BOS vs SEMUA --}}
+    <div class="flex items-center gap-2 border-b border-gray-200 dark:border-gray-800 pb-2 mb-3 overflow-x-auto">
+        <a href="{{ route('bos.belanja.index', ['tab' => 'komite']) }}"
+           class="px-4 py-2 rounded-xl text-xs font-semibold transition-all inline-flex items-center gap-2 {{ ($activeTab ?? 'all') === 'komite' ? 'bg-brand-50 text-brand-600 border border-brand-200 dark:bg-brand-500/10 dark:text-brand-400 dark:border-brand-500/30 shadow-xs' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white border border-transparent' }}">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+            Pengeluaran Komite (Operasional)
+        </a>
+        <a href="{{ route('bos.belanja.index', ['tab' => 'bos']) }}"
+           class="px-4 py-2 rounded-xl text-xs font-semibold transition-all inline-flex items-center gap-2 {{ ($activeTab ?? '') === 'bos' ? 'bg-brand-50 text-brand-600 border border-brand-200 dark:bg-brand-500/10 dark:text-brand-400 dark:border-brand-500/30 shadow-xs' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white border border-transparent' }}">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/></svg>
+            Pengeluaran BOS (Bantuan Operasional Sekolah)
+        </a>
+        <a href="{{ route('bos.belanja.index', ['tab' => 'all']) }}"
+           class="px-4 py-2 rounded-xl text-xs font-semibold transition-all inline-flex items-center gap-2 {{ ($activeTab ?? '') === 'all' ? 'bg-brand-50 text-brand-600 border border-brand-200 dark:bg-brand-500/10 dark:text-brand-400 dark:border-brand-500/30 shadow-xs' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white border border-transparent' }}">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Semua Pengeluaran (Konsolidasi)
+        </a>
+    </div>
+
     @if(session('success'))
         <div role="status" class="work-notice">{{ session('success') }}</div>
     @endif
@@ -223,32 +247,82 @@
         </div>
     @endif
 
-    {{-- METRICS SUMMARY --}}
+    {{-- METRICS SUMMARY SESUAI TAB (KOMITE VS BOS VS KONSOLIDASI) --}}
     <div class="grid grid-cols-2 gap-3 lg:grid-cols-4 mb-2">
-        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-            <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total Belanja</p>
-            <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-gray-900 dark:text-white">Rp {{ number_format($totalBelanja, 0, ',', '.') }}</p>
-        </div>
-        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-            <p class="text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">Belanja Bulan Ini</p>
-            <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-rose-600 dark:text-rose-400">Rp {{ number_format($currentMonthBelanja, 0, ',', '.') }}</p>
-        </div>
-        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-            <p class="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Pajak Terpotong</p>
-            <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-amber-600 dark:text-amber-400">Rp {{ number_format($totalPajak, 0, ',', '.') }}</p>
-        </div>
-        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-            <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Buku Pengeluaran</p>
-            <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-gray-900 dark:text-white">{{ $expenses->count() }} transaksi</p>
-        </div>
+        @if(($activeTab ?? 'all') === 'komite')
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total Belanja Komite</p>
+                <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-gray-900 dark:text-white">Rp {{ number_format($totalBelanja, 0, ',', '.') }}</p>
+            </div>
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">Belanja Komite Bulan Ini</p>
+                <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-rose-600 dark:text-rose-400">Rp {{ number_format($currentMonthBelanja, 0, ',', '.') }}</p>
+            </div>
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Saldo Dompet Komite</p>
+                <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-emerald-600 dark:text-emerald-400">Rp {{ number_format($komiteWalletBalance, 0, ',', '.') }}</p>
+            </div>
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Buku Belanja Komite</p>
+                <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-gray-900 dark:text-white">{{ $expenses->count() }} transaksi</p>
+            </div>
+        @elseif(($activeTab ?? '') === 'bos')
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total Belanja BOS</p>
+                <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-gray-900 dark:text-white">Rp {{ number_format($totalBelanja, 0, ',', '.') }}</p>
+            </div>
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">Belanja BOS Bulan Ini</p>
+                <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-rose-600 dark:text-rose-400">Rp {{ number_format($currentMonthBelanja, 0, ',', '.') }}</p>
+            </div>
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Pajak Belanja BOS</p>
+                <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-amber-600 dark:text-amber-400">Rp {{ number_format($totalPajak, 0, ',', '.') }}</p>
+            </div>
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">Sisa Pagu Anggaran BOS</p>
+                <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-sky-600 dark:text-sky-400">Rp {{ number_format($totalBosRemaining, 0, ',', '.') }}</p>
+            </div>
+        @else
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total Belanja</p>
+                <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-gray-900 dark:text-white">Rp {{ number_format($totalBelanja, 0, ',', '.') }}</p>
+            </div>
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">Belanja Bulan Ini</p>
+                <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-rose-600 dark:text-rose-400">Rp {{ number_format($currentMonthBelanja, 0, ',', '.') }}</p>
+            </div>
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Pajak Terpotong</p>
+                <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-amber-600 dark:text-amber-400">Rp {{ number_format($totalPajak, 0, ',', '.') }}</p>
+            </div>
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Buku Pengeluaran</p>
+                <p class="mt-1 text-xl font-bold tracking-tight tabular-nums text-gray-900 dark:text-white">{{ $expenses->count() }} transaksi</p>
+            </div>
+        @endif
     </div>
 
     {{-- HEADER ACTION --}}
     <div class="work-head mb-0">
-        <p class="work-muted">Pencatatan realisasi belanja operasional komite sekolah, BOS, yayasan, dan potongan pajak terkait.</p>
-        <button type="button" class="work-btn work-btn-primary" @click="$refs.createExpenseModal.showModal()">
+        <p class="work-muted">
+            @if(($activeTab ?? 'all') === 'komite')
+                Pencatatan realisasi belanja operasional komite sekolah, biaya konsumsi rapat, kesiswaan, dan pemeliharaan sarpras.
+            @elseif(($activeTab ?? '') === 'bos')
+                Pencatatan realisasi belanja dana BOS per komponen kegiatan, kuitansi/faktur pembelian, dan potongan pajak terkait.
+            @else
+                Pencatatan realisasi belanja operasional komite sekolah, BOS, yayasan, dan potongan pajak terkait.
+            @endif
+        </p>
+        <button type="button" class="work-btn work-btn-primary" @click="expenseCategory = @js(($activeTab ?? '') === 'bos' ? 'BOS' : 'Operasional'); $refs.createExpenseModal.showModal()">
             <svg class="w-4 h-4 mr-1.5 -ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-            Catat Pengeluaran
+            @if(($activeTab ?? 'all') === 'komite')
+                Catat Pengeluaran Komite
+            @elseif(($activeTab ?? '') === 'bos')
+                Catat Pengeluaran BOS
+            @else
+                Catat Pengeluaran
+            @endif
         </button>
     </div>
 
@@ -256,14 +330,14 @@
     <x-common.data-table
         :rows="$expenseRows"
         :columns="$expenseColumns"
-        caption="Buku Pembantu Pengeluaran Belanja"
+        :caption="($activeTab ?? 'all') === 'komite' ? 'Buku Pembantu Pengeluaran Komite' : (($activeTab ?? '') === 'bos' ? 'Buku Pembantu Pengeluaran BOS' : 'Buku Pembantu Pengeluaran Belanja')"
         search-label="Cari uraian belanja, akun, bukti, atau toko..."
         row-label="pengeluaran"
-        subtitle="Daftar realisasi belanja dan transaksi pengeluaran operasional"
+        :subtitle="($activeTab ?? 'all') === 'komite' ? 'Daftar transaksi pengeluaran operasional dan kegiatan komite' : (($activeTab ?? '') === 'bos' ? 'Daftar belanja dana BOS per komponen kegiatan' : 'Daftar realisasi belanja dan transaksi pengeluaran operasional')"
         :show-actions="false"
         :show-avatar="false"
         :exportable="true"
-        export-label="Export Belanja"
+        :export-label="($activeTab ?? 'all') === 'komite' ? 'Export Belanja Komite' : (($activeTab ?? '') === 'bos' ? 'Export Belanja BOS' : 'Export Belanja')"
         empty-message="Belum ada transaksi pengeluaran belanja."
         empty-hint="Pilih Catat Pengeluaran untuk mencatat transaksi pertama."
     />

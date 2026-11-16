@@ -209,13 +209,34 @@ class BosController extends Controller
     /**
      * Display list of expenses and record form.
      */
-    public function belanja(SchoolContext $schoolContext)
+    public function belanja(Request $request, SchoolContext $schoolContext)
     {
         $schoolId = $schoolContext->activeSchoolIdFor();
-        $expenses = Expense::with(['budgetCategory', 'academicYear', 'expenseType', 'virtualWallet', 'account'])
-            ->where('school_id', $schoolId)
-            ->orderBy('transaction_date', 'desc')
-            ->get();
+
+        $tab = strtolower((string) ($request->query('tab') ?: $request->query('category') ?: 'all'));
+        if (! in_array($tab, ['komite', 'bos', 'all'])) {
+            $tab = 'all';
+        }
+
+        $expensesQuery = Expense::with(['budgetCategory', 'academicYear', 'expenseType', 'virtualWallet', 'account'])
+            ->where('school_id', $schoolId);
+
+        if ($tab === 'komite') {
+            $expensesQuery->where(function ($q) {
+                $q->whereRaw('LOWER(source_funding) = ?', ['komite'])
+                    ->orWhere('category', 'Operasional')
+                    ->orWhereHas('expenseType', fn ($et) => $et->whereRaw('LOWER(source_funding) = ?', ['komite']));
+            });
+        } elseif ($tab === 'bos') {
+            $expensesQuery->where(function ($q) {
+                $q->where('source_funding', 'like', 'BOS%')
+                    ->orWhereIn('source_funding', ['BOP', 'DAK'])
+                    ->orWhere('category', 'BOS')
+                    ->orWhereHas('budgetCategory', fn ($bc) => $bc->where('source_funding', 'like', 'BOS%')->orWhereIn('source_funding', ['BOP', 'DAK']));
+            });
+        }
+
+        $expenses = $expensesQuery->orderBy('transaction_date', 'desc')->get();
             
         $categories = BudgetCategory::where('school_id', $schoolId)->where('is_active', true)->orderBy('code')->get();
         $academicYears = AcademicYear::where(function ($q) use ($schoolId) {
@@ -258,8 +279,15 @@ class BosController extends Controller
             $plan->setAttribute('remaining_amount', max(0, (float) $plan->amount - (float) Expense::where('school_id', $schoolId)->where('budget_plan_id', $plan->id)->whereNotNull('posted_at')->sum('amount')));
         });
 
+        $pageTitle = match ($tab) {
+            'komite' => 'Pengeluaran Komite (Operasional)',
+            'bos' => 'Pengeluaran Dana BOS',
+            default => 'Pencatatan Belanja & Operasional Sekolah',
+        };
+
         return view('pages.keuangan.bos.belanja', [
-            'title' => 'Pencatatan Belanja & Operasional Sekolah',
+            'title' => $pageTitle,
+            'activeTab' => $tab,
             'expenses' => $expenses,
             'categories' => $categories,
             'academicYears' => $academicYears,

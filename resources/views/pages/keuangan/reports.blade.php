@@ -255,6 +255,110 @@
         </div>
     </div>
 
+    {{-- SECTION KHUSUS LAPORAN KOMITE: RINCIAN PENGELUARAN POS KOMITE --}}
+    @if(($activeTab ?? '') === 'komite' && isset($komiteExpenseBreakdown) && $komiteExpenseBreakdown->isNotEmpty())
+        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900 mb-2">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
+                Rincian Realisasi Pengeluaran Operasional Komite per Pos
+            </h3>
+            <div class="overflow-hidden rounded-lg border border-gray-100 dark:border-gray-800">
+                <table class="w-full text-xs text-left">
+                    <thead class="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-gray-500">
+                        <tr>
+                            <th class="px-3 py-2 font-medium">Pos Pengeluaran Komite</th>
+                            <th class="px-3 py-2 font-medium text-center">Jumlah Transaksi</th>
+                            <th class="px-3 py-2 font-medium text-right">Total Realisasi Belanja</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                        @foreach($komiteExpenseBreakdown as $keb)
+                            <tr>
+                                <td class="px-3 py-2.5 font-semibold text-gray-900 dark:text-white">{{ $keb['name'] }}</td>
+                                <td class="px-3 py-2.5 text-center text-gray-500">{{ $keb['count'] }} transaksi</td>
+                                <td class="px-3 py-2.5 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                                    Rp {{ number_format($keb['total'], 0, ',', '.') }}
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+
+    {{-- SECTION KHUSUS LAPORAN BOS: REALISASI RKAS & REKAPITULASI PAJAK --}}
+    @if(($activeTab ?? '') === 'bos')
+        @if(isset($bosBudgetRealization) && $bosBudgetRealization->isNotEmpty())
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900 mb-2">
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
+                    Laporan Penyerapan Anggaran BOS per Komponen (RKAS)
+                </h3>
+                <div class="overflow-x-auto rounded-lg border border-gray-100 dark:border-gray-800">
+                    <table class="w-full text-xs text-left">
+                        <thead class="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-gray-500">
+                            <tr>
+                                <th class="px-3 py-2 font-medium">Uraian Program RKAS</th>
+                                <th class="px-3 py-2 font-medium">Komponen BOS</th>
+                                <th class="px-3 py-2 font-medium text-right">Pagu Anggaran</th>
+                                <th class="px-3 py-2 font-medium text-right">Realisasi Belanja</th>
+                                <th class="px-3 py-2 font-medium text-right">Sisa Pagu</th>
+                                <th class="px-3 py-2 font-medium text-center">Serapan</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                            @foreach($bosBudgetRealization as $bbr)
+                                <tr>
+                                    <td class="px-3 py-2.5 font-semibold text-gray-900 dark:text-white">{{ $bbr['name'] }}</td>
+                                    <td class="px-3 py-2.5 text-gray-500">{{ $bbr['component'] }}</td>
+                                    <td class="px-3 py-2.5 text-right font-mono text-gray-700 dark:text-gray-300">Rp {{ number_format($bbr['pagu'], 0, ',', '.') }}</td>
+                                    <td class="px-3 py-2.5 text-right font-mono text-rose-600 dark:text-rose-400">Rp {{ number_format($bbr['spent'], 0, ',', '.') }}</td>
+                                    <td class="px-3 py-2.5 text-right font-mono font-bold text-sky-600 dark:text-sky-400">Rp {{ number_format($bbr['remaining'], 0, ',', '.') }}</td>
+                                    <td class="px-3 py-2.5 text-center">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold {{ $bbr['percentage'] >= 80 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400' : ($bbr['percentage'] >= 50 ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300') }}">
+                                            {{ $bbr['percentage'] }}%
+                                        </span>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
+
+        @if(isset($bosTaxBreakdown) && $bosTaxBreakdown->isNotEmpty())
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900 mb-2">
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
+                    Rekapitulasi Kewajiban Pajak Belanja BOS (PPN & PPh)
+                </h3>
+                <div class="overflow-hidden rounded-lg border border-gray-100 dark:border-gray-800">
+                    <table class="w-full text-xs text-left">
+                        <thead class="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-gray-500">
+                            <tr>
+                                <th class="px-3 py-2 font-medium">Jenis Pajak</th>
+                                <th class="px-3 py-2 font-medium text-center">Jumlah Belanja</th>
+                                <th class="px-3 py-2 font-medium text-right">Total Pajak Terpotong</th>
+                                <th class="px-3 py-2 font-medium text-right">Sudah Disetor</th>
+                                <th class="px-3 py-2 font-medium text-right">Belum Disetor</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                            @foreach($bosTaxBreakdown as $btb)
+                                <tr>
+                                    <td class="px-3 py-2.5 font-semibold text-gray-900 dark:text-white">{{ $btb['type'] }}</td>
+                                    <td class="px-3 py-2.5 text-center text-gray-500">{{ $btb['count'] }} transaksi</td>
+                                    <td class="px-3 py-2.5 text-right font-mono font-bold text-amber-600 dark:text-amber-400">Rp {{ number_format($btb['total'], 0, ',', '.') }}</td>
+                                    <td class="px-3 py-2.5 text-right font-mono text-emerald-600 dark:text-emerald-400">Rp {{ number_format($btb['paid'], 0, ',', '.') }}</td>
+                                    <td class="px-3 py-2.5 text-right font-mono text-rose-600 dark:text-rose-400">Rp {{ number_format($btb['unpaid'], 0, ',', '.') }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
+    @endif
+
     {{-- DATA TABLE: BUKU JURNAL TRANSAKSI --}}
     <x-common.data-table
         :rows="$reportRows"

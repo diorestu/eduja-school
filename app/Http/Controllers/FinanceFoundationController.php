@@ -1342,6 +1342,11 @@ class FinanceFoundationController extends Controller
         $kreditTotal = (float) $entries->sum('kredit');
         $surplusDefisit = $debetTotal - $kreditTotal;
 
+        $komiteExpenseBreakdown = collect();
+        $bosComponentBreakdown = collect();
+        $bosBudgetRealization = collect();
+        $bosTaxBreakdown = collect();
+
         if ($tab === 'komite') {
             $komiteAccounts = $accounts->filter(fn ($a) => strtolower($a->source_funding ?? '') === 'komite' || in_array(strtolower($a->type), ['cash', 'tunai']));
             $metrics = [
@@ -1351,10 +1356,23 @@ class FinanceFoundationController extends Controller
                 ['label' => 'Sisa Piutang / Tunggakan Siswa', 'value' => 'Rp '.number_format($summary['outstanding'], 0, ',', '.')],
                 ['label' => 'Saldo Kas & Bank Komite', 'value' => 'Rp '.number_format($komiteAccounts->sum('current_balance'), 0, ',', '.')],
             ];
+
+            $komiteExpenseBreakdown = Expense::where('school_id', $schoolId)
+                ->where('status', 'approved')
+                ->where(fn ($q) => $q->whereRaw('LOWER(source_funding) = ?', ['komite'])->orWhere('category', 'Operasional'))
+                ->with('expenseType')
+                ->get()
+                ->groupBy(fn ($e) => $e->expenseType?->name ?? 'Operasional Umum')
+                ->map(fn ($group, $name) => [
+                    'name' => $name,
+                    'count' => $group->count(),
+                    'total' => (float) $group->sum('amount'),
+                ])->values();
         } elseif ($tab === 'bos') {
             $bosAccounts = $accounts->filter(fn ($a) => strtolower($a->source_funding ?? '') === 'bos' || strtolower($a->type) === 'bos');
-            $bosTaxes = (float) Expense::where('school_id', $schoolId)->where('status', 'approved')
-                ->where(fn ($q) => $q->where('source_funding', 'like', 'BOS%')->orWhereIn('source_funding', ['BOP', 'DAK']))->sum('tax_amount');
+            $bosExpenses = Expense::where('school_id', $schoolId)->where('status', 'approved')
+                ->where(fn ($q) => $q->where('source_funding', 'like', 'BOS%')->orWhereIn('source_funding', ['BOP', 'DAK']))->get();
+            $bosTaxes = (float) $bosExpenses->sum('tax_amount');
             $metrics = [
                 ['label' => 'Penerimaan BOS (SP2D)', 'value' => 'Rp '.number_format($debetTotal, 0, ',', '.')],
                 ['label' => 'Realisasi Belanja BOS', 'value' => 'Rp '.number_format($kreditTotal, 0, ',', '.')],
@@ -1362,6 +1380,49 @@ class FinanceFoundationController extends Controller
                 ['label' => 'Pajak Belanja BOS', 'value' => 'Rp '.number_format($bosTaxes, 0, ',', '.')],
                 ['label' => 'Saldo Kas & Bank BOS', 'value' => 'Rp '.number_format($bosAccounts->sum('current_balance'), 0, ',', '.')],
             ];
+
+            $bosComponentBreakdown = Expense::where('school_id', $schoolId)
+                ->where('status', 'approved')
+                ->where(fn ($q) => $q->where('source_funding', 'like', 'BOS%')->orWhereIn('source_funding', ['BOP', 'DAK'])->orWhere('category', 'BOS'))
+                ->with('budgetCategory')
+                ->get()
+                ->groupBy(fn ($e) => $e->budgetCategory?->name ?? 'Belanja Barang & Jasa')
+                ->map(fn ($group, $name) => [
+                    'component' => $name,
+                    'count' => $group->count(),
+                    'total' => (float) $group->sum('amount'),
+                    'tax' => (float) $group->sum('tax_amount'),
+                ])->values();
+
+            $bosPlans = BudgetPlan::where('school_id', $schoolId)->where('status', 'approved')
+                ->where(fn ($q) => $q->whereRaw('LOWER(source_funding) LIKE ?', ['bos%'])->orWhereRaw('LOWER(source_funding) LIKE ?', ['bop%'])->orWhereRaw('LOWER(source_funding) LIKE ?', ['dak%']))
+                ->with('budgetCategory')
+                ->get();
+
+            $bosBudgetRealization = $bosPlans->map(function ($plan) use ($schoolId) {
+                $spent = (float) Expense::where('school_id', $schoolId)->where('budget_plan_id', $plan->id)->where('status', 'approved')->sum('amount');
+                $pagu = (float) $plan->amount;
+                $rem = max(0, $pagu - $spent);
+                $pct = $pagu > 0 ? round(($spent / $pagu) * 100, 1) : 0;
+                return [
+                    'name' => $plan->name,
+                    'component' => $plan->budgetCategory?->name ?? 'Komponen BOS',
+                    'source' => $plan->source_funding,
+                    'pagu' => $pagu,
+                    'spent' => $spent,
+                    'remaining' => $rem,
+                    'percentage' => $pct,
+                ];
+            });
+
+            $bosTaxBreakdown = $bosExpenses->where('tax_amount', '>', 0)->groupBy(fn ($e) => $e->tax_type ?: 'Pajak Lainnya')
+                ->map(fn ($group, $type) => [
+                    'type' => $type,
+                    'count' => $group->count(),
+                    'total' => (float) $group->sum('tax_amount'),
+                    'paid' => (float) $group->where('is_tax_paid', true)->sum('tax_amount'),
+                    'unpaid' => (float) $group->where('is_tax_paid', false)->sum('tax_amount'),
+                ])->values();
         } else {
             $metrics = [
                 ['label' => 'Total Penerimaan', 'value' => 'Rp '.number_format($debetTotal, 0, ',', '.')],
@@ -1382,6 +1443,10 @@ class FinanceFoundationController extends Controller
             'filters' => $filters,
             'metrics' => $metrics,
             'activeTab' => $tab,
+            'komiteExpenseBreakdown' => $komiteExpenseBreakdown,
+            'bosComponentBreakdown' => $bosComponentBreakdown,
+            'bosBudgetRealization' => $bosBudgetRealization,
+            'bosTaxBreakdown' => $bosTaxBreakdown,
         ]);
     }
 
