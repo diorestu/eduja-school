@@ -231,13 +231,20 @@ class PortalFoundationController extends Controller
     {
         $class = app(\App\Services\ActiveEnrollment::class)->forStudent($schoolId, $student->id);
         $attendance = StudentAttendance::query()->where('school_id', $schoolId)->where('student_id', $student->id);
-        [$start,$end] = app(\App\Services\PortalAttendancePeriod::class)->dates();
-        $periodAttendance = (clone $attendance)->whereBetween('attendance_date',[$start,$end]);
-        $hadir = (clone $periodAttendance)->where('status', 'H')->count();
-        $sakit = (clone $periodAttendance)->where('status', 'S')->count();
-        $izin = (clone $periodAttendance)->where('status', 'I')->count();
-        $alpa = (clone $periodAttendance)->where('status', 'A')->count();
-        $dispensasi = (clone $periodAttendance)->where('status', 'D')->count();
+        [$start, $end] = app(\App\Services\PortalAttendancePeriod::class)->dates();
+        $periodAttendance = (clone $attendance)->whereBetween('attendance_date', [$start, $end]);
+
+        // Aggregate attendance status in a single query instead of 5 separate count queries
+        $statusCounts = (clone $periodAttendance)
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $hadir = (int) ($statusCounts['H'] ?? 0);
+        $sakit = (int) ($statusCounts['S'] ?? 0);
+        $izin = (int) ($statusCounts['I'] ?? 0);
+        $alpa = (int) ($statusCounts['A'] ?? 0);
+        $dispensasi = (int) ($statusCounts['D'] ?? 0);
         $total = $hadir + $sakit + $izin + $alpa + $dispensasi;
         $savings = \App\Models\StudentSaving::query()->where('school_id', $schoolId)->where('student_id', $student->id)->latest('transaction_date')->get();
 
