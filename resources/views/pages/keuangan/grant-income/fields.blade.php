@@ -14,17 +14,27 @@
     <div class="work-field"><label for="grant-date">Tanggal terima <span aria-hidden="true">*</span></label><input id="grant-date" name="received_date" type="date" value="{{ old('received_date', $record?->received_date?->toDateString() ?? now()->toDateString()) }}" required>@error('received_date')<p class="work-error">{{ $message }}</p>@enderror</div>
 </div>
 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2" x-data="{method: @js($initialMethod), account: @js((string) $initialAccount)}">
-    <div class="work-field"><label for="grant-method">Metode Hibah <span aria-hidden="true">*</span></label><select id="grant-method" name="payment_method" x-model="method" @change="account=''" required><option value="Tunai">Tunai</option><option value="Transfer">Transfer</option></select>@error('payment_method')<p class="work-error">{{ $message }}</p>@enderror</div>
-    <template x-if="method === 'Transfer'"><div class="work-field"><label for="grant-bank">Rekening Bank Tujuan <span aria-hidden="true">*</span></label><select id="grant-bank" name="account_id" x-model="account" required><option value="">Pilih rekening bank sekolah</option>@foreach($bankAccounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select></div></template>
-    <template x-if="method === 'Tunai'"><div class="work-field">
+    <div class="work-field">
+        <label for="grant-method">Metode Hibah <span aria-hidden="true">*</span></label>
+        <select id="grant-method" name="payment_method" x-model="method" @change="account=''" required><option value="Tunai">Tunai</option><option value="Transfer">Transfer</option></select>
+        @error('payment_method')<p class="work-error">{{ $message }}</p>@enderror
         @if($cashAccounts->count() === 1)
-            <input type="hidden" name="account_id" value="{{ $cashAccounts->first()->id }}"><p class="work-muted">Kas tujuan: {{ $cashAccounts->first()->name }}</p>
-        @elseif($cashAccounts->isNotEmpty())
-            <label for="grant-cash">Kas Tujuan <span aria-hidden="true">*</span></label><select id="grant-cash" name="account_id" x-model="account" required><option value="">Pilih kas sekolah</option>@foreach($cashAccounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select>
-        @else
-            <p role="status" class="work-muted">Belum ada kas sekolah aktif. Lengkapi Rekening Sekolah sebelum menyimpan.</p>
+            <template x-if="method === 'Tunai'">
+                <div>
+                    <input type="hidden" name="account_id" value="{{ $cashAccounts->first()->id }}">
+                    <p class="work-muted">{{ $cashAccounts->first()->name }}</p>
+                </div>
+            </template>
+        @elseif($cashAccounts->isEmpty())
+            <p x-show="method === 'Tunai'" x-cloak role="status" class="work-muted">Belum ada kas sekolah aktif. Lengkapi Rekening Sekolah sebelum menyimpan.</p>
         @endif
-    </div></template>
+    </div>
+    <template x-if="method === 'Transfer'"><div class="work-field"><label for="grant-bank">Rekening Bank Tujuan <span aria-hidden="true">*</span></label><select id="grant-bank" name="account_id" x-model="account" required><option value="">Pilih rekening bank sekolah</option>@foreach($bankAccounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select></div></template>
+    @if($cashAccounts->count() > 1)
+        <template x-if="method === 'Tunai'"><div class="work-field">
+            <label for="grant-cash" class="sr-only">Kas Tujuan</label><select id="grant-cash" name="account_id" x-model="account" required><option value="">Pilih kas sekolah</option>@foreach($cashAccounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select>
+        </div></template>
+    @endif
 </div>
 @error('account_id')<p class="work-error" role="alert">{{ $message }}</p>@enderror
 @if($incomeTypes->count() > 1)
