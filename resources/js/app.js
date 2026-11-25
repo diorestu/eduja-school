@@ -6,17 +6,11 @@ import { dataTable } from './components/data-table';
 // flatpickr
 import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.min.css';
-// FullCalendar
-import { Calendar } from '@fullcalendar/core';
-
-
-
 import { formatCurrency, unmaskCurrency, attachCurrencyMask, initCurrencyMasks } from './components/currency-mask';
 
 window.Alpine = Alpine;
 window.ApexCharts = ApexCharts;
 window.flatpickr = flatpickr;
-window.FullCalendar = Calendar;
 window.formatCurrency = formatCurrency;
 window.unmaskCurrency = unmaskCurrency;
 window.attachCurrencyMask = attachCurrencyMask;
