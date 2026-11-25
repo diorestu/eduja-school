@@ -905,6 +905,9 @@ it('places login assistance link below password input on signin page', function 
 
 it('implements Flow Master BOS to manage fund sources and components with modal and validation', function () {
     $schoolId = makeFinanceRouteSchool('Sekolah Master BOS');
+    foreach (['BOS Reguler', 'BOS Kinerja Afirmasi'] as $index => $name) {
+        App\Models\IncomeType::create(['school_id' => $schoolId, 'code' => 'BOS-'.$index, 'name' => $name, 'category' => 'BOS']);
+    }
     $user = makeFinanceRouteUser($schoolId);
     $this->actingAs($user)->withSession(['active_school_id' => $schoolId]);
 
@@ -912,10 +915,10 @@ it('implements Flow Master BOS to manage fund sources and components with modal 
     $response = $this->get(route('bos.anggaran.index'))->assertOk();
     $response->assertSee('Master Data Keuangan');
     $response->assertSee('Data Sumber Dana BOS');
-    $response->assertSee('Tambah BOS');
+    $response->assertSee('Tambah Komponen BOS');
     $response->assertSee('BOS Reguler');
     $response->assertSee('Belanja pegawai');
-    $response->assertSee('Sumber dana dan komponen BOS dapat ditambahkan oleh admin jika diperlukan.');
+    $response->assertSee('Sumber dana dikelola di Jenis Pemasukan kategori BOS. Komponen dapat ditambahkan di sini.');
 
     // 2. Validate empty submission fails
     $this->post(route('bos.anggaran.store'), [
@@ -929,17 +932,16 @@ it('implements Flow Master BOS to manage fund sources and components with modal 
         'name' => 'Belanja Pegawai',
     ])->assertRedirect(route('bos.anggaran.index'))
         ->assertSessionHas('success_modal', true)
-        ->assertSessionHas('success', 'Data jenis pemasukan BOS berhasil disimpan ke dalam sistem.');
+        ->assertSessionHas('success', 'Komponen BOS berhasil disimpan.');
 
     $cat = DB::table('budget_categories')->where('school_id', $schoolId)->where('source_funding', 'BOS Reguler')->first();
     expect($cat)->not->toBeNull()
         ->and($cat->name)->toBe('Belanja Pegawai')
         ->and($cat->code)->toStartWith('BOS-');
 
-    // 4. Store custom "Lainnya" source and component
+    // 4. Use a registered BOS source with a custom component
     $this->post(route('bos.anggaran.store'), [
-        'source_funding' => 'Lainnya',
-        'custom_source' => 'BOS Kinerja Afirmasi',
+        'source_funding' => 'BOS Kinerja Afirmasi',
         'name' => 'Lainnya',
         'custom_component' => 'Digitalisasi Pembelajaran',
     ])->assertRedirect(route('bos.anggaran.index'))
@@ -1356,7 +1358,8 @@ it('implements Flow Input Pengeluaran Komite and BOS matching Menu Bendahara pag
         ->where('expense_name', 'Konsumsi Rapat Komite Bulanan')
         ->first();
     expect($expenseOp)->not->toBeNull()
-        ->and($expenseOp->status)->toBe('pending');
+        ->and($expenseOp->status)->toBe('approved');
+    expect((float) $cash->fresh()->current_balance)->toBe(550000.0);
 
     // 3. Submit BOS Expense with Document Checklists (Page 32-33)
     $this->post(route('bos.belanja.store'), [
@@ -2030,7 +2033,7 @@ it('records expense with account_id and deducts account balance upon approval', 
     ]);
 
     // Bendahara submits expense using this account
-    $expenseType = \App\Models\ExpenseType::create(['school_id' => $schoolId, 'code' => 'KMT-ATK', 'name' => 'ATK', 'source_funding' => 'komite']);
+    $expenseType = \App\Models\ExpenseType::create(['school_id' => $schoolId, 'code' => 'KMT-ATK', 'name' => 'ATK', 'source_funding' => 'komite', 'requires_approval' => true]);
     $wallet = \App\Models\VirtualWallet::create(['school_id' => $schoolId, 'name' => 'Dompet ATK', 'status' => 'active', 'nominal' => 2000000]);
     $this->actingAs($bendahara)->withSession(['active_school_id' => $schoolId]);
     $response = $this->post('/bos/belanja', [

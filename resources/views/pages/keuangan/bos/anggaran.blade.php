@@ -23,8 +23,7 @@
         ];
     });
 
-    $defaultSourcesList = ['BOS Reguler', 'BOS Kinerja', 'BOP', 'DAK'];
-    $allSources = array_values(array_unique(array_merge($defaultSourcesList, $sources ?? [])));
+    $allSources = $sources ?? [];
 
     $defaultComponentsList = ['Belanja pegawai', 'Belanja barang', 'Belanja modal', 'Pembelajaran', 'Pemeliharaan'];
     $allComponents = array_values(array_unique(array_merge($defaultComponentsList, $components ?? [])));
@@ -36,7 +35,6 @@
     x-data="{
         sourceFunding: '',
         componentName: '',
-        customSource: '',
         customComponent: '',
         submitted: false,
         submitting: false,
@@ -45,7 +43,7 @@
 
         validateAndSubmit(e) {
             this.submitted = true;
-            const hasSource = this.sourceFunding && (this.sourceFunding !== 'Lainnya' || this.customSource.trim() !== '');
+            const hasSource = Boolean(this.sourceFunding);
             const hasComponent = this.componentName && (this.componentName !== 'Lainnya' || this.customComponent.trim() !== '');
 
             if (!hasSource || !hasComponent) {
@@ -60,7 +58,6 @@
         openAdd() {
             this.sourceFunding = '';
             this.componentName = '';
-            this.customSource = '';
             this.customComponent = '';
             this.submitted = false;
             this.submitting = false;
@@ -72,9 +69,7 @@
                 id: row.id,
                 source_funding: row.source_funding,
                 name: row.name,
-                custom_source: '',
                 custom_component: '',
-                is_custom_source: !@js($allSources).includes(row.source_funding),
                 is_custom_component: !@js($allComponents).includes(row.name),
             };
             this.$nextTick(() => {
@@ -125,7 +120,7 @@
         </div>
         <button type="button" class="work-btn work-btn-primary" @click="openAdd()">
             <svg class="w-4 h-4 mr-1.5 -ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-            Tambah BOS
+            Tambah Komponen BOS
         </button>
     </div>
 
@@ -142,7 +137,7 @@
         :exportable="true"
         export-label="Export Data BOS"
         empty-message="Belum ada data sumber dana BOS."
-        empty-hint="Pilih Tambah BOS untuk menambahkan data pertama."
+        empty-hint="Pilih Tambah Komponen BOS untuk menambahkan data pertama."
     />
 
     {{-- MODAL TAMBAH DATA BOS (STEP 5 & STEP 6) --}}
@@ -153,7 +148,7 @@
         {{-- HEADER MODAL --}}
         <div class="account-dialog-head">
             <div class="min-w-0">
-                <h2 id="bos-modal-title" class="text-lg font-bold text-gray-900 dark:text-white">Tambah Data BOS</h2>
+                <h2 id="bos-modal-title" class="text-lg font-bold text-gray-900 dark:text-white">Tambah Komponen BOS</h2>
             </div>
             <button type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1 rounded-md" @click="$refs.bosModal.close()" :disabled="submitting" aria-label="Tutup form">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -165,7 +160,7 @@
             @csrf
 
             {{-- STEP 6: VALIDASI DATA ERROR BANNER --}}
-            <div x-cloak x-show="submitted && (!sourceFunding || !componentName || (sourceFunding === 'Lainnya' && !customSource.trim()) || (componentName === 'Lainnya' && !customComponent.trim()))"
+            <div x-cloak x-show="submitted && (!sourceFunding || !componentName || (componentName === 'Lainnya' && !customComponent.trim()))"
                 class="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
                 <div class="flex items-start gap-3">
                     <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-200 text-rose-700 dark:bg-rose-900 dark:text-rose-200 font-bold text-xs">!</span>
@@ -173,7 +168,7 @@
                         <p class="font-bold text-sm text-rose-900 dark:text-rose-200">Data belum lengkap</p>
                         <p class="mt-0.5 text-xs text-rose-700 dark:text-rose-300">Mohon lengkapi data berikut:</p>
                         <ul class="list-disc list-inside mt-1.5 space-y-0.5 text-xs font-medium">
-                            <template x-if="!sourceFunding || (sourceFunding === 'Lainnya' && !customSource.trim())">
+                            <template x-if="!sourceFunding">
                                 <li>Sumber Dana</li>
                             </template>
                             <template x-if="!componentName || (componentName === 'Lainnya' && !customComponent.trim())">
@@ -196,30 +191,21 @@
                     Sumber Dana <span aria-hidden="true" class="text-rose-500">*</span>
                 </label>
                 <select id="bos-source-funding" name="source_funding" x-model="sourceFunding"
-                    :class="{'border-rose-500 ring-1 ring-rose-500': submitted && (!sourceFunding || (sourceFunding === 'Lainnya' && !customSource.trim()))}"
+                    :class="{'border-rose-500 ring-1 ring-rose-500': submitted && (!sourceFunding)}"
                     class="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3.5 py-2.5">
                     <option value="" disabled selected>Pilih sumber dana</option>
                     @foreach($allSources as $src)
                         <option value="{{ $src }}">{{ $src }}</option>
                     @endforeach
-                    <option value="Lainnya">+ Sumber Dana Lainnya...</option>
                 </select>
-                <p x-show="!submitted || (sourceFunding && (sourceFunding !== 'Lainnya' || customSource.trim()))" class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Pilih sumber dana BOS yang tersedia.
+                <p x-show="!submitted || sourceFunding" class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Pilihan berasal dari Jenis Pemasukan berkategori BOS.
                 </p>
                 <p x-cloak x-show="submitted && !sourceFunding" class="text-xs text-rose-600 dark:text-rose-400 font-medium mt-1">
                     Kolom ini wajib diisi.
                 </p>
 
-                {{-- Input Custom Sumber Dana jika 'Lainnya' dipilih --}}
-                <div x-cloak x-show="sourceFunding === 'Lainnya'" class="mt-2">
-                    <input type="text" name="custom_source" x-model="customSource" placeholder="Ketik nama sumber dana baru..."
-                        :class="{'border-rose-500 ring-1 ring-rose-500': submitted && sourceFunding === 'Lainnya' && !customSource.trim()}"
-                        class="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3.5 py-2">
-                    <p x-cloak x-show="submitted && sourceFunding === 'Lainnya' && !customSource.trim()" class="text-xs text-rose-600 dark:text-rose-400 font-medium mt-1">
-                        Nama sumber dana wajib diisi.
-                    </p>
-                </div>
+
             </div>
 
             {{-- 2. KOMPONEN BOS --}}
@@ -259,7 +245,7 @@
                 <svg class="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
-                <p>Sumber dana dan komponen BOS dapat ditambahkan oleh admin jika diperlukan.</p>
+                <p>Sumber dana dikelola di Jenis Pemasukan kategori BOS. Komponen dapat ditambahkan di sini.</p>
             </div>
 
             {{-- BUTTONS --}}
@@ -325,12 +311,8 @@
                     @foreach($allSources as $src)
                         <option value="{{ $src }}">{{ $src }}</option>
                     @endforeach
-                    <option value="Lainnya">+ Sumber Dana Lainnya...</option>
                 </select>
-                <div x-cloak x-show="editingCategory?.source_funding === 'Lainnya'" class="mt-2">
-                    <input type="text" name="custom_source" x-model="editingCategory.custom_source" placeholder="Nama sumber dana baru..."
-                        class="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3.5 py-2">
-                </div>
+
             </div>
 
             <div class="work-field mb-4">

@@ -95,7 +95,7 @@
         createOpWalletId: @js((string) old('virtual_wallet_id', $virtualWallets->first()?->id ?? '')),
         createOpMethod: @js(old('payment_method', 'Tunai')),
         createOpAccountId: @js((string) old('account_id', '')),
-        createBosAccountId: '{{ $schoolAccounts->first()?->id ?? '' }}',
+        createBosAccountId: '{{ $bosAccounts->first()?->id ?? '' }}',
         createTaxType: '',
         createTaxAmount: 0,
         accountsMap: @js($schoolAccounts->pluck('current_balance', 'id')),
@@ -416,7 +416,7 @@
                         <div class="work-field"><label for="create-op-account">Kas / Rekening Pembayaran</label>
                             <select id="create-op-account" name="account_id" x-model="createOpAccountId" required>
                                 <option value="">Pilih kas atau rekening bank</option>
-                                @foreach($schoolAccounts->filter(fn ($account) => strtolower($account->source_funding ?? '') !== 'bos' && in_array(strtolower($account->type), ['cash', 'tunai', 'bank'])) as $account)
+                                @foreach($committeeAccounts as $account)
                                     <template x-if="createOpMethod === @js(in_array(strtolower($account->type), ['cash', 'tunai']) ? 'Tunai' : 'Transfer')"><option value="{{ $account->id }}">{{ $account->name }} · Rp {{ number_format($account->current_balance, 0, ',', '.') }}</option></template>
                                 @endforeach
                             </select>
@@ -488,6 +488,16 @@
                         </select>
                     </div>
 
+                    <div class="work-field">
+                        <label for="create-bos-expense-type">Jenis Pengeluaran BOS</label>
+                        <select id="create-bos-expense-type" name="expense_type_id">
+                            <option value="">Tanpa jenis — perlu approval kepala sekolah</option>
+                            @foreach($bosExpenseTypes as $type)
+                                <option value="{{ $type->id }}" @selected(old('expense_type_id') == $type->id)>{{ $type->name }} — {{ $type->requires_approval ? 'Perlu approval' : 'Langsung' }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
                     {{-- Warning jika Anggaran Tidak Cukup (Page 32-33) --}}
                     <div x-show="parseNum(createAmount) > bosRemainingBudget" x-cloak
                         class="p-3 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 text-xs flex items-center gap-2">
@@ -523,7 +533,7 @@
                             <label for="create-bos-account">Rekening Pembayaran BOS <span class="text-red-500">*</span></label>
                             <select id="create-bos-account" name="account_id" x-model="createBosAccountId" required>
                                 <option value="" disabled>-- Pilih Rekening Pembayaran --</option>
-                                @foreach($schoolAccounts as $acc)
+                                @foreach($bosAccounts as $acc)
                                     <option value="{{ $acc->id }}">
                                         {{ $acc->name }} ({{ $acc->bank_name ? $acc->bank_name . ' - ' . $acc->account_number : $acc->type }}) — Saldo: Rp {{ number_format($acc->current_balance, 0, ',', '.') }}
                                     </option>
@@ -652,6 +662,16 @@
                 </select>
             </div>
 
+            <div class="work-field" x-show="/^(BOS|BOP|DAK)/i.test(editFunding)" x-cloak>
+                <label for="edit-bos-expense-type">Jenis Pengeluaran BOS</label>
+                <select id="edit-bos-expense-type" name="expense_type_id" x-model="editExpenseTypeId" :disabled="!/^(BOS|BOP|DAK)/i.test(editFunding)">
+                    <option value="">Tanpa jenis</option>
+                    @foreach($bosExpenseTypes as $type)
+                        <option value="{{ $type->id }}">{{ $type->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
             <div class="work-field">
                 <label for="edit-expense-name">Uraian Belanja / Kegiatan <span class="text-red-500">*</span></label>
                 <input id="edit-expense-name" name="expense_name" x-model="editExpenseName" type="text" required>
@@ -688,7 +708,7 @@
                     <div class="work-field"><label for="edit-op-method">Metode Pembayaran</label><select id="edit-op-method" name="payment_method" x-model="editPaymentMethod" @change="editAccountId = ''"><option value="Tunai">Tunai</option><option value="Transfer">Transfer</option><option value="Transfer Bank">Transfer Bank</option></select></div>
                     <div class="work-field"><label for="edit-op-account">Kas / Rekening Pembayaran</label><select id="edit-op-account" name="account_id" x-model="editAccountId" required>
                         <option value="">Pilih kas atau rekening bank</option>
-                        @foreach($schoolAccounts->filter(fn ($account) => strtolower($account->source_funding ?? '') !== 'bos' && in_array(strtolower($account->type), ['cash', 'tunai', 'bank'])) as $account)
+                        @foreach($committeeAccounts as $account)
                             <template x-if="(editPaymentMethod === 'Tunai') === @js(in_array(strtolower($account->type), ['cash', 'tunai']))"><option value="{{ $account->id }}">{{ $account->name }}</option></template>
                         @endforeach
                     </select></div>
@@ -704,7 +724,7 @@
                 <label for="edit-account">Rekening Pembayaran BOS <span class="text-red-500">*</span></label>
                 <select id="edit-account" name="account_id" x-model="editAccountId" :required="/^(BOS|BOP|DAK)/i.test(editFunding)" :disabled="!/^(BOS|BOP|DAK)/i.test(editFunding)">
                     <option value="">-- Pilih Rekening Sekolah --</option>
-                    @foreach($schoolAccounts as $acc)
+                    @foreach($bosAccounts as $acc)
                         <option value="{{ $acc->id }}">
                             {{ $acc->name }} ({{ $acc->bank_name ? $acc->bank_name . ' - ' . $acc->account_number : $acc->type }}) — Saldo: Rp {{ number_format($acc->current_balance, 0, ',', '.') }}
                         </option>

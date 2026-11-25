@@ -52,7 +52,7 @@
         openEdit(row) {
             this.editingExpense = row;
             this.editSourceFunding = row.source_funding || 'Komite';
-            this.editRequiresApproval = row.requires_approval ? '1' : '0';
+            this.editRequiresApproval = String(row.requires_approval) === '1' ? '1' : '0';
             this.editBosComponent = row.bos_component !== '-' ? row.bos_component : '';
             this.$nextTick(() => {
                 this.$refs.editExpenseTypeModal.showModal();

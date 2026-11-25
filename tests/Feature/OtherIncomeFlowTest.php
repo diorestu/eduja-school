@@ -134,3 +134,37 @@ it('rolls back corrections if wallet funds are spent and rejects stale or overla
     $this->post(route('approvals.approve', $approval))->assertSessionHasErrors('revision');
     expect($approval->fresh()->status)->toBe('pending');
 });
+
+it('shows a saved other receipt in the history and hides a single implicit cash label', function () {
+    otherIncomeFixture($this);
+    $this->post(route('spp.transaksi.pemasukan'), otherIncomePayload())->assertSessionHasNoErrors();
+    $this->get('/spp/transaksi?category=lainnya')->assertOk()
+        ->assertViewHas('incomes', fn ($incomes) => $incomes->contains('source_funding', 'Pendapatan Kantin'))
+        ->assertDontSee('Kas tujuan:');
+});
+
+it('keeps the other income category when opening older history pages', function () {
+    [$school] = otherIncomeFixture($this);
+    foreach (range(1, 16) as $number) {
+        FinanceIncome::create(['school_id' => $school, 'income_category' => 'lainnya', 'source_funding' => 'Penerimaan '.$number,
+            'amount' => 1000, 'received_date' => '2026-11-25', 'status' => 'approved']);
+    }
+    $response = $this->get('/spp/transaksi?category=lainnya');
+    $response->assertOk();
+    $nextPage = $response->viewData('incomes')->nextPageUrl();
+    $this->get($nextPage)->assertOk()->assertViewIs('pages.keuangan.other-income.index');
+});
+
+it('returns to the newest other income history after saving from an older page', function () {
+    [$school] = otherIncomeFixture($this);
+    $this->freezeTime();
+    foreach (range(1, 16) as $number) {
+        FinanceIncome::create(['school_id' => $school, 'income_category' => 'lainnya', 'source_funding' => 'Penerimaan lama '.$number,
+            'amount' => 1000, 'received_date' => '2026-11-25', 'status' => 'approved']);
+    }
+    $this->from('/spp/transaksi?category=lainnya&page=2')
+        ->post(route('spp.transaksi.pemasukan'), otherIncomePayload())->assertSessionHasNoErrors()
+        ->assertRedirect(route('spp.transaksi.index', ['category' => 'lainnya']));
+    $this->get(route('spp.transaksi.index', ['category' => 'lainnya']))->assertOk()
+        ->assertViewHas('incomes', fn ($incomes) => $incomes->first()->source_funding === 'Pendapatan Kantin');
+});

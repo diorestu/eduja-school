@@ -125,3 +125,65 @@ it('validates required fields school scope method and private proof access', fun
     DB::table('school_user_roles')->insert(['school_id' => $otherSchool, 'user_id' => $outsider->id, 'role' => 'bendahara', 'is_active' => true, 'membership_status' => 'active']);
     $this->actingAs($outsider)->withSession(['active_school_id' => $otherSchool])->get('/bos/belanja/'.$expense->id.'/proof')->assertNotFound();
 });
+
+it('opens both expense tabs with their own transactions', function () {
+    extract(committeeExpenseFixture($this));
+    $this->post('/bos/belanja', $payload)->assertSessionHasNoErrors();
+    $this->get('/bos/belanja?tab=komite')->assertOk()->assertSee('Konsumsi rapat');
+    $this->get('/bos/belanja?tab=bos')->assertOk()->assertViewHas('expenses', fn ($expenses) => $expenses->isEmpty());
+});
+
+it('executes a committee expense immediately when its master does not require approval', function () {
+    extract(committeeExpenseFixture($this));
+    $type->update(['requires_approval' => false]);
+    $this->post('/bos/belanja', $payload)->assertSessionHasNoErrors();
+    $expense = Expense::firstOrFail();
+    expect($expense->status)->toBe('approved')->and($expense->posted_at)->not->toBeNull()
+        ->and($cash->fresh()->current_balance)->toBe('875000.00')->and($wallet->fresh()->nominal)->toBe('375000.00');
+    expect(ApprovalRequest::count())->toBe(0);
+});
+
+it('rejects a non BOS bank for a BOS expense before creating an approval', function () {
+    extract(committeeExpenseFixture($this));
+    $this->post('/bos/belanja', [...$payload, 'category' => 'BOS', 'source_funding' => 'BOS', 'payment_method' => 'Transfer', 'account_id' => $bank->id])
+        ->assertSessionHasErrors('account_id');
+    expect(Expense::count())->toBe(0);
+});
+
+it('uses only school BOS income types as component funding sources', function () {
+    extract(committeeExpenseFixture($this));
+    App\Models\IncomeType::create(['school_id' => $school, 'code' => 'BOS-CUSTOM', 'name' => 'BOS Sekolah Khusus', 'category' => 'BOS']);
+    App\Models\IncomeType::create(['school_id' => $school, 'code' => 'NON-BOS', 'name' => 'Iuran Komite', 'category' => 'Komite']);
+    $this->get('/bos/anggaran')->assertOk()->assertViewHas('sources', ['BOS Sekolah Khusus'])->assertSee('Tambah Komponen BOS');
+    $this->post('/bos/anggaran', ['source_funding' => 'Iuran Komite', 'name' => 'Belanja pegawai'])->assertSessionHasErrors('source_funding');
+    $this->post('/bos/anggaran', ['source_funding' => 'BOS Sekolah Khusus', 'name' => 'Belanja pegawai'])->assertSessionHasNoErrors();
+});
+
+it('offers and executes a BOS expense type configured for direct posting', function () {
+    extract(committeeExpenseFixture($this));
+    $type->update(['source_funding' => 'BOS', 'requires_approval' => false]);
+    $bank->update(['source_funding' => 'bos']);
+    $this->get('/bos/belanja?tab=bos')->assertOk()->assertSee('id="create-bos-expense-type"', false);
+    $this->post('/bos/belanja', [...$payload, 'category' => 'BOS', 'source_funding' => 'BOS', 'payment_method' => 'Transfer', 'account_id' => $bank->id])->assertSessionHasNoErrors();
+    expect(Expense::firstOrFail()->status)->toBe('approved')->and($bank->fresh()->current_balance)->toBe('1875000.00')
+        ->and($wallet->fresh()->nominal)->toBe('500000.00')->and(ApprovalRequest::count())->toBe(0);
+});
+
+it('keeps BOS expenses pending when supplied a direct committee expense type', function () {
+    extract(committeeExpenseFixture($this));
+    $type->update(['requires_approval' => false]);
+    $bank->update(['source_funding' => 'bos']);
+    $this->post('/bos/belanja', [...$payload, 'category' => 'BOS', 'source_funding' => 'BOS', 'payment_method' => 'Transfer', 'account_id' => $bank->id])->assertSessionHasNoErrors();
+    expect(Expense::firstOrFail()->status)->toBe('pending')->and($bank->fresh()->current_balance)->toBe('2000000.00');
+});
+
+it('separates active committee and BOS payment account options', function () {
+    extract(committeeExpenseFixture($this));
+    $other = SchoolAccount::create(['school_id' => $school, 'name' => 'Bank Lainnya', 'type' => 'Bank', 'source_funding' => 'lainnya', 'is_active' => true]);
+    $bos = SchoolAccount::create(['school_id' => $school, 'name' => 'Bank BOS', 'type' => 'Bank', 'source_funding' => 'bos', 'is_active' => true]);
+    SchoolAccount::create(['school_id' => $school, 'name' => 'Kas BOS', 'type' => 'Tunai', 'source_funding' => 'bos', 'is_active' => true]);
+    SchoolAccount::create(['school_id' => $school, 'name' => 'BOS Nonaktif', 'type' => 'Bank', 'source_funding' => 'bos', 'is_active' => false]);
+    $this->get('/bos/belanja')->assertOk()
+        ->assertViewHas('committeeAccounts', fn ($accounts) => $accounts->pluck('id')->all() === [$cash->id, $bank->id, $other->id])
+        ->assertViewHas('bosAccounts', fn ($accounts) => $accounts->pluck('id')->all() === [$bos->id]);
+});

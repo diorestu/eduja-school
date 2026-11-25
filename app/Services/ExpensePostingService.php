@@ -26,7 +26,7 @@ class ExpensePostingService
         if ($committee && ! $accountId) {
             $cash = SchoolAccount::where('school_id', $schoolId)->where('is_active', true)
                 ->whereIn(DB::raw('LOWER(type)'), ['cash', 'tunai'])
-                ->where(fn ($q) => $q->whereNull('source_funding')->orWhereRaw('LOWER(source_funding) != ?', ['bos']))->orderBy('id')->lockForUpdate()->get();
+                ->where(fn ($q) => $q->whereNull('source_funding')->orWhereIn(DB::raw('LOWER(source_funding)'), ['', 'komite', 'lainnya']))->orderBy('id')->lockForUpdate()->get();
             if ($method !== 'Tunai' || $cash->count() !== 1) {
                 throw ValidationException::withMessages(['account_id' => 'Pilih kas atau rekening bank pembayaran sesuai metode.']);
             }
@@ -36,8 +36,11 @@ class ExpensePostingService
         if ($accountId) {
             $account = SchoolAccount::where('school_id', $schoolId)->where('is_active', true)->whereKey($accountId)->lockForUpdate()->first();
             $types = $method === 'Tunai' ? ['cash', 'tunai'] : ['bank'];
-            if (! $account || ($committee && (! in_array(strtolower($account->type), $types, true) || strtolower($account->source_funding ?? '') === 'bos'))) {
+            if (! $account || ($committee && (! in_array(strtolower($account->type), $types, true) || ! $account->isCommitteePaymentAccount()))) {
                 throw ValidationException::withMessages(['account_id' => 'Kas/rekening harus aktif, milik sekolah, dan sesuai metode pembayaran Komite.']);
+            }
+            if (preg_match('/^(bos|bop|dak)/i', $attributes['source_funding'] ?? '') && ! $account->isBosBankAccount()) {
+                throw ValidationException::withMessages(['account_id' => 'Pilih rekening bank BOS milik sekolah.']);
             }
             if ($amount > BillingPaymentService::cents($account->current_balance)) {
                 throw ValidationException::withMessages(['amount' => 'Nominal pengeluaran melebihi saldo kas/rekening pembayaran.']);

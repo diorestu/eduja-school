@@ -24,7 +24,7 @@ class OtherIncomeController extends Controller
         $schoolId = $context->activeSchoolIdFor();
 
         return view('pages.keuangan.other-income.index', [...$this->formData($schoolId, $incomes), 'title' => 'Pendapatan Lainnya',
-            'incomes' => FinanceIncome::where('school_id', $schoolId)->other()->with(['account', 'otherRevisions'])->latest()->paginate(15)]);
+            'incomes' => FinanceIncome::where('school_id', $schoolId)->other()->with(['account', 'otherRevisions'])->latest()->orderByDesc('id')->paginate(15)->withQueryString()]);
     }
 
     public function store(Request $request, SchoolContext $context, OtherIncomeService $incomes)
@@ -44,7 +44,7 @@ class OtherIncomeController extends Controller
             throw $error;
         }
 
-        return back()->with('success', 'Transaksi berhasil disimpan');
+        return redirect()->route('spp.transaksi.index', ['category' => 'lainnya'])->with('success', 'Transaksi berhasil disimpan');
     }
 
     public function show(FinanceIncome $income, SchoolContext $context, OtherIncomeService $incomes)

@@ -147,6 +147,18 @@ class FinanceService
 
             $expense->update(['transaction_number' => 'EXP'.$expense->transaction_date->format('Ymd').str_pad((string) $expense->id, 8, '0', STR_PAD_LEFT)]);
 
+            $type = ! empty($attributes['expense_type_id'])
+                ? ExpenseType::where('school_id', $schoolId)->find($attributes['expense_type_id'])
+                : null;
+            $matchesSource = $type && (strcasecmp($type->source_funding, $expense->source_funding) === 0
+                || (strcasecmp($type->source_funding, 'BOS') === 0 && preg_match('/^(bos|bop|dak)/i', $expense->source_funding)));
+            if ($matchesSource && ! $type->requires_approval) {
+                $expense->update(['status' => 'approved']);
+                app(ExpensePostingService::class)->post($expense, $requestedBy);
+
+                return $expense->refresh();
+            }
+
             ApprovalRequest::create([
                 'school_id' => $schoolId,
                 'requested_by' => $requestedBy,

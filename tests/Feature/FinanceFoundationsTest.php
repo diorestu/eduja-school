@@ -184,7 +184,7 @@ it('returns only approved entries for the active school and requested date range
     $otherSchoolId = makeFinanceSchool('Sekolah Ledger B');
     $service = app(FinanceService::class);
     $ledger = app(FinanceLedgerService::class);
-    $account = $service->createAccount($schoolId, ['name' => 'Kas A', 'type' => 'Tunai']);
+    $account = $service->createAccount($schoolId, ['name' => 'Bank BOS A', 'type' => 'Bank', 'source_funding' => 'bos']);
     $otherAccount = $service->createAccount($otherSchoolId, ['name' => 'Kas B', 'type' => 'Tunai']);
 
     $service->recordBosIncome($schoolId, [
@@ -267,7 +267,7 @@ it('posts an approved expense to its account through the existing approval route
     $kepsek = makeFinanceUser($schoolId, 'kepsek');
     $academicYearId = makeFinanceAcademicYear($schoolId);
     $service = app(FinanceService::class);
-    $account = $service->createAccount($schoolId, ['name' => 'Kas Approval', 'type' => 'Tunai', 'opening_balance' => 1000000]);
+    $account = $service->createAccount($schoolId, ['name' => 'Bank Approval', 'type' => 'Bank', 'opening_balance' => 1000000]);
     $account->update(['source_funding' => 'bos']);
     $budgetYear = $service->createBudgetYear($schoolId, ['name' => '2026', 'start_date' => '2026-01-01', 'end_date' => '2026-12-31']);
     $budgetPlan = \App\Models\BudgetPlan::create(['school_id' => $schoolId, 'budget_year_id' => $budgetYear->id, 'source_funding' => 'BOS', 'program_name' => 'Operasional', 'activity_name' => 'Belanja', 'amount' => 1000000, 'status' => 'approved']);

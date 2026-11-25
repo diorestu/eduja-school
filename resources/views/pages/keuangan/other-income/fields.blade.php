@@ -18,7 +18,7 @@
     <template x-if="method === 'Transfer'"><div class="work-field"><label for="other-bank">Rekening Komite Tujuan <span aria-hidden="true">*</span></label><select id="other-bank" name="account_id" x-model="account" required><option value="">Pilih rekening komite sekolah</option>@foreach($bankAccounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select></div></template>
     <template x-if="method === 'Tunai'"><div class="work-field">
         @if($cashAccounts->count() === 1)
-            <input type="hidden" name="account_id" value="{{ $cashAccounts->first()->id }}"><p class="work-muted">Kas tujuan: {{ $cashAccounts->first()->name }}</p>
+            <input type="hidden" name="account_id" value="{{ $cashAccounts->first()->id }}">
         @elseif($cashAccounts->isNotEmpty())
             <label for="other-cash">Kas Tujuan <span aria-hidden="true">*</span></label><select id="other-cash" name="account_id" x-model="account" required><option value="">Pilih kas sekolah</option>@foreach($cashAccounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select>
         @else

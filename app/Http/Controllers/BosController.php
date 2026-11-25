@@ -74,10 +74,8 @@ class BosController extends Controller
             ],
         ];
 
-        // 1. System Menampilkan sumber dana (pilihan yang sudah ada: BOS Reguler, BOS Kinerja, BOP, DAK, Lainnya bisa ditambah)
-        $defaultSources = ['BOS Reguler', 'BOS Kinerja', 'BOP', 'DAK'];
-        $existingSources = $categories->pluck('source_funding')->filter()->unique()->values()->all();
-        $sources = array_values(array_unique(array_merge($defaultSources, $existingSources)));
+        $sources = IncomeType::where('school_id', $schoolId)->whereRaw('LOWER(category) = ?', ['bos'])
+            ->orderBy('name')->pluck('name')->unique()->values()->all();
 
         // 2. System Menampilkan komponen BOS (pilihan yang sudah ada: Belanja pegawai, Belanja barang, Belanja modal, Pembelajaran, Pemeliharaan, Lainnya bisa ditambah)
         $defaultComponents = ['Belanja pegawai', 'Belanja barang', 'Belanja modal', 'Pembelajaran', 'Pemeliharaan'];
@@ -101,18 +99,15 @@ class BosController extends Controller
         $schoolId = $schoolContext->activeSchoolId() ?? session('active_school_id');
 
         $validated = $request->validate([
-            'source_funding' => 'required|string|max:120',
+            'source_funding' => ['required', 'string', 'max:120', Rule::exists('income_types', 'name')->where(fn ($q) => $q->where('school_id', $schoolId)->whereRaw('LOWER(category) = ?', ['bos']))],
             'name' => 'required|string|max:255',
-            'custom_source' => 'nullable|string|max:120',
             'custom_component' => 'nullable|string|max:255',
         ], [
             'source_funding.required' => 'Sumber Dana wajib dipilih.',
             'name.required' => 'Komponen BOS wajib dipilih.',
         ]);
 
-        $sourceFunding = ($validated['source_funding'] === 'Lainnya' && filled($request->input('custom_source')))
-            ? trim($request->input('custom_source'))
-            : $validated['source_funding'];
+        $sourceFunding = $validated['source_funding'];
 
         $componentName = ($validated['name'] === 'Lainnya' && filled($request->input('custom_component')))
             ? trim($request->input('custom_component'))
@@ -134,20 +129,9 @@ class BosController extends Controller
             'is_active' => true,
         ]);
 
-        // Sync with IncomeType category BOS
-        if ($schoolId) {
-            IncomeType::firstOrCreate(
-                ['school_id' => $schoolId, 'name' => $sourceFunding],
-                [
-                    'code' => 'BOS-' . strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $sourceFunding), 0, 4)) . rand(10, 99),
-                    'category' => 'BOS',
-                ]
-            );
-        }
-
         return redirect()->route('bos.anggaran.index')
             ->with('success_modal', true)
-            ->with('success', 'Data jenis pemasukan BOS berhasil disimpan ke dalam sistem.');
+            ->with('success', 'Komponen BOS berhasil disimpan.');
     }
 
     /**
@@ -161,18 +145,15 @@ class BosController extends Controller
         }
 
         $validated = $request->validate([
-            'source_funding' => 'required|string|max:120',
+            'source_funding' => ['required', 'string', 'max:120', Rule::exists('income_types', 'name')->where(fn ($q) => $q->where('school_id', $schoolId)->whereRaw('LOWER(category) = ?', ['bos']))],
             'name' => 'required|string|max:255',
-            'custom_source' => 'nullable|string|max:120',
             'custom_component' => 'nullable|string|max:255',
         ], [
             'source_funding.required' => 'Sumber Dana wajib dipilih.',
             'name.required' => 'Komponen BOS wajib dipilih.',
         ]);
 
-        $sourceFunding = ($validated['source_funding'] === 'Lainnya' && filled($request->input('custom_source')))
-            ? trim($request->input('custom_source'))
-            : $validated['source_funding'];
+        $sourceFunding = $validated['source_funding'];
 
         $componentName = ($validated['name'] === 'Lainnya' && filled($request->input('custom_component')))
             ? trim($request->input('custom_component'))
@@ -184,7 +165,7 @@ class BosController extends Controller
         ]);
 
         return redirect()->route('bos.anggaran.index')
-            ->with('success', 'Data sumber dana BOS berhasil diperbarui.');
+            ->with('success', 'Komponen BOS berhasil diperbarui.');
     }
 
     /**
@@ -224,14 +205,12 @@ class BosController extends Controller
         if ($tab === 'komite') {
             $expensesQuery->where(function ($q) {
                 $q->whereRaw('LOWER(source_funding) = ?', ['komite'])
-                    ->orWhere('category', 'Operasional')
                     ->orWhereHas('expenseType', fn ($et) => $et->whereRaw('LOWER(source_funding) = ?', ['komite']));
             });
         } elseif ($tab === 'bos') {
             $expensesQuery->where(function ($q) {
                 $q->where('source_funding', 'like', 'BOS%')
                     ->orWhereIn('source_funding', ['BOP', 'DAK'])
-                    ->orWhere('category', 'BOS')
                     ->orWhereHas('budgetCategory', fn ($bc) => $bc->where('source_funding', 'like', 'BOS%')->orWhereIn('source_funding', ['BOP', 'DAK']));
             });
         }
@@ -294,8 +273,11 @@ class BosController extends Controller
             'activeYear' => $activeYear,
             'expenseTypes' => $expenseTypes,
             'komiteExpenseTypes' => $komiteExpenseTypes,
+            'bosExpenseTypes' => $expenseTypes->filter(fn ($type) => preg_match('/^(bos|bop|dak)/i', $type->source_funding ?? '')),
             'virtualWallets' => $virtualWallets,
             'schoolAccounts' => $schoolAccounts,
+            'committeeAccounts' => $schoolAccounts->filter(fn ($account) => $account->isCommitteePaymentAccount()),
+            'bosAccounts' => $schoolAccounts->filter(fn ($account) => $account->isBosBankAccount()),
             'bosBudgets' => $bosBudgets,
             'bosSources' => app(\App\Services\BosIncomeService::class)->sources((int) $schoolId),
         ]);
@@ -383,7 +365,7 @@ class BosController extends Controller
             throw $error;
         }
 
-        return redirect()->back()->with('success', 'Pengeluaran '.$expense->transaction_number.' dibuat dan menunggu approval kepala sekolah.');
+        return redirect()->back()->with('success', 'Pengeluaran '.$expense->transaction_number.($expense->posted_at ? ' berhasil dicatat dan saldo telah diperbarui.' : ' dibuat dan menunggu approval kepala sekolah.'));
     }
 
     /**
